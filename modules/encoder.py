@@ -21,7 +21,7 @@ class WaveEncoder(nn.Module):
         hidden_dims = [64, 64, 64, 128, 128, 128, 256, 512, 512]
         kernel_sizes = [3] * len(hidden_dims)
         strides = [3, 1, 1, 1, 1, 1, 1, 1, 1]
-        padding = [0] * len(hidden_dims)
+        padding = [1] * len(hidden_dims) # TODO
 
         assert (
             len(hidden_dims) == len(kernel_sizes) == len(strides) == len(padding)
@@ -46,6 +46,8 @@ class WaveEncoder(nn.Module):
             self.seq.add_module("layer-{}".format(idx), block)
             input_dim = h
 
+        # TODO
+        # self.last_conv = nn.Conv1d(in_channels=512, out_channels=512, kernel_size=1, stride=1, padding=0)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
         # self.sigmoid = nn.Sigmoid()
         self.dropout = nn.Dropout(p=0.5)
@@ -55,10 +57,8 @@ class WaveEncoder(nn.Module):
     def forward(self, x):
         out = self.seq(x)
 
-        # no avg pool
-        # out = self.avgpool(out)
-        # out = torch.flatten(out, 1)
-
-        out = self.dropout(out)
+        # out = self.last_conv(out)
+        out = self.avgpool(out)
+        out = torch.flatten(out, 1)
         out = self.fc(out)
         return out
