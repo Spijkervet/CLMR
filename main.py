@@ -14,6 +14,7 @@ except ImportError:
     )
 
 from data import get_mir_loaders, MIRDataset
+from data import get_fma_loaders
 from datasets.utils.prepare_dataset import prepare_dataset
 from model import load_model, save_model
 from modules import NT_Xent
@@ -37,6 +38,7 @@ def train(args, train_loader, model, criterion, optimizer, writer):
         # for idx, (i, j) in enumerate(zip(x_i, x_j)):
         #     tensor_to_audio(f"{TMP_DIR}/x_i{idx}.mp3", i, sr=16000)
         #     tensor_to_audio(f"{TMP_DIR}/x_j{idx}.mp3", j, sr=16000)
+        # exit(0)
 
         # positive pair, with encoding
         h_i, z_i = model(x_i)
@@ -68,9 +70,6 @@ def test(args, loader, model, criterion, writer):
         x_j = x_j.to(args.device)
 
         # positive pair, with encoding
-        x_i = x_i[:, :, :2000]
-        x_j = x_j[:, :, :2000]
-
         h_i, z_i = model(x_i)
         h_j, z_j = model(x_j)
 
@@ -96,6 +95,7 @@ def main(_run, _log):
     args = post_config_hook(args, _run)
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    args.lin_eval = False # first, pre-train, after that, lin. evaluation
 
     root = "./datasets"
 
@@ -118,25 +118,28 @@ def main(_run, _log):
             audio_length=args.audio_length,
             transform=AudioTransforms(args)
         )
+    
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset,
+            batch_size=args.batch_size,
+            shuffle=(train_sampler is None),
+            drop_last=True,
+            num_workers=args.workers,
+            sampler=train_sampler,
+        )
+
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            drop_last=True,
+            num_workers=args.workers
+        )
+    elif args.dataset == "fma":
+        (train_loader, train_dataset, test_loader, test_dataset) = get_fma_loaders(args)
     else:
         raise NotImplementedError
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        shuffle=(train_sampler is None),
-        drop_last=True,
-        num_workers=args.workers,
-        sampler=train_sampler,
-    )
-
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        drop_last=True,
-        num_workers=args.workers
-    )
 
     model, optimizer, scheduler = load_model(args, train_loader)
     print(model)

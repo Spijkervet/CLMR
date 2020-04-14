@@ -64,7 +64,7 @@ class MIRDataset(Dataset):
         # self.tracks = tracks
 
         self.root_dir = root_dir
-        self.sample_rate = 16000  # TODO: make this a variable, downs
+        self.sample_rate = args.sample_rate
 
         self.audio_length = audio_length
         self.indexer = indexer

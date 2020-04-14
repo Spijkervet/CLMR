@@ -7,4 +7,6 @@ dependencies:
   - tensorboard
   - pyyaml
   - pip:
+    - pydot
+    - python-dotenv
     - sacred

@@ -1,14 +1,14 @@
 # train options
 seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 32 # 256 
+batch_size: 20 # 256 
 workers: 16
 start_epoch: 0
 epochs: 100
-dataset: "billboard" # STL10
+dataset: "fma" # STL10
 data_input_dir: "datasets/audio"
 
 # interm. concl. larger audio length, harder it is to find simillar audio (RandomResizeCrop), which is logical
-audio_length: 19683 # # 11888 # = 743 ms # 59049 # num. samples
+audio_length: 42848 # # 11888 # = 743 ms # 42848 = 2678ms # num. samples
 sample_rate: 16000
 task: "key" # TODO
 
@@ -18,9 +18,9 @@ normalize: True
 projection_dim: 64 # "[...] to project the representation to a 128-dimensional latent space"
 
 # loss options
-optimizer: "Adam" # or LARS (experimental)
+optimizer: "LARS" # or LARS (experimental)
 weight_decay: 1.0e-6 # "optimized using LARS [...] and weight decay of 10−6"
-temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch sizes
+temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
 # reload options
 model_path: "logs/0" # set to the directory containing `checkpoint_##.tar` 
