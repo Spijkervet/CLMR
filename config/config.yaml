@@ -1,10 +1,16 @@
 # train options
 seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 256 
+batch_size: 32 # 256 
 workers: 16
 start_epoch: 0
 epochs: 100
-dataset: "STL10" # STL10
+dataset: "billboard" # STL10
+data_input_dir: "datasets/audio"
+
+# interm. concl. larger audio length, harder it is to find simillar audio (RandomResizeCrop), which is logical
+audio_length: 19683 # # 11888 # = 743 ms # 59049 # num. samples
+sample_rate: 16000
+task: "key" # TODO
 
 # model options
 resnet: "resnet18"

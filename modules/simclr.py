@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torchvision
+from .encoder import WaveEncoder
 
 
 class Identity(nn.Module):
@@ -20,7 +21,9 @@ class SimCLR(nn.Module):
 
         self.args = args
 
-        self.encoder = self.get_resnet(args.resnet)
+        input_dim = 1
+        self.encoder = WaveEncoder(input_dim)
+        # self.encoder = self.get_resnet(args.resnet) # resnet
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer
         self.encoder.fc = Identity()  # remove fully-connected layer after pooling layer
@@ -31,7 +34,6 @@ class SimCLR(nn.Module):
             nn.ReLU(),
             nn.Linear(self.n_features, args.projection_dim, bias=False),
         )
-        
 
     def get_resnet(self, name):
         resnets = {
@@ -41,7 +43,6 @@ class SimCLR(nn.Module):
         if name not in resnets.keys():
             raise KeyError(f"{name} is not a valid ResNet version")
         return resnets[name]
-
 
     def forward(self, x):
         h = self.encoder(x)
