@@ -4,7 +4,6 @@ import torchvision
 import argparse
 
 from torch.utils.tensorboard import SummaryWriter
-
 apex = False
 try:
     from apex import amp
@@ -14,14 +13,17 @@ except ImportError:
         "Install the apex package from https://www.github.com/nvidia/apex to use fp16 for training"
     )
 
+from data import get_mir_loaders, MIRDataset
+from datasets.utils.prepare_dataset import prepare_dataset
 from model import load_model, save_model
 from modules import NT_Xent
-from modules.transformations import TransformsSimCLR
-from utils import mask_correlated_samples, post_config_hook
+from modules.transformations import AudioTransforms
+from utils import mask_correlated_samples, post_config_hook, tensor_to_audio
 
 #### pass configuration
 from experiment import ex
 
+TMP_DIR = ".tmp"
 
 def train(args, train_loader, model, criterion, optimizer, writer):
     loss_epoch = 0
@@ -30,6 +32,11 @@ def train(args, train_loader, model, criterion, optimizer, writer):
         optimizer.zero_grad()
         x_i = x_i.to(args.device)
         x_j = x_j.to(args.device)
+
+        # hear transformations
+        # for idx, (i, j) in enumerate(zip(x_i, x_j)):
+        #     tensor_to_audio(f"{TMP_DIR}/x_i{idx}.mp3", i, sr=16000)
+        #     tensor_to_audio(f"{TMP_DIR}/x_j{idx}.mp3", j, sr=16000)
 
         # positive pair, with encoding
         h_i, z_i = model(x_i)
@@ -45,13 +52,42 @@ def train(args, train_loader, model, criterion, optimizer, writer):
 
         optimizer.step()
 
-        if step % 50 == 0:
+        if step % 1 == 0:
             print(f"Step [{step}/{len(train_loader)}]\t Loss: {loss.item()}")
 
         writer.add_scalar("Loss/train_epoch", loss.item(), args.global_step)
         loss_epoch += loss.item()
         args.global_step += 1
     return loss_epoch
+
+def test(args, loader, model, criterion, writer):
+    model.eval()
+    loss_epoch = 0
+    for step, ((x_i, x_j), _) in enumerate(loader):
+        x_i = x_i.to(args.device)
+        x_j = x_j.to(args.device)
+
+        # positive pair, with encoding
+        x_i = x_i[:, :, :2000]
+        x_j = x_j[:, :, :2000]
+
+        h_i, z_i = model(x_i)
+        h_j, z_j = model(x_j)
+
+        loss = criterion(z_i, z_j)
+
+        if apex and args.fp16:
+            with amp.scale_loss(loss, optimizer) as scaled_loss:
+                scaled_loss.backward()
+        else:
+            loss.backward()
+
+        if step % 1 == 0:
+            print(f"Step [{step}/{len(loader)}]\t Test Loss: {loss.item()}")
+
+        loss_epoch += loss.item()
+    return loss_epoch
+
 
 
 @ex.automain
@@ -65,13 +101,22 @@ def main(_run, _log):
 
     train_sampler = None
 
-    if args.dataset == "STL10":
-        train_dataset = torchvision.datasets.STL10(
-            root, split="unlabeled", download=True, transform=TransformsSimCLR()
+    # prepare_dataset(args)
+    if args.dataset == "billboard":
+        train_dataset = MIRDataset(
+            args,
+            os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
+            os.path.join(args.data_input_dir, f"{args.dataset}_labels/train_split.txt"),
+            audio_length=args.audio_length,
+            transform=AudioTransforms(args)
         )
-    elif args.dataset == "CIFAR10":
-        train_dataset = torchvision.datasets.CIFAR10(
-            root, download=True, transform=TransformsSimCLR()
+
+        test_dataset = MIRDataset(
+            args,
+            os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
+            os.path.join(args.data_input_dir, f"{args.dataset}_labels/test_split.txt"),
+            audio_length=args.audio_length,
+            transform=AudioTransforms(args)
         )
     else:
         raise NotImplementedError
@@ -85,7 +130,16 @@ def main(_run, _log):
         sampler=train_sampler,
     )
 
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=args.workers
+    )
+
     model, optimizer, scheduler = load_model(args, train_loader)
+    print(model)
 
     tb_dir = os.path.join(args.out_dir, _run.experiment_info["name"])
     os.makedirs(tb_dir)
@@ -111,6 +165,13 @@ def main(_run, _log):
         print(
             f"Epoch [{epoch}/{args.epochs}]\t Loss: {loss_epoch / len(train_loader)}\t lr: {round(lr, 5)}"
         )
+
+
+        # validate
+        print("Validation")
+        test_loss_epoch = test(args, test_loader, model, criterion, writer)
+        writer.add_scalar("Loss/test", test_loss_epoch / len(test_loader), epoch)
+
         args.current_epoch += 1
 
     ## end training
