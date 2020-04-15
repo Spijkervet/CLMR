@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 import librosa
 
 def default_loader(path):
-    return torchaudio.load(path, normalization=False)
+    return torchaudio.load(path, normalization=True) # TODO!!!!
 
 
 def default_indexer(fp, tracks, sr):
