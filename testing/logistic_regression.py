@@ -33,10 +33,8 @@ def train(args, loader, simclr_model, model, criterion, optimizer):
         loss.backward()
         optimizer.step()
 
-        print(predicted)
-
         loss_epoch += loss.item()
-        if step % 1 == 0:
+        if step % 100 == 0:
             print(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t Accuracy: {acc}")
 
     return loss_epoch, accuracy_epoch
@@ -74,6 +72,8 @@ def main(_run, _log):
     args.lin_eval = True
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    args.batch_size = args.logistic_batch_size
 
     root = "./datasets"
 
@@ -126,8 +126,8 @@ def main(_run, _log):
     model = LogisticRegression(simclr_model.n_features, n_classes)
     model = model.to(args.device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
     criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
 
 
     for epoch in range(args.logistic_epochs):

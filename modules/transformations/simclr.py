@@ -4,6 +4,7 @@ import numpy as np
 import random
 import essentia
 import essentia.standard
+import librosa
 
 
 class RandomResizedCrop:
@@ -32,6 +33,30 @@ class InvertSignal:
             audio = audio * -1
         return audio
 
+class Noise:
+    def __init__(self, p=0.8):
+        self.p = p
+
+    def __call__(self, audio):
+        if random.random() < self.p:
+            noise = torch.LongTensor(*audio.size()).random_(-1, 1) * 0.01 # 0.1 gain
+            audio = noise + audio
+        return audio
+
+class BandPass:
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, audio):
+        if random.random() < self.p:
+            bp = essentia.standard.BandPass(sampleRate=16000)
+            audio = audio.squeeze()  # reshape, since essentia takes (samples, channels)
+            audio = bp(audio.numpy())
+            audio = torch.from_numpy(audio).reshape(
+                1, -1
+            )  # reshape back to (channels, samples)
+
+        return audio
 
 class LowPass:
     def __init__(self, p=0.5):
@@ -39,9 +64,9 @@ class LowPass:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            bp = essentia.standard.LowPass(sampleRate=16000)
+            lp = essentia.standard.LowPass(sampleRate=16000)
             audio = audio.squeeze()  # reshape, since essentia takes (samples, channels)
-            audio = bp(audio.numpy())
+            audio = lp(audio.numpy())
             audio = torch.from_numpy(audio).reshape(
                 1, -1
             )  # reshape back to (channels, samples)
@@ -55,13 +80,37 @@ class HighPass:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            bp = essentia.standard.HighPass(sampleRate=16000)
+            hp = essentia.standard.HighPass(sampleRate=16000)
             audio = audio.squeeze()  # reshape, since essentia takes (samples, channels)
-            audio = bp(audio.numpy())
+            audio = hp(audio.numpy())
             audio = torch.from_numpy(audio).reshape(
                 1, -1
             )  # reshape back to (channels, samples)
 
+        return audio
+
+
+class PitchShift:
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, audio):
+        if random.random() < self.p:
+            audio = audio.squeeze()
+
+            pitches = [-2, -1, 1, 2]
+            n_steps = np.random.choice(pitches)
+            # time_stretch = [1.5, 1.25, 0.75, 0.5]
+            # stretch = time_stretch[pitches.index(n_steps)]
+
+            audio = audio.numpy()
+            # audio = librosa.effects.time_stretch(audio, rate=stretch)
+            audio = librosa.effects.pitch_shift(
+                audio, sr=16000, n_steps=n_steps
+            )
+            audio = torch.from_numpy(audio).reshape(
+                1, -1
+            )  # reshape back to (channels, samples)
         return audio
 
 
@@ -89,9 +138,12 @@ class AudioTransforms:
 
         self.transformations = [
             RandomResizedCrop(n_samples=args.audio_length),
-            InvertSignal(p=0.5),
-            LowPass(p=0.1),
-            HighPass(p=0.1),
+            InvertSignal(p=0.5), # "horizontal flip"
+            Noise(p=0.8),
+            BandPass(p=0.5),
+            # LowPass(p=0.25),
+            # HighPass(p=0.25),
+            # PitchShift(p=0.25)
             # Reverse(p=0.5),
         ]
 

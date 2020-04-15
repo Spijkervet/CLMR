@@ -101,7 +101,7 @@ def main(_run, _log):
 
     train_sampler = None
 
-    # prepare_dataset(args)
+    prepare_dataset(args)
     if args.dataset == "billboard":
         train_dataset = MIRDataset(
             args,

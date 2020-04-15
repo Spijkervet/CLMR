@@ -4,7 +4,7 @@ batch_size: 20 # 256
 workers: 16
 start_epoch: 0
 epochs: 100
-dataset: "fma" # STL10
+dataset: "billboard" #fma
 data_input_dir: "datasets/audio"
 
 # interm. concl. larger audio length, harder it is to find simillar audio (RandomResizeCrop), which is logical
@@ -32,5 +32,5 @@ fp16_opt_level: "O2"
 
 
 # logistic regression options
-logistic_batch_size: 256
+logistic_batch_size: 64
 logistic_epochs: 100
