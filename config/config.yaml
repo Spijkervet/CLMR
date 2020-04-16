@@ -1,15 +1,25 @@
 # train options
 seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 20 # 256 
+batch_size: 64 # 256 
 workers: 16
 start_epoch: 0
-epochs: 100
-dataset: "billboard" #fma
+epochs: 1000
+# dataset: "billboard" #fma
+dataset: "magnatagtune"
 data_input_dir: "datasets/audio"
 
+# magnatagtune
+mtt_processed_audio: "./datasets/audio/magnatagtune/processed"
+mtt_processed_annot: "./datasets/audio/magnatagtune/processed_annotations"
+list_of_tags: "./datasets/audio/magnatagtune/50_tags.txt"
+num_tags: 50
+dropout: 0.5
+
+
+
 # interm. concl. larger audio length, harder it is to find simillar audio (RandomResizeCrop), which is logical
-audio_length: 42848 # # 11888 # = 743 ms # 42848 = 2678ms # num. samples
-sample_rate: 16000
+audio_length: 42848 # 59049 # # 11888 # = 743 ms # 42848 = 2678ms # num. samples
+sample_rate: 16000 # 22050 
 task: "key" # TODO
 
 # model options

@@ -2,6 +2,7 @@ import os
 import torch
 import torchvision
 import argparse
+import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter
 apex = False
@@ -15,11 +16,15 @@ except ImportError:
 
 from data import get_mir_loaders, MIRDataset
 from data import get_fma_loaders
+from data import get_mtt_loaders
+
 from datasets.utils.prepare_dataset import prepare_dataset
 from model import load_model, save_model
 from modules import NT_Xent
 from modules.transformations import AudioTransforms
 from utils import mask_correlated_samples, post_config_hook, tensor_to_audio
+from validation import latent_representations
+
 
 #### pass configuration
 from experiment import ex
@@ -34,11 +39,12 @@ def train(args, train_loader, model, criterion, optimizer, writer):
         x_i = x_i.to(args.device)
         x_j = x_j.to(args.device)
 
+
         # hear transformations
         # for idx, (i, j) in enumerate(zip(x_i, x_j)):
-        #     tensor_to_audio(f"{TMP_DIR}/x_i{idx}.mp3", i, sr=16000)
-        #     tensor_to_audio(f"{TMP_DIR}/x_j{idx}.mp3", j, sr=16000)
-        # exit(0)
+        #     tensor_to_audio(f"{TMP_DIR}/x_i{idx}_{args.current_epoch}.mp3", i, sr=args.sample_rate)
+        #     tensor_to_audio(f"{TMP_DIR}/x_j{idx}_{args.current_epoch}.mp3", j, sr=args.sample_rate)
+        # break
 
         # positive pair, with encoding
         h_i, z_i = model(x_i)
@@ -101,7 +107,7 @@ def main(_run, _log):
 
     train_sampler = None
 
-    prepare_dataset(args)
+    # prepare_dataset(args)
     if args.dataset == "billboard":
         train_dataset = MIRDataset(
             args,
@@ -137,6 +143,8 @@ def main(_run, _log):
         )
     elif args.dataset == "fma":
         (train_loader, train_dataset, test_loader, test_dataset) = get_fma_loaders(args)
+    elif args.dataset == "magnatagtune":
+        (train_loader, train_dataset, test_loader, test_dataset) = get_mtt_loaders(args)
     else:
         raise NotImplementedError
 
@@ -153,8 +161,13 @@ def main(_run, _log):
 
     args.global_step = 0
     args.current_epoch = 0
+    validate_idx = 5
     for epoch in range(args.start_epoch, args.epochs):
         lr = optimizer.param_groups[0]['lr']
+        
+        if epoch % validate_idx == 0:
+            latent_representations(args, train_loader.dataset, model, optimizer, args.current_epoch, 0, args.global_step, writer)
+        
         loss_epoch = train(args, train_loader, model, criterion, optimizer, writer)
 
         if scheduler:
@@ -171,9 +184,9 @@ def main(_run, _log):
 
 
         # validate
-        print("Validation")
-        test_loss_epoch = test(args, test_loader, model, criterion, writer)
-        writer.add_scalar("Loss/test", test_loss_epoch / len(test_loader), epoch)
+        # print("Validation")
+        # test_loss_epoch = test(args, test_loader, model, criterion, writer)
+        # writer.add_scalar("Loss/test", test_loss_epoch / len(test_loader), epoch)
 
         args.current_epoch += 1
 
