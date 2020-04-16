@@ -1,6 +1,10 @@
+import torch
 import torch.nn as nn
 import torchvision
 from .encoder import WaveEncoder
+from .sample_cnn_42848 import SampleCNN42848
+
+# from .sample_cnn_59049 import SampleCNN59049
 
 
 class Identity(nn.Module):
@@ -22,7 +26,9 @@ class SimCLR(nn.Module):
         self.args = args
 
         input_dim = 1
-        self.encoder = WaveEncoder(input_dim)
+        # self.encoder = WaveEncoder(input_dim)
+        self.encoder = SampleCNN42848()
+        # self.encoder = SampleCNN59049(args)
         # self.encoder = self.get_resnet(args.resnet) # resnet
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer
@@ -44,10 +50,24 @@ class SimCLR(nn.Module):
             raise KeyError(f"{name} is not a valid ResNet version")
         return resnets[name]
 
-    def forward(self, x):
+    def get_latent_size(self, input_size):
+        x = torch.zeros(input_size).to(self.args.device)
+
+        if self.args.fp16:
+            x = x.half()
+
+        h, z = self.get_latent_representations(x)
+        return z.size(1)
+
+    def get_latent_representations(self, x):
         h = self.encoder(x)
         z = self.projector(h)
 
         if self.args.normalize:
             z = nn.functional.normalize(z, dim=1)
+
+        return h, z
+
+    def forward(self, x):
+        h, z = self.get_latent_representations(x)
         return h, z
