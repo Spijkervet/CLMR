@@ -1,1 +1,2 @@
-from .latent_representations import latent_representations
+from .audio.latent_representations import audio_latent_representations
+from .vision.latent_representations import vision_latent_representations

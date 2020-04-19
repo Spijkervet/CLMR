@@ -12,7 +12,7 @@ import soundfile as sf
 from pydub import AudioSegment
 
 sample_rate = 22050
-MTT_DIR = "./datasets/audio/magnatagtune/raw"
+MTT_DIR = "./datasets/audio/magnatagtune/processed"
 AUDIO_DIR = f"./datasets/audio/magnatagtune/processed_{sample_rate}"
 
 
@@ -26,25 +26,27 @@ def process(raw_path, path, audio, npyfilepath):
     all_mp3 = glob(search)
 
     try:
-
         new_fp = str(Path(npyfilepath) / (path + "/" + index_name + "-0" + "-full.mp3"))
-        if not os.path.exists(new_fp):
-            cmd = ["cat", *all_mp3, ">", new_fp]
-            os.system(" ".join(cmd))
-        else:
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-hide_banner",
-                "-loglevel",
-                "panic",
-                "-i",
-                new_fp,
-                "-ar",
-                str(sample_rate),
-                new_fp,
-            ]
-            os.system(" ".join(cmd))
+        # if not os.path.exists(new_fp):
+        #     cmd = ["cat", *all_mp3, ">", new_fp]
+        #     os.system(" ".join(cmd))
+        # else:
+
+        # resample
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "panic",
+            "-i",
+            fp,
+            "-ar",
+            str(sample_rate),
+            new_fp,
+        ]
+        # print(cmd)
+        os.system(" ".join(cmd))
 
             # y, sr = librosa.load(new_fp, sr=sample_rate)
             # np.save(new_fp, y)
