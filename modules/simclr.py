@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torchvision
 from .encoder import WaveEncoder
-from .sample_cnn_42848 import SampleCNN42848
+# from .sample_cnn_42848 import SampleCNN42848
 
-# from .sample_cnn_59049 import SampleCNN59049
+from .sample_cnn_59049 import SampleCNN59049
 
 
 class Identity(nn.Module):
@@ -27,9 +27,13 @@ class SimCLR(nn.Module):
 
         input_dim = 1
         # self.encoder = WaveEncoder(input_dim)
-        self.encoder = SampleCNN42848()
+        # self.encoder = SampleCNN42848()
         # self.encoder = SampleCNN59049(args)
-        # self.encoder = self.get_resnet(args.resnet) # resnet
+        self.encoder = self.get_resnet(args.resnet) # resnet
+
+        if args.grayscale:
+            self.encoder.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer
         self.encoder.fc = Identity()  # remove fully-connected layer after pooling layer

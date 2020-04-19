@@ -22,7 +22,8 @@ def plot_tsne(args, embedding, labels, epoch, step, num_labels):
 
     d = {"x": embedding[:, 0], "y": embedding[:, 1], "label": labels}
     df = pd.DataFrame(data=d)
-    sns.scatterplot(
+
+    g = sns.scatterplot(
         x="x",
         y="y",
         hue="label",
@@ -31,9 +32,17 @@ def plot_tsne(args, embedding, labels, epoch, step, num_labels):
         data=df,
         alpha=1,
     )
+
+    box = g.get_position()
+    g.set_position([box.x0, box.y0, box.width * 0.85, box.height]) # resize position
+
+    # Put a legend to the right side
+    g.legend(loc='center right', bbox_to_anchor=(1.25, 0.5), ncol=1)
+    
     plt.axis("off")
     plt.savefig(fp, bbox_inches="tight")
     return figure
+    
 
 
 def tsne(features):
@@ -41,7 +50,7 @@ def tsne(features):
     return embedding
 
 
-def latent_representations(args, dataset, model, optimizer, epoch, step, global_step, writer):
+def audio_latent_representations(args, dataset, model, optimizer, epoch, step, global_step, writer):
     max_tracks = 10
     batch_size = 20 # 16 for 20480 samples, and a max.
     input_size = (args.batch_size, 1, args.audio_length)

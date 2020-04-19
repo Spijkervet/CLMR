@@ -151,7 +151,7 @@ class AudioTransforms:
 
         self.transformations = [
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
-            InvertSignal(p=0.5, sr=sr), # "horizontal flip"
+            InvertSignal(p=0.8, sr=sr), # "horizontal flip"
             Noise(p=0.8, sr=sr),
             BandPass(p=0.2, sr=sr),
             LowPass(p=0.2, sr=sr),
