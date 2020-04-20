@@ -7,40 +7,64 @@ from pathlib import Path
 from collections import defaultdict
 from PIL import Image
 import torchvision.transforms
+from glob import glob
+import imageio
+from tqdm import tqdm
 
 
-class DeepScoresDataset(data.Dataset):
+class UniversalSymbolDataset(data.Dataset):
     def __init__(self, args, train=True, transform=None, target_transform=None):
         self.args = args
         self.train = train  # training set or test set
         self.transform = transform
         self.target_transform = target_transform
 
-        # if download:
-        #     self.download()
-
-        # if not self._check_integrity():
-        #     raise RuntimeError('Dataset not found or corrupted.' +
-        #                        ' You can use download=True to download it')
-
         self.class_names = {}
-        with open(Path(args.deepscores_processed) / "class_names.csv", "r") as f:
-            for l in f.readlines():
-                class_id, name = l.split(",")
-                class_id = int(class_id)
-                name = name.rstrip()
-                self.class_names[class_id] = name
+        self.class_ids = {}
+        classes = sorted(
+            os.listdir(os.path.join(args.universal_symbol_processed, "training"))
+        )
+        num_classes = len(classes)
+        for idx, c in enumerate(classes):
+            self.class_names[idx] = c
+            self.class_ids[c] = idx
 
+        data = []
+        targets = []
         if self.train:
-            self.data = np.load(Path(args.deepscores_processed) / "train.npy")
-            self.targets = np.load(
-                Path(args.deepscores_processed) / "train_annotations.npy"
-            )
+            image_dir = "training"
         else:
-            self.data = np.load(Path(args.deepscores_processed) / "test.npy")
-            self.targets = np.load(
-                Path(args.deepscores_processed) / "test_annotations.npy"
+            image_dir = "test"
+
+        data_file = os.path.join(args.universal_symbol_processed, image_dir + "_data")
+        targets_file = os.path.join(
+            args.universal_symbol_processed, image_dir + "_targets"
+        )
+
+        if not os.path.exists(data_file + ".npy"):
+            print("Creating data / annotations from dataset")
+            images = glob(
+                str(Path(args.universal_symbol_processed) / image_dir / "*" / "*.png")
             )
+            for fp in tqdm(images):
+                class_name = Path(fp).parent.stem
+                class_id = self.class_ids[class_name]
+
+                data.append(imageio.imread(fp))
+                targets.append(class_id)
+
+            self.data = np.stack(data)
+            self.targets = np.stack(targets)
+
+            # one hot
+            self.targets = np.eye(num_classes, dtype=np.uint8)[self.targets]
+
+            np.save(data_file, self.data)
+            np.save(targets_file, self.targets)
+        else:
+            print(f"[{image_dir}] Loaded data / annotations from dataset")
+            self.data = np.load(data_file + ".npy")
+            self.targets = np.load(targets_file + ".npy")
 
         self.targets_dict = defaultdict(list)
         for x, y in zip(self.data, self.targets):
@@ -48,9 +72,7 @@ class DeepScoresDataset(data.Dataset):
             self.targets_dict[class_id].append(x)
 
         self.sample_transform = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.ToTensor()
-            ]
+            [torchvision.transforms.ToTensor()]
         )
 
     def __getitem__(self, index):

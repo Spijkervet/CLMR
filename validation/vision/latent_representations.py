@@ -57,7 +57,7 @@ def vision_latent_representations(
 ):
 
     max_classes = 20
-    batch_size = 40
+    batch_size = 20
     input_size = (
         args.batch_size,
         args.image_channels,
@@ -70,29 +70,37 @@ def vision_latent_representations(
         latent_rep_size = model.get_latent_size(input_size)
         features = torch.zeros(max_classes, batch_size, latent_rep_size).to(args.device)
 
+        images = torch.zeros(max_classes, batch_size, args.image_channels, args.image_height, args.image_width).to(args.device)
         labels = torch.zeros(max_classes, batch_size).to(args.device)
-
-        for idx, class_id in enumerate(dataset.targets_dict):
+        idx = 0
+        for _, class_id in enumerate(dataset.targets_dict):
 
             if idx == max_classes:
                 break
 
             model_in = dataset.sample_from_class_id(class_id, batch_size=batch_size)
-
             model_in = model_in.to(args.device)
+
+            if model_in.shape[0] < batch_size:
+                continue
+
             h, z = model.get_latent_representations(model_in)
 
             features[idx, :, :] = z.reshape((batch_size, -1))
-            labels[idx, :] = int(class_id)
 
+            images[idx, :] = model_in 
+            labels[idx, :] = int(class_id)
+            idx += 1
+    
+    # squeeze classes / batch together
     features = features.reshape(features.size(0) * features.size(1), -1).cpu()
-    labels = labels.reshape(-1, 1).cpu().numpy()
+    images = images.reshape(-1, args.image_channels, args.image_height, args.image_width)
+    labels = labels.reshape(-1, 1)
 
     # get label names
     labels_names = []
-    for lb in labels:
-        test = [f"{class_id}: {dataset.get_class_name(class_id)}" for class_id in lb]
-        labels_names.append(test)
+    for lb in labels.cpu().numpy():
+        labels_names.append([f"{class_id}: {dataset.get_class_name(class_id)}" for class_id in lb])
     labels_names = np.array(labels_names)
 
     embedding = tsne(features)
@@ -106,8 +114,8 @@ def vision_latent_representations(
 
     out_dir = os.path.join(args.out_dir, "tsne")
 
-    if epoch % 20 == 0:
-        writer.add_embedding(features, metadata=labels_names, global_step=global_step)
+    if train and epoch % 20 == 0:
+        writer.add_embedding(features, label_img=images, metadata=labels_names, global_step=global_step)
         torch.save(
             features, os.path.join(out_dir, "features-{}-{}.pt".format(epoch, step))
         )

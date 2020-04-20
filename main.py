@@ -23,7 +23,8 @@ from data import get_mtt_loaders
 from datasets.utils.prepare_dataset import prepare_dataset
 
 # vision
-from data.vision import get_deepscores_dataloader, DeepScoresDataset
+from data.vision import get_deepscores_dataloader 
+from data.vision import get_universal_dataloader
 from torchvision.utils import save_image
 
 
@@ -42,7 +43,7 @@ TMP_DIR = ".tmp"
 
 def train(args, train_loader, model, criterion, optimizer, writer):
     loss_epoch = 0
-    for step, ((x_i, x_j), _) in enumerate(train_loader):
+    for step, ((x_i, x_j, _), _) in enumerate(train_loader):
         # if not os.path.exists(TMP_DIR):
         #     os.makedirs(TMP_DIR)
 
@@ -165,13 +166,21 @@ def main(_run, _log):
     # else:
     #     raise NotImplementedError
 
-    # vision
+    ## vision
+    # (
+    #     train_loader,
+    #     train_dataset,
+    #     test_loader,
+    #     test_dataset,
+    # ) = get_deepscores_dataloader(args)
+    
+    
     (
         train_loader,
         train_dataset,
         test_loader,
         test_dataset,
-    ) = get_deepscores_dataloader(args)
+    ) = get_universal_dataloader(args)
 
     model, optimizer, scheduler = load_model(args, train_loader)
     print(model)
@@ -183,14 +192,19 @@ def main(_run, _log):
     mask = mask_correlated_samples(args)
     criterion = NT_Xent(args.batch_size, args.temperature, mask, args.device)
 
+    # save random init. model
+    args.current_epoch = "random"
+    save_model(args, model, optimizer)
+
     args.global_step = 0
     args.current_epoch = 0
     validate_idx = 1
+    
     for epoch in range(args.start_epoch, args.epochs):
         lr = optimizer.param_groups[0]["lr"]
 
         if epoch % validate_idx == 0:
-            # audio_latent_representations(args, train_loader.dataset, model, optimizer, args.current_epoch, 0, args.global_step, writer)
+            ## audio_latent_representations(args, train_loader.dataset, model, optimizer, args.current_epoch, 0, args.global_step, writer)
             vision_latent_representations(
                 args,
                 train_loader.dataset,
