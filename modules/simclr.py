@@ -32,7 +32,7 @@ class SimCLR(nn.Module):
         self.encoder = self.get_resnet(args.resnet) # resnet
 
         if args.grayscale:
-            self.encoder.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            self.encoder.conv1 = nn.Conv2d(args.image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
 
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer

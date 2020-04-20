@@ -20,12 +20,14 @@ dropout: 0.5
 # interm. concl. larger audio length, harder it is to find simillar audio (RandomResizeCrop), which is logical
 audio_length: 59049 # 59049 # # 11888 # = 743 ms # 42848 = 2678ms # num. samples
 sample_rate: 22050 # 22050 
-task: "tag" # TODO
+
+
+task: "vision" # TODO
 
 # model options
-resnet: "resnet18"
+resnet: "resnet50"
 normalize: True
-projection_dim: 64 # "[...] to project the representation to a 128-dimensional latent space"
+projection_dim: 128 # "[...] to project the representation to a 128-dimensional latent space"
 
 # loss options
 optimizer: "LARS" # or LARS (experimental)
@@ -50,6 +52,12 @@ logistic_epochs: 100
 ## vision
 deepscores_processed: "./datasets/vision/deepscores/"
 grayscale: True
-image_height: 220
-image_width: 120
-image_channels: 1
+# image_height: 220
+# image_width: 120
+# image_channels: 1
+
+
+universal_symbol_processed: "./datasets/vision/universal_symbol"
+image_height: 96
+image_width: 96
+image_channels: 3
