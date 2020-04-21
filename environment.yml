@@ -1,12 +1,19 @@
-name: simclr
+name: clmr 
 channels:
   - pytorch
 dependencies:
+  - pip
   - pytorch
+  - tensorflow # for full tensorboard version
   - torchvision
-  - tensorboard
   - pyyaml
   - pip:
+    - essentia
+    - imageio
+    - matplotlib
     - pydot
     - python-dotenv
     - sacred
+    - seaborn
+    - torchaudio
+    - torchvision

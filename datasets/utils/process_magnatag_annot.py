@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np
 np.random.seed(42)
 
-ANNOT_FILE = "./datasets/audio/magnatagtune/annotations_final.csv"
-BASE_DIR = "./datasets/audio/magnatagtune/processed_annotations/"
+ANNOT_FILE = "./datasets/audio/magnatagatune/annotations_final.csv"
+BASE_DIR = "./datasets/audio/magnatagatune/processed_annotations/"
 NUM_TAGS = 50
 
 def _merge_redundant_tags(filename):
@@ -104,13 +104,13 @@ def split_data(filename, base_dir, ratio=0.2):
 
     df = pd.read_csv(filename, delimiter='\t')
     data_len = df.shape[0]
-    print ("Data shape {}".format(df.shape))
+    print("Data shape {}".format(df.shape))
     
     test_len = int (data_len * ratio)
     train_valid_len = data_len - test_len
     valid_len = int(train_valid_len * ratio)
     train_len = train_valid_len - valid_len
-    print ("Train %d, valid %d, test %d"%(train_len, valid_len, test_len))
+    print("Train %d, valid %d, test %d"%(train_len, valid_len, test_len))
     
     # add headers to all files
     test_df = df.iloc[train_valid_len:]

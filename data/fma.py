@@ -1,6 +1,3 @@
-import sys
-
-sys.path.append("../")
 
 import os
 import numpy as np
@@ -10,7 +7,8 @@ from torch.utils.data import Dataset
 from collections import defaultdict
 from pathlib import Path
 
-
+import sys
+sys.path.append("../")
 from fma.utils import get_audio_path
 
 

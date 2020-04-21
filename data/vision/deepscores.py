@@ -8,6 +8,7 @@ from collections import defaultdict
 from PIL import Image
 import torchvision.transforms
 
+from .deepscores_processor import DeepScoresProcessor
 
 class DeepScoresDataset(data.Dataset):
     def __init__(self, args, train=True, transform=None, target_transform=None):
@@ -15,7 +16,8 @@ class DeepScoresDataset(data.Dataset):
         self.train = train  # training set or test set
         self.transform = transform
         self.target_transform = target_transform
-
+        self.data_dir = os.path.join(args.data_input_dir, "deepscores")
+        
         # if download:
         #     self.download()
 
@@ -24,22 +26,28 @@ class DeepScoresDataset(data.Dataset):
         #                        ' You can use download=True to download it')
 
         self.class_names = {}
-        with open(Path(args.deepscores_processed) / "class_names.csv", "r") as f:
+        with open(Path(self.data_dir) / "class_names.csv", "r") as f:
             for l in f.readlines():
                 class_id, name = l.split(",")
                 class_id = int(class_id)
                 name = name.rstrip()
                 self.class_names[class_id] = name
 
+        train_data_path = Path(self.data_dir) / "train.npy"
+        if not os.path.exists(train_data_path):
+            print("### Processing DeepScores dataset ###")
+            processor = DeepScoresProcessor(path=self.data_dir, seed=args.seed)
+            processor.read_images()
+
         if self.train:
-            self.data = np.load(Path(args.deepscores_processed) / "train.npy")
+            self.data = np.load(train_data_path)
             self.targets = np.load(
-                Path(args.deepscores_processed) / "train_annotations.npy"
+                Path(self.data_dir) / "train_annotations.npy"
             )
         else:
-            self.data = np.load(Path(args.deepscores_processed) / "test.npy")
+            self.data = np.load(Path(self.data_dir) / "test.npy")
             self.targets = np.load(
-                Path(args.deepscores_processed) / "test_annotations.npy"
+                Path(self.data_dir) / "test_annotations.npy"
             )
 
         self.targets_dict = defaultdict(list)

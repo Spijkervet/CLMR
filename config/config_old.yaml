@@ -1,32 +1,34 @@
 # train options
 seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 256 # 64 for audio, 256 for images
+batch_size: 4 # 64 for audio, 256 for images
 workers: 16
 start_epoch: 0
 epochs: 1000
 
-# task / dataset options
-domain: "scores" # [audio,scores]
-task: "symbol" # [tags,chords,symbol]
-dataset: "deepscores" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
-data_input_dir: "datasets/vision" # [audio: [datasets/audio] vision: [datasets/vision]
+domain: "audio" # scores
+# dataset: "billboard" #fma
+dataset: "magnatagatune"
+data_input_dir: "datasets/audio"
 reload: False
 
-
-audio_length: 59049 
-sample_rate: 22050
+dropout: 0.5
 
 
+# interm. concl. larger audio length, harder it is to find simillar audio (RandomResizeCrop), which is logical
+audio_length: 59049 # 59049 # # 11888 # = 743 ms # 42848 = 2678ms # num. samples
+sample_rate: 22050 # 22050 
+
+
+task: "tags" # TODO
 
 # model options
 resnet: "resnet50"
 normalize: True
-projection_dim: 128
-dropout: 0.5
+projection_dim: 128 # "[...] to project the representation to a 128-dimensional latent space"
 
 # loss options
-optimizer: "LARS" # [Adam, LARS]
-weight_decay: 1.0e-6
+optimizer: "LARS" # or LARS (experimental)
+weight_decay: 1.0e-6 # "optimized using LARS [...] and weight decay of 10−6"
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
 # reload options
@@ -54,6 +56,7 @@ logreg_model_path: "logs/0"
 logreg_epoch_num: 100
 
 ## vision
+deepscores_processed: "./datasets/vision/deepscores/"
 image_height: 220
 image_width: 120
 image_channels: 1

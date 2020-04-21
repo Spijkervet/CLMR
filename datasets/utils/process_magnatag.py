@@ -9,11 +9,10 @@ import multiprocessing
 from glob import glob
 from tqdm import tqdm
 import soundfile as sf
-from pydub import AudioSegment
 
 sample_rate = 22050
-MTT_DIR = "./datasets/audio/magnatagtune/raw" # /processed
-AUDIO_DIR = f"./datasets/audio/magnatagtune/processed_{sample_rate}"
+MTT_DIR = "./datasets/audio/magnatagatune/raw" # /processed
+AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_{sample_rate}"
 
 
 def process(raw_path, path, audio, npyfilepath):
