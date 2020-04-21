@@ -8,7 +8,7 @@ import sys
 import imageio
 import torch
 
-class class_dataset_reader:
+class DeepScoresProcessor():
     path = ""
     class_mappings = ""
     files = []
@@ -17,14 +17,14 @@ class class_dataset_reader:
     batch_offset = 0
     epochs_completed = 0
 
-    def __init__(self, records_list, seed = 444, split = 0.2, min_nr = 2, one_hot=True):
+    def __init__(self, path, seed=42, split=0.2, min_nr=2, one_hot=True):
         """
         Initialize a file reader for the DeepScores classification data
-        :param records_list: path to the dataset
+        :param path: path to the dataset
         sample record: {'image': f, 'annotation': annotation_file, 'filename': filename}
         """
         print("Initializing DeepScores Classification Batch Dataset Reader...")
-        self.path = records_list
+        self.path = path
         self.seed = seed
 
         self.class_names = pa.read_csv(self.path+"/class_names.csv", header=None)
@@ -143,42 +143,9 @@ class class_dataset_reader:
                 self.annotations.append(class_index)
         return None
 
-    def get_records(self):
-        return self.images, self.annotations
-
-    def reset_batch_offset(self, offset=0):
-        self.batch_offset = offset
-
-    def get_test_records(self):
-        return self.test_images, self.test_annotations
-
-    def next_batch(self, batch_size):
-        start = self.batch_offset
-        self.batch_offset += batch_size
-        if self.batch_offset > self.images.shape[0]:
-            # Finished epoch
-            self.epochs_completed += 1
-            print("****************** Epochs completed: " + str(self.epochs_completed) + "******************")
-            # Shuffle the data
-            perm = np.arange(self.images.shape[0])
-            np.random.shuffle(perm)
-            self.images = self.images[perm]
-            self.annotations = self.annotations[perm]
-            # Start next epoch
-            start = 0
-            self.batch_offset = batch_size
-
-        end = self.batch_offset
-        return self.images[start:end], self.annotations[start:end]
-
-    def get_random_batch(self, batch_size):
-        indexes = np.random.randint(0, self.images.shape[0], size=[batch_size]).tolist()
-        return self.images[indexes], self.annotations[indexes]
-
-
 
 if __name__ == "__main__":
-    data_reader = class_dataset_reader("./datasets/vision/deepscores")
+    data_reader = DeepScoresProcessor("./datasets/vision/deepscores")
     data_reader.read_images()
 
     #data_reader = Classification_BatchDataset("../Datasets/classification_data")

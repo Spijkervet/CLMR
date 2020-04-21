@@ -1,23 +1,20 @@
 """
 Sacred experiment file
 """
+from pathlib import Path
 
 # Sacred
 from sacred import Experiment
 from sacred.stflow import LogFileWriter
 from sacred.observers import FileStorageObserver, MongoObserver
 
-# from utils import CustomFileStorageObserver
+from utils import CustomFileStorageObserver
 
 # custom config hook
 from utils.yaml_config_hook import yaml_config_hook
 
 
-ex = Experiment("SimCLR")
-
-
-#### file output directory
-ex.observers.append(FileStorageObserver("./logs"))
+ex = Experiment("CLMR")
 
 #### database output
 # ex.observers.append(
@@ -36,7 +33,12 @@ def my_config():
 
     cfg = yaml_config_hook(config_file)
     ex.add_config(cfg)
+
+
+    #### file output directory
+    ex.observers.append(FileStorageObserver(Path("./logs", cfg["domain"], cfg["dataset"])))
     del cfg
+
 
     # override any settings here
     # start_epoch = 100

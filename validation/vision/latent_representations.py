@@ -115,7 +115,7 @@ def vision_latent_representations(
     out_dir = os.path.join(args.out_dir, "tsne")
 
     if train and epoch % 20 == 0:
-        writer.add_embedding(features, label_img=images, metadata=labels_names, global_step=global_step)
+        # writer.add_embedding(features, label_img=images, metadata=labels_names, global_step=global_step)
         torch.save(
             features, os.path.join(out_dir, "features-{}-{}.pt".format(epoch, step))
         )

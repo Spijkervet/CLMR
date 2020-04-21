@@ -15,7 +15,7 @@ def get_dataset(args):
             (train_loader, train_dataset, test_loader, test_dataset) = get_mtt_loaders(args)
         else:
             raise NotImplementedError
-    elif args.domain == "vision":
+    elif args.domain == "scores":
         if args.dataset == "deepscores":
             (train_loader, train_dataset, test_loader, test_dataset) = get_deepscores_dataloader(args)
         elif args.dataset == "universal":
