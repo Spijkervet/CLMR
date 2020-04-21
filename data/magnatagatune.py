@@ -16,19 +16,21 @@ def default_loader(path):
     return torchaudio.load(path) #, normalization=False)
 
 
-def default_indexer(path, tracks, labels, sample_rate, num_tags, tag_list):
+def default_indexer(args, path, tracks, labels, sample_rate, num_tags, tag_list):
     items = []
     tracks_dict = defaultdict(list)
     index = 0
     prev_index = None
     for idx, t in enumerate(tracks.index):
-        # fn = tracks.iloc[idx]["mp3_path"].split(".")[0] + ".mp3"
-
         fn = Path(tracks.iloc[idx]["mp3_path"].split(".")[0])
-        d = fn.parent.stem
-        fn = fn.stem
-        index_name = "-".join(fn.split("-")[:-2])
-        fp = os.path.join(path, d, index_name + "-0-full.mp3")
+        if args.lin_eval:
+            fp = os.path.join(path, str(fn) + ".mp3") 
+            index_name = "-".join(fn.stem.split("-")[:-2]) # get all tracks together
+        else:
+            d = fn.parent.stem
+            fn = fn.stem
+            index_name = "-".join(fn.split("-")[:-2])
+            fp = os.path.join(path, d, index_name + "-0-full.mp3")
         if os.path.exists(fp):
             if index_name != prev_index:
                 prev_index = index_name
@@ -73,6 +75,7 @@ class MTTDataset(Dataset):
         self.audio_length = args.audio_length
 
         self.tracks_list_all, self.tracks_dict = self.indexer(
+            args,
             self.audio_dir,
             self.annotations_frame,
             self.labels,
@@ -87,8 +90,14 @@ class MTTDataset(Dataset):
             if track_id not in self.indexes:
                 self.nodups.append([track_id, fp, label])
                 self.indexes.append(track_id)
-           
-        self.tracks_list = self.nodups
+        
+        print(len(self.nodups), len(self.tracks_list_all))
+        if args.lin_eval:
+            print("### Linear evaluation, using segmented dataset ###")
+            self.tracks_list = self.tracks_list_all
+        else:
+            print("### Pre-training, using whole dataset ###")
+            self.tracks_list = self.nodups
         # print(len(self.tracks_list_all), len(self.tracks_list))
 
     def get_audio(self, index, fp):

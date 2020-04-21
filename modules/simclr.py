@@ -28,11 +28,13 @@ class SimCLR(nn.Module):
         input_dim = 1
         # self.encoder = WaveEncoder(input_dim)
         # self.encoder = SampleCNN42848()
-        # self.encoder = SampleCNN59049(args)
-        self.encoder = self.get_resnet(args.resnet) # resnet
-
-        if args.grayscale:
+        if args.domain == "audio":
+            self.encoder = SampleCNN59049(args)
+        elif args.domain == "scores":
+            self.encoder = self.get_resnet(args.resnet) # resnet
             self.encoder.conv1 = nn.Conv2d(args.image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        else:
+            raise NotImplementedError
 
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer

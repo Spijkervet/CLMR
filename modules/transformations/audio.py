@@ -39,6 +39,7 @@ class InvertSignal:
             audio = audio * -1
         return audio, None
 
+
 class Noise:
     def __init__(self, sr, p=0.8):
         self.sr = sr
@@ -46,9 +47,10 @@ class Noise:
 
     def __call__(self, audio, prev_transform=None):
         if random.random() < self.p:
-            noise = torch.LongTensor(*audio.size()).random_(-1, 1) * 0.01 # 0.1 gain
+            noise = torch.LongTensor(*audio.size()).random_(-1, 1) * 0.01  # 0.1 gain
             audio = noise + audio
         return audio, None
+
 
 class BandPass:
     def __init__(self, sr, p=0.5):
@@ -65,6 +67,7 @@ class BandPass:
             )  # reshape back to (channels, samples)
 
         return audio, None
+
 
 class LowPass:
     def __init__(self, sr, p=0.5):
@@ -116,9 +119,7 @@ class PitchShift:
 
             audio = audio.numpy()
             # audio = librosa.effects.time_stretch(audio, rate=stretch)
-            audio = librosa.effects.pitch_shift(
-                audio, sr=16000, n_steps=n_steps
-            )
+            audio = librosa.effects.pitch_shift(audio, sr=16000, n_steps=n_steps)
             audio = torch.from_numpy(audio).reshape(
                 1, -1
             )  # reshape back to (channels, samples)
@@ -145,13 +146,13 @@ class AudioTransforms:
     """
 
     def __init__(self, args):
-
+        self.args = args
         self.lin_eval = args.lin_eval
         sr = args.sample_rate
 
-        self.transformations = [
+        self.train_transform = [
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
-            InvertSignal(p=0.8, sr=sr), # "horizontal flip"
+            InvertSignal(p=0.8, sr=sr),  # "horizontal flip"
             Noise(p=0.8, sr=sr),
             BandPass(p=0.2, sr=sr),
             LowPass(p=0.2, sr=sr),
@@ -160,12 +161,14 @@ class AudioTransforms:
             # Reverse(p=0.5, sr=sr),
         ]
 
+        self.test_transform = []
+
     def transform(self, x, prev_transforms=None):
         transformations = {}
         if self.lin_eval:
-            x, transformation = self.transformations[0](x)  # only crop in eval
+            x, transformation = self.train_transform[0](x)  # only crop in eval
         else:
-            for t in self.transformations:
+            for t in self.train_transform:
                 prev_transform = None
                 if prev_transforms:
                     prev_transform = prev_transforms[t.__class__.__name__]
@@ -178,7 +181,12 @@ class AudioTransforms:
         # print("x0", transformations)
         x1, transformations = self.transform(x, prev_transforms=transformations)
         # print("x1", transformations)
-        return x0, x1 
+
+        # randomly get segment
+        max_samples = x.size(1)
+        start_idx = random.randint(0, max_samples - self.args.audio_length)
+        x_test = x[:, start_idx : start_idx + self.args.audio_length]
+        return x0, x1, x_test
 
 
 class TransformsSimCLR:

@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from modules.transformations import AudioTransforms
-from .magnatagtune import MTTDataset
+from .magnatagatune import MTTDataset
 
 def get_mtt_loaders(args, num_workers=16, diff_train_dataset=None):
 
