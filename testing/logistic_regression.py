@@ -12,15 +12,10 @@ from matplotlib import pyplot as plt
 from experiment import ex
 from model import load_model
 from utils import post_config_hook
+from model import save_model
 
-# audio
+from data import get_dataset
 from modules import LogisticRegression
-from data import get_fma_loaders
-from data import get_mtt_loaders
-
-# vision
-from data.vision import get_deepscores_dataloader
-
 from utils import tagwise_auc_ap
 
 # metrics
@@ -40,6 +35,7 @@ def average_precision(y_targets, y_preds):
 
 def train(args, loader, simclr_model, model, criterion, optimizer, writer):
     loss_epoch = 0
+    auc_epoch = 0
     accuracy_epoch = 0
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     for step, ((_, _, x), y) in enumerate(loader):
@@ -63,14 +59,22 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
         predicted_classes[classes] += counts
 
         # print(output)
-        # acc = auc
-        # acc, _ = tagwise_auc_ap(y.cpu().detach().numpy(), output.cpu().detach().numpy())
-        # acc = acc.mean()
 
         # ap
-        acc = average_precision(
-            y.detach().cpu().numpy(), output.detach().cpu().numpy()
-        ).mean()
+        if args.domain == "audio":
+            auc, acc = tagwise_auc_ap(
+                y.cpu().detach().numpy(), output.cpu().detach().numpy()
+            )
+            auc = auc.mean()
+            acc = acc.mean()
+        elif args.domain == "scores":
+            acc = average_precision(
+                y.detach().cpu().numpy(), output.detach().cpu().numpy()
+            ).mean()
+        else:
+            raise NotImplementedError
+
+        auc_epoch += auc
         accuracy_epoch += acc
 
         # acc
@@ -82,8 +86,11 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
 
         loss_epoch += loss.item()
         if step % 100 == 0:
-            print(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AP: {acc}")
+            print(
+                f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
+            )
 
+        writer.add_scalar("AUC/train_step", auc, args.global_step)
         writer.add_scalar("AP/train_step", acc, args.global_step)
         writer.add_scalar("Loss/train_step", loss, args.global_step)
         args.global_step += 1
@@ -93,11 +100,12 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
     writer.add_figure(
         "Class_distribution/train", figure, global_step=args.current_epoch
     )
-    return loss_epoch, accuracy_epoch
+    return loss_epoch, auc_epoch, accuracy_epoch
 
 
 def test(args, loader, simclr_model, model, criterion, optimizer, writer):
     loss_epoch = 0
+    auc_epoch = 0
     accuracy_epoch = 0
     model.eval()
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
@@ -119,11 +127,20 @@ def test(args, loader, simclr_model, model, criterion, optimizer, writer):
         predicted_classes[classes] += counts
 
         # acc = (predictions == y.argmax(1)).sum().item() / y.size(0)
-        # accuracy_epoch += acc
+        if args.domain == "audio":
+            auc, acc = tagwise_auc_ap(
+                y.cpu().detach().numpy(), output.cpu().detach().numpy()
+            )
+            auc = auc.mean()
+            acc = acc.mean()
+        elif args.domain == "scores":
+            acc = average_precision(
+                y.detach().cpu().numpy(), output.detach().cpu().numpy()
+            ).mean()
+        else:
+            raise NotImplementedError
 
-        acc = average_precision(
-            y.detach().cpu().numpy(), output.detach().cpu().numpy()
-        ).mean()
+        auc_epoch += auc
         accuracy_epoch += acc
 
         loss_epoch += loss.item()
@@ -134,11 +151,9 @@ def test(args, loader, simclr_model, model, criterion, optimizer, writer):
 
     figure = plt.figure()
     plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
-    writer.add_figure(
-        "Class_distribution/test", figure, global_step=args.current_epoch
-    )
+    writer.add_figure("Class_distribution/test", figure, global_step=args.current_epoch)
 
-    return loss_epoch, accuracy_epoch
+    return loss_epoch, auc_epoch, accuracy_epoch
 
 
 @ex.automain
@@ -159,59 +174,15 @@ def main(_run, _log):
 
     root = "./datasets"
 
-    # if args.dataset == "billboard":
-    #     train_dataset = MIRDataset(
-    #         args,
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_labels/train_split.txt"),
-    #         audio_length=args.audio_length,
-    #         transform=AudioTransforms(args),
-    #     )
+    (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
+    print(len(train_dataset), len(test_dataset))
 
-    #     test_dataset = MIRDataset(
-    #         args,
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_labels/test_split.txt"),
-    #         audio_length=args.audio_length,
-    #         transform=AudioTransforms(args),
-    #     )
-
-    #     train_loader = torch.utils.data.DataLoader(
-    #         train_dataset,
-    #         batch_size=args.batch_size,
-    #         shuffle=(train_sampler is None),
-    #         drop_last=True,
-    #         num_workers=args.workers,
-    #         sampler=train_sampler,
-    #     )
-
-    #     test_loader = torch.utils.data.DataLoader(
-    #         test_dataset,
-    #         batch_size=args.batch_size,
-    #         shuffle=False,
-    #         drop_last=True,
-    #         num_workers=args.workers,
-    #     )
-    # elif args.dataset == "fma":
-    #     (train_loader, train_dataset, test_loader, test_dataset) = get_fma_loaders(args)
-    # elif args.dataset == "mtt":
-    #     (train_loader, train_dataset, test_loader, test_dataset) = get_mtt_loaders(args)
-    # else:
-    #     raise NotImplementedError
-
-    (
-        train_loader,
-        train_dataset,
-        test_loader,
-        test_dataset,
-    ) = get_deepscores_dataloader(args)
-
-    simclr_model, _, _ = load_model(args, train_loader, reload_model=True)
+    simclr_model, _, _ = load_model(args, reload_model=True)
     simclr_model = simclr_model.to(args.device)
     simclr_model.eval()
 
     ## Logistic Regression
-    if args.task == "tag":
+    if args.task == "tags":
         n_classes = args.num_tags
     else:
         n_classes = len(train_dataset.class_names)
@@ -235,25 +206,29 @@ def main(_run, _log):
     args.global_step = 0
     args.current_epoch = 0
     for epoch in range(args.logistic_epochs):
-        loss_epoch, accuracy_epoch = train(
+        loss_epoch, auc_epoch, accuracy_epoch = train(
             args, train_loader, simclr_model, model, criterion, optimizer, writer
         )
         print(
-            f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {loss_epoch / len(train_loader)}\t AP: {accuracy_epoch / len(train_loader)}"
+            f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {loss_epoch / len(train_loader)}\t AUC: {auc_epoch / len(train_loader)}\t AP: {accuracy_epoch / len(train_loader)}"
         )
+
+        writer.add_scalar("AUC/train", auc_epoch / len(train_loader), epoch)
         writer.add_scalar("AP/train", accuracy_epoch / len(train_loader), epoch)
         writer.add_scalar("Loss/train", loss_epoch / len(train_loader), epoch)
 
-
         ## testing
-        loss_epoch, accuracy_epoch = test(
+        loss_epoch, auc_epoch, accuracy_epoch = test(
             args, test_loader, simclr_model, model, criterion, optimizer, writer
         )
         print(
-            f"[Test]\t Loss: {loss_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
+            f"[Test]\t Loss: {loss_epoch / len(test_loader)}\t AUC: {auc_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
         )
+        writer.add_scalar("AUC/test", auc_epoch / len(test_loader), epoch)
         writer.add_scalar("AP/test", accuracy_epoch / len(test_loader), epoch)
         writer.add_scalar("Loss/test", loss_epoch / len(test_loader), epoch)
+
+        save_model(args, model, optimizer, name="supervised")
         args.current_epoch += 1
 
     print(

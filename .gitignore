@@ -7,3 +7,5 @@ datasets/*.tar.gz
 
 datasets/vision
 .tmp/
+detection/
+images/

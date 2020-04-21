@@ -12,7 +12,7 @@ import soundfile as sf
 from pydub import AudioSegment
 
 sample_rate = 22050
-MTT_DIR = "./datasets/audio/magnatagtune/processed"
+MTT_DIR = "./datasets/audio/magnatagtune/raw" # /processed
 AUDIO_DIR = f"./datasets/audio/magnatagtune/processed_{sample_rate}"
 
 
@@ -26,7 +26,11 @@ def process(raw_path, path, audio, npyfilepath):
     all_mp3 = glob(search)
 
     try:
-        new_fp = str(Path(npyfilepath) / (path + "/" + index_name + "-0" + "-full.mp3"))
+        # if full:
+        # new_fp = str(Path(npyfilepath) / (path + "/" + index_name + "-0" + "-full.mp3"))
+        
+        # if segmented:
+        new_fp = str(Path(npyfilepath) / (path + "/" + fn + ".mp3"))
         # if not os.path.exists(new_fp):
         #     cmd = ["cat", *all_mp3, ">", new_fp]
         #     os.system(" ".join(cmd))
@@ -80,6 +84,7 @@ def process(raw_path, path, audio, npyfilepath):
     except Exception as e:
         print("Cannot save audio {} {}".format(audio, e))
         pass
+        
 
 
 def save_audio_to_npy(rawfilepath, npyfilepath):

@@ -91,10 +91,8 @@ class SampleCNN59049(nn.Module):
         self.activation = nn.Sigmoid()
 
     def forward(self, x):
-        # input x : 23 x 59049 x 1
-        # expected conv1d input : minibatch_size x num_channel x width
+        # input x : B x 59049 x 1
 
-        # x : 23 x 1 x 59049
         out = self.conv1(x)
         out = self.conv2(out)
         out = self.conv3(out)

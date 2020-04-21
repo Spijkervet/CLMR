@@ -3,12 +3,12 @@ import torch
 from modules import SimCLR, LARS
 
 
-def load_model(args, loader, reload_model=False):
+def load_model(args, reload_model=False, name="context"):
     model = SimCLR(args)
 
     if reload_model:
         model_fp = os.path.join(
-            args.model_path, "checkpoint_{}.tar".format(args.epoch_num)
+            args.model_path, "{}_checkpoint_{}.tar".format(name, args.epoch_num)
         )
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
 
@@ -51,8 +51,8 @@ def load_model(args, loader, reload_model=False):
     return model, optimizer, scheduler
 
 
-def save_model(args, model, optimizer):
-    out = os.path.join(args.out_dir, "checkpoint_{}.tar".format(args.current_epoch))
+def save_model(args, model, optimizer, name="context"):
+    out = os.path.join(args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch))
 
     # To save a DataParallel model generically, save the model.module.state_dict().
     # This way, you have the flexibility to load the model any way you want to any device you want.

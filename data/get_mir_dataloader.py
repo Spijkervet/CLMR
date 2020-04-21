@@ -2,6 +2,7 @@ import os
 import torch
 
 from .mirdataset import MIRDataset
+from modules.transformations import AudioTransforms
 
 
 def get_mir_loaders(args, num_workers=16, diff_train_dataset=None):
@@ -10,7 +11,7 @@ def get_mir_loaders(args, num_workers=16, diff_train_dataset=None):
         args,
         os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
         os.path.join(args.data_input_dir, f"{args.dataset}_labels/train_split.txt"),
-        audio_length=args.audio_length
+        audio_length=args.audio_length,
     )
 
     test_dataset = MIRDataset(
@@ -18,9 +19,8 @@ def get_mir_loaders(args, num_workers=16, diff_train_dataset=None):
         os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
         os.path.join(args.data_input_dir, f"{args.dataset}_labels/test_split.txt"),
         audio_length=args.audio_length,
-        diff_train_dataset=diff_train_dataset
+        diff_train_dataset=diff_train_dataset,
     )
-
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -33,7 +33,7 @@ def get_mir_loaders(args, num_workers=16, diff_train_dataset=None):
     test_loader = torch.utils.data.DataLoader(
         dataset=test_dataset,
         batch_size=args.batch_size,
-        shuffle=False, # do not shuffle test set
+        shuffle=False,  # do not shuffle test set
         drop_last=True,
         num_workers=num_workers,
     )

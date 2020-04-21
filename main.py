@@ -16,21 +16,13 @@ except ImportError:
         "Install the apex package from https://www.github.com/nvidia/apex to use fp16 for training"
     )
 
-# audio
-from data import get_mir_loaders, MIRDataset
-from data import get_fma_loaders
-from data import get_mtt_loaders
+from data import get_dataset
 from datasets.utils.prepare_dataset import prepare_dataset
-
-# vision
-from data.vision import get_deepscores_dataloader 
-from data.vision import get_universal_dataloader
 from torchvision.utils import save_image
 
 
 from model import load_model, save_model
 from modules import NT_Xent
-from modules.transformations import AudioTransforms
 from utils import mask_correlated_samples, post_config_hook, tensor_to_audio
 from validation import audio_latent_representations, vision_latent_representations
 
@@ -44,8 +36,8 @@ TMP_DIR = ".tmp"
 def train(args, train_loader, model, criterion, optimizer, writer):
     loss_epoch = 0
     for step, ((x_i, x_j, _), _) in enumerate(train_loader):
-        # if not os.path.exists(TMP_DIR):
-        #     os.makedirs(TMP_DIR)
+        if not os.path.exists(TMP_DIR):
+            os.makedirs(TMP_DIR)
 
         # see transformations
         # for idx, (i, j) in enumerate(zip(x_i, x_j)):
@@ -126,63 +118,9 @@ def main(_run, _log):
     train_sampler = None
 
     # prepare_dataset(args)
-    # if args.dataset == "billboard":
-    #     train_dataset = MIRDataset(
-    #         args,
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_labels/train_split.txt"),
-    #         audio_length=args.audio_length,
-    #         transform=AudioTransforms(args)
-    #     )
+    (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
 
-    #     test_dataset = MIRDataset(
-    #         args,
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
-    #         os.path.join(args.data_input_dir, f"{args.dataset}_labels/test_split.txt"),
-    #         audio_length=args.audio_length,
-    #         transform=AudioTransforms(args)
-    #     )
-
-    #     train_loader = torch.utils.data.DataLoader(
-    #         train_dataset,
-    #         batch_size=args.batch_size,
-    #         shuffle=(train_sampler is None),
-    #         drop_last=True,
-    #         num_workers=args.workers,
-    #         sampler=train_sampler,
-    #     )
-
-    #     test_loader = torch.utils.data.DataLoader(
-    #         test_dataset,
-    #         batch_size=args.batch_size,
-    #         shuffle=False,
-    #         drop_last=True,
-    #         num_workers=args.workers
-    #     )
-    # elif args.dataset == "fma":
-    #     (train_loader, train_dataset, test_loader, test_dataset) = get_fma_loaders(args)
-    # elif args.dataset == "mtt":
-    #     (train_loader, train_dataset, test_loader, test_dataset) = get_mtt_loaders(args)
-    # else:
-    #     raise NotImplementedError
-
-    ## vision
-    # (
-    #     train_loader,
-    #     train_dataset,
-    #     test_loader,
-    #     test_dataset,
-    # ) = get_deepscores_dataloader(args)
-    
-    
-    (
-        train_loader,
-        train_dataset,
-        test_loader,
-        test_dataset,
-    ) = get_universal_dataloader(args)
-
-    model, optimizer, scheduler = load_model(args, train_loader)
+    model, optimizer, scheduler = load_model(args, reload_model=args.reload)
     print(model)
 
     tb_dir = os.path.join(args.out_dir, _run.experiment_info["name"])
@@ -204,29 +142,33 @@ def main(_run, _log):
         lr = optimizer.param_groups[0]["lr"]
 
         if epoch % validate_idx == 0:
-            ## audio_latent_representations(args, train_loader.dataset, model, optimizer, args.current_epoch, 0, args.global_step, writer)
-            vision_latent_representations(
-                args,
-                train_loader.dataset,
-                model,
-                optimizer,
-                args.current_epoch,
-                0,
-                args.global_step,
-                writer,
-                train=True,
-            )
-            vision_latent_representations(
-                args,
-                test_loader.dataset,
-                model,
-                optimizer,
-                args.current_epoch,
-                0,
-                args.global_step,
-                writer,
-                train=False,
-            )
+            if args.domain == "audio":
+                audio_latent_representations(args, train_loader.dataset, model, optimizer, args.current_epoch, 0, args.global_step, writer)
+            elif args.domain == "scores":
+                vision_latent_representations(
+                    args,
+                    train_loader.dataset,
+                    model,
+                    optimizer,
+                    args.current_epoch,
+                    0,
+                    args.global_step,
+                    writer,
+                    train=True,
+                )
+                vision_latent_representations(
+                    args,
+                    test_loader.dataset,
+                    model,
+                    optimizer,
+                    args.current_epoch,
+                    0,
+                    args.global_step,
+                    writer,
+                    train=False,
+                )
+            else:
+                raise NotImplementedError
 
         loss_epoch = train(args, train_loader, model, criterion, optimizer, writer)
 
