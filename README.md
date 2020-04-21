@@ -14,7 +14,7 @@ PyTorch implementation of Contrastive Learning of Musical Representations.
 Run the following command to setup a conda environment:
 ```
 sh setup.sh
-conda activate simclr
+conda activate clmr
 ```
 
 Or alternatively with pip:
