@@ -54,7 +54,7 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
         output = model(h)
         loss = criterion(output, y)
 
-        predictions = output.argmax(1)
+        predictions = output.argmax(1).detach()
         classes, counts = torch.unique(predictions, return_counts=True)
         predicted_classes[classes] += counts
 
@@ -122,7 +122,7 @@ def test(args, loader, simclr_model, model, criterion, optimizer, writer):
         output = model(h)
         loss = criterion(output, y)
 
-        predictions = output.argmax(1)
+        predictions = output.argmax(1).detach()
         classes, counts = torch.unique(predictions, return_counts=True)
         predicted_classes[classes] += counts
 
@@ -146,7 +146,7 @@ def test(args, loader, simclr_model, model, criterion, optimizer, writer):
         loss_epoch += loss.item()
         if step % 100 == 0:
             print(
-                f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AP: {acc}"
+                f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
             )
 
     figure = plt.figure()
@@ -175,7 +175,6 @@ def main(_run, _log):
     root = "./datasets"
 
     (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
-    print(len(train_dataset), len(test_dataset))
 
     simclr_model, _, _ = load_model(args, reload_model=True)
     simclr_model = simclr_model.to(args.device)
@@ -189,7 +188,6 @@ def main(_run, _log):
         # n_classes = args.n_classes
 
     args.n_classes = n_classes
-    print(len(train_dataset), len(test_dataset), args.n_classes)
 
     model = LogisticRegression(simclr_model.n_features, n_classes)
     model = model.to(args.device)

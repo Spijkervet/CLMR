@@ -18,4 +18,6 @@ mv 0 1 2 3 4 5 6 7 8 9 a b c d e f raw
 cd $CWD
 # process magnatagatune
 python -m datasets.utils.process_magnatag_annot
+mv 50_tags.txt datasets/audio/magnatagatune
+
 python -m datasets.utils.process_magnatag

@@ -4,7 +4,9 @@ import random
 import essentia
 import essentia.standard
 import librosa
+import numpy as np
 
+from torchaudio.transforms import Vol
 
 class RandomResizedCrop:
     def __init__(self, sr, n_samples):
@@ -12,14 +14,19 @@ class RandomResizedCrop:
         self.n_samples = n_samples
 
     def __call__(self, audio, prev_transform=None):
-        max_samples = audio.size(1)
+        # do not end at end of audio (silence)
+        max_samples = audio.size(1) - (self.n_samples * 4)
 
         assert (
             max_samples - self.n_samples
         ) > 0, "max samples exceeds number of samples in crop"
 
         # keep a frame of 1 x n_samples so we have a margin
-        start_idx = random.randint(self.n_samples, max_samples - (self.n_samples * 2))
+        start_sample = (
+            self.n_samples * 4
+        )  # do not start at the start of the audio (silence)
+
+        start_idx = random.randint(start_sample, max_samples - (self.n_samples * 2))
 
         # if x0 is cropped, crop x1 within a frame of 5 seconds (do not get "too" global) # TODO variable
         # if prev_transform and abs(start_idx - prev_transform) > (3 * self.sr):
@@ -36,7 +43,9 @@ class InvertSignal:
 
     def __call__(self, audio, prev_transform=None):
         if random.random() < self.p:
+            audio = audio.squeeze()
             audio = audio * -1
+            audio = audio.reshape(1, -1)
         return audio, None
 
 
@@ -47,21 +56,45 @@ class Noise:
 
     def __call__(self, audio, prev_transform=None):
         if random.random() < self.p:
-            noise = torch.LongTensor(*audio.size()).random_(-1, 1) * 0.01  # 0.1 gain
-            audio = noise + audio
+            audio = audio.squeeze()
+            audio = audio + (torch.FloatTensor(*audio.shape).normal_(0, 1) * 0.001)
+            audio = audio.reshape(1, -1)
+            # target_snr_db = random.randint(2, 10)  # signal-to-noise ratio
+            # x = audio[0]
+            # sig_avg_watts = abs(x.mean())
+            # sig_avg_db = 10 * np.log10(sig_avg_watts)
+            # noise_avg_db = sig_avg_db - target_snr_db
+            # noise_avg_watts = 10 ** (noise_avg_db / 10)
+            # noise_volts = torch.empty(len(x)).normal_(
+            #     mean=0, std=np.sqrt(noise_avg_watts)
+            # )
+            # audio = x + noise_volts
+            # audio = audio.reshape(1, -1)
+
         return audio, None
 
 
-class BandPass:
+class HighLowBandPass:
     def __init__(self, sr, p=0.5):
         self.sr = sr
         self.p = p
 
     def __call__(self, audio, prev_transform=None):
+        highlowband = random.randint(0, 1)
         if random.random() < self.p:
-            bp = essentia.standard.BandPass(sampleRate=self.sr)
+            if highlowband == 0:
+                filt = essentia.standard.HighPass(
+                    cutoffFrequency=1000, sampleRate=self.sr
+                )
+            elif highlowband == 1:
+                filt = essentia.standard.LowPass(
+                    cutoffFrequency=5000, sampleRate=self.sr
+                )
+            # else:
+            #     filt = essentia.standard.BandPass(bandwidth=1000, cutoffFrequency=1500, sampleRate=self.sr)
+
             audio = audio.squeeze()  # reshape, since essentia takes (samples, channels)
-            audio = bp(audio.numpy())
+            audio = filt(audio.numpy())
             audio = torch.from_numpy(audio).reshape(
                 1, -1
             )  # reshape back to (channels, samples)
@@ -69,37 +102,16 @@ class BandPass:
         return audio, None
 
 
-class LowPass:
+class Gain:
     def __init__(self, sr, p=0.5):
         self.sr = sr
         self.p = p
 
     def __call__(self, audio, prev_transform=None):
+        gain = random.randint(-6, 0)  # input was normalized to max(x)
         if random.random() < self.p:
-            lp = essentia.standard.LowPass(sampleRate=self.sr)
-            audio = audio.squeeze()  # reshape, since essentia takes (samples, channels)
-            audio = lp(audio.numpy())
-            audio = torch.from_numpy(audio).reshape(
-                1, -1
-            )  # reshape back to (channels, samples)
-
-        return audio, None
-
-
-class HighPass:
-    def __init__(self, sr, p=0.5):
-        self.sr = sr
-        self.p = p
-
-    def __call__(self, audio, prev_transform=None):
-        if random.random() < self.p:
-            hp = essentia.standard.HighPass(sampleRate=self.sr)
-            audio = audio.squeeze()  # reshape, since essentia takes (samples, channels)
-            audio = hp(audio.numpy())
-            audio = torch.from_numpy(audio).reshape(
-                1, -1
-            )  # reshape back to (channels, samples)
-
+            vol = Vol(gain, gain_type="db")
+            audio = vol(audio)
         return audio, None
 
 
@@ -119,7 +131,7 @@ class PitchShift:
 
             audio = audio.numpy()
             # audio = librosa.effects.time_stretch(audio, rate=stretch)
-            audio = librosa.effects.pitch_shift(audio, sr=16000, n_steps=n_steps)
+            audio = librosa.effects.pitch_shift(audio, sr=self.sr, n_steps=n_steps)
             audio = torch.from_numpy(audio).reshape(
                 1, -1
             )  # reshape back to (channels, samples)
@@ -152,12 +164,11 @@ class AudioTransforms:
 
         self.train_transform = [
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
-            InvertSignal(p=0.8, sr=sr),  # "horizontal flip"
-            Noise(p=0.8, sr=sr),
-            BandPass(p=0.2, sr=sr),
-            LowPass(p=0.2, sr=sr),
-            HighPass(p=0.2, sr=sr),
-            # PitchShift(p=0.25, sr=sr)
+            InvertSignal(p=args.transforms_phase, sr=sr),
+            # Noise(p=1.0, sr=sr),
+            Gain(p=args.transforms_gain, sr=sr),
+            HighLowBandPass(p=args.transforms_filters, sr=sr),
+            # PitchShift(p=0.1, sr=sr)
             # Reverse(p=0.5, sr=sr),
         ]
 
@@ -170,24 +181,18 @@ class AudioTransforms:
         else:
             for t in self.train_transform:
                 prev_transform = None
-                if prev_transforms:
-                    prev_transform = prev_transforms[t.__class__.__name__]
+                # if prev_transforms:
+                #     prev_transform = prev_transforms[t.__class__.__name__]
                 x, transformation = t(x, prev_transform=prev_transform)
                 transformations[t.__class__.__name__] = transformation
         return x, transformations
 
     def __call__(self, x):
         x0, transformations = self.transform(x)
-        # print("x0", transformations)
         x1, transformations = self.transform(x, prev_transforms=transformations)
-        # print("x1", transformations)
 
         # randomly get segment
         max_samples = x.size(1)
         start_idx = random.randint(0, max_samples - self.args.audio_length)
         x_test = x[:, start_idx : start_idx + self.args.audio_length]
         return x0, x1, x_test
-
-
-class TransformsSimCLR:
-    pass

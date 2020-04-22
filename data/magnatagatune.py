@@ -6,14 +6,30 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from collections import defaultdict
+from tqdm import tqdm
+from datasets.utils.utils import write_statistics
 import librosa
-import warnings
-warnings.filterwarnings('ignore') # to supress librosa
+
 
 def default_loader(path):
     # audio, sr = librosa.core.load(path, sr=22050)
+    # audio = torch.from_numpy(audio)
+    # audio = audio.reshape(1, -1)
+    # return audio ,sr
     # return audio
-    return torchaudio.load(path) #, normalization=False)
+    return torchaudio.load(path, normalization=True)
+    # return torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
+
+
+def get_dataset_stats(loader, tracks_list, stats_path):
+    means = []
+    stds = []
+    for track_id, fp, label in tqdm(tracks_list):
+        audio, sr = loader(fp)
+        means.append(audio.mean())
+        stds.append(audio.std())
+
+    return np.array(means).mean(), np.array(stds).mean()
 
 
 def default_indexer(args, path, tracks, labels, sample_rate, num_tags, tag_list):
@@ -21,17 +37,18 @@ def default_indexer(args, path, tracks, labels, sample_rate, num_tags, tag_list)
     tracks_dict = defaultdict(list)
     index = 0
     prev_index = None
-    for idx, t in enumerate(tracks.index):
-        fn = Path(tracks.iloc[idx]["mp3_path"].split(".")[0])
+    for idx, track in tracks.iterrows():
+        fn = Path(track["mp3_path"].split(".")[0])
         if args.lin_eval:
-            fp = os.path.join(path, str(fn) + ".mp3") 
-            index_name = "-".join(fn.stem.split("-")[:-2]) # get all tracks together
+            fp = os.path.join(path, str(fn) + ".mp3")
+            index_name = "-".join(fn.stem.split("-")[:-2])  # get all tracks together
         else:
             d = fn.parent.stem
             fn = fn.stem
             index_name = "-".join(fn.split("-")[:-2])
             fp = os.path.join(path, d, index_name + "-0-full.mp3")
-        if os.path.exists(fp):
+
+        if os.path.exists(fp) and os.path.getsize(fp) > 0:
             if index_name != prev_index:
                 prev_index = index_name
                 index += 1
@@ -42,17 +59,31 @@ def default_indexer(args, path, tracks, labels, sample_rate, num_tags, tag_list)
                 if tag == "":
                     continue
 
-                if tracks[tag].iloc[idx] == 1:
+                if track[tag] == 1:
                     label[i] = 1
             label = torch.FloatTensor(label)
 
+            labels_vec = torch.FloatTensor(list(labels.iloc[idx]))
+            if (label == labels_vec).all() == False:
+                raise Exception("Labels do not match")
+            
             items.append((index, fp, label))
             tracks_dict[index].append(idx)
+        else:
+            print(f"File not found or empty: {fp}")
     return items, tracks_dict
 
 
 class MTTDataset(Dataset):
-    def __init__(self, args, annotations_file, indexer=default_indexer, transform=None):
+    def __init__(
+        self,
+        args,
+        annotations_file,
+        train,
+        indexer=default_indexer,
+        loader=default_loader,
+        transform=None,
+    ):
         """
         Args : 
             csvfile : train/val/test csvfiles
@@ -60,19 +91,19 @@ class MTTDataset(Dataset):
         """
 
         self.indexer = indexer
+        self.loader = loader
         self.tag_list = open(args.list_of_tags, "r").read().split("\n")
         self.audio_dir = args.mtt_processed_audio
         self.num_tags = args.num_tags
         self.annotations_file = annotations_file
+        self.transform = transform
+        self.sample_rate = args.sample_rate
+        self.audio_length = args.audio_length
 
         self.annotations_frame = pd.read_csv(self.annotations_file, delimiter="\t")
 
+
         self.labels = self.annotations_frame.drop(["clip_id", "mp3_path"], axis=1)
-
-        self.transform = transform
-
-        self.sample_rate = args.sample_rate
-        self.audio_length = args.audio_length
 
         self.tracks_list_all, self.tracks_dict = self.indexer(
             args,
@@ -90,7 +121,7 @@ class MTTDataset(Dataset):
             if track_id not in self.indexes:
                 self.nodups.append([track_id, fp, label])
                 self.indexes.append(track_id)
-        
+
         print(len(self.nodups), len(self.tracks_list_all))
         if args.lin_eval:
             print("### Linear evaluation, using segmented dataset ###")
@@ -100,16 +131,39 @@ class MTTDataset(Dataset):
             self.tracks_list = self.nodups
         # print(len(self.tracks_list_all), len(self.tracks_list))
 
+        # normalise entire dataset
+        # name = "Train" if train else "Test"
+        # stats_path = os.path.join(args.data_input_dir, args.dataset, "statistics.csv")
+        # if not os.path.exists(stats_path):
+        #     print(f"[{name} dataset]: Fetching dataset statistics (mean/std)")
+        #     if train:
+        #         self.mean, self.std = get_dataset_stats(self.loader, self.tracks_list, stats_path)
+        #         write_statistics(self.mean, self.std, len(self.tracks_list), stats_path)
+        #     else:
+        #         raise FileNotFoundError(f"{stats_path} does not exist, no mean/std from train set")
+        # else:
+        #     with open(stats_path, "r") as f:
+        #         l = f.readlines()
+        #         stats = l[1].split(";")
+        #         self.mean = float(stats[0])
+        #         self.std = float(stats[1])
+
+        # print(f"[{name} dataset]: Loaded mean/std: {self.mean}, {self.std}")
+
     def get_audio(self, index, fp):
-        audio, sr = default_loader(fp)
-        # audio = torch.from_numpy(audio)
-        # audio = audio.reshape(1, -1)
+        audio, sr = self.loader(fp)
 
         max_samples = audio.size(1)
         assert (
             max_samples - self.audio_length
         ) > 0, "max samples exceeds number of samples in crop"
         return audio
+
+    def normalise_audio(self, audio):
+        return (audio - self.mean) / self.std
+
+    def denormalise_audio(self, norm_audio):
+        return (norm_audio * self.std) + self.mean
 
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, index):
@@ -142,5 +196,10 @@ class MTTDataset(Dataset):
             audio = self.get_audio(index, fp)
 
             start_idx = idx * self.audio_length
+
+            # too large
+            if (start_idx + self.audio_length) > audio.size(1):
+                return None
+
             batch[idx, 0, :] = audio[:, start_idx : start_idx + self.audio_length]
         return batch
