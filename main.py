@@ -48,9 +48,6 @@ def train(args, train_loader, model, criterion, optimizer, writer):
         # for idx, (i, j) in enumerate(zip(x_i, x_j)):
         #     tensor_to_audio(f"{TMP_DIR}/x_i{idx}_{args.current_epoch}.mp3", i, sr=args.sample_rate)
         #     tensor_to_audio(f"{TMP_DIR}/x_j{idx}_{args.current_epoch}.mp3", j, sr=args.sample_rate)
-        # break
-
-        # break
 
         optimizer.zero_grad()
         x_i = x_i.to(args.device)
@@ -82,7 +79,7 @@ def train(args, train_loader, model, criterion, optimizer, writer):
 def test(args, loader, model, criterion, writer):
     model.eval()
     loss_epoch = 0
-    for step, ((x_i, x_j), _) in enumerate(loader):
+    for step, ((x_i, x_j, _), _) in enumerate(loader):
         x_i = x_i.to(args.device)
         x_j = x_j.to(args.device)
 
@@ -136,14 +133,34 @@ def main(_run, _log):
 
     args.global_step = 0
     args.current_epoch = 0
-    validate_idx = 1
-    
+    validate_idx = 50
     for epoch in range(args.start_epoch, args.epochs):
         lr = optimizer.param_groups[0]["lr"]
 
         if epoch % validate_idx == 0:
             if args.domain == "audio":
-                audio_latent_representations(args, train_loader.dataset, model, optimizer, args.current_epoch, 0, args.global_step, writer)
+                audio_latent_representations(
+                    args,
+                    train_loader.dataset,
+                    model,
+                    optimizer,
+                    args.current_epoch,
+                    0,
+                    args.global_step,
+                    writer,
+                    train=True,
+                )
+                audio_latent_representations(
+                    args,
+                    test_loader.dataset,
+                    model,
+                    optimizer,
+                    args.current_epoch,
+                    0,
+                    args.global_step,
+                    writer,
+                    train=False,
+                )
             elif args.domain == "scores":
                 vision_latent_representations(
                     args,
@@ -172,12 +189,6 @@ def main(_run, _log):
 
         loss_epoch = train(args, train_loader, model, criterion, optimizer, writer)
 
-        if scheduler:
-            scheduler.step()
-
-        if epoch % 10 == 0:
-            save_model(args, model, optimizer)
-
         writer.add_scalar("Loss/train", loss_epoch / len(train_loader), epoch)
         writer.add_scalar("Misc/learning_rate", lr, epoch)
         print(
@@ -185,9 +196,16 @@ def main(_run, _log):
         )
 
         # validate
-        # print("Validation")
-        # test_loss_epoch = test(args, test_loader, model, criterion, writer)
-        # writer.add_scalar("Loss/test", test_loss_epoch / len(test_loader), epoch)
+        if epoch % validate_idx == 0:
+            print("Validation")
+            test_loss_epoch = test(args, test_loader, model, criterion, writer)
+            writer.add_scalar("Loss/test", test_loss_epoch / len(test_loader), epoch)
+
+        if scheduler:
+            scheduler.step()
+
+        if epoch % 10 == 0:
+            save_model(args, model, optimizer)
 
         args.current_epoch += 1
 

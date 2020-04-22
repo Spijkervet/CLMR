@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision
 from .encoder import WaveEncoder
-# from .sample_cnn_42848 import SampleCNN42848
-
+from .sample_cnn_42848 import SampleCNN42848
 from .sample_cnn_59049 import SampleCNN59049
 
 
@@ -29,13 +28,17 @@ class SimCLR(nn.Module):
         # self.encoder = WaveEncoder(input_dim)
         # self.encoder = SampleCNN42848()
         if args.domain == "audio":
-            self.encoder = SampleCNN59049(args)
+            if args.sample_rate == 16000:
+                self.encoder = SampleCNN42848(args)
+            elif args.sample_rate == 22050:
+                self.encoder = SampleCNN59049(args)
         elif args.domain == "scores":
-            self.encoder = self.get_resnet(args.resnet) # resnet
-            self.encoder.conv1 = nn.Conv2d(args.image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            self.encoder = self.get_resnet(args.resnet)  # resnet
+            self.encoder.conv1 = nn.Conv2d(
+                args.image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
+            )
         else:
             raise NotImplementedError
-
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer
         self.encoder.fc = Identity()  # remove fully-connected layer after pooling layer

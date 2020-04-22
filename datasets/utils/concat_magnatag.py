@@ -9,10 +9,11 @@ import multiprocessing
 from glob import glob
 from tqdm import tqdm
 import soundfile as sf
+import subprocess
 
-sample_rate = 22050
-MTT_DIR = "./datasets/audio/magnatagatune/concat_16000" # /processed
-AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}"
+sample_rate = 16000
+MTT_DIR = f"./datasets/audio/magnatagatune/raw"
+AUDIO_DIR = f"./datasets/audio/magnatagatune/concat_{sample_rate}"
 
 
 def process(raw_path, path, audio, npyfilepath):
@@ -21,30 +22,20 @@ def process(raw_path, path, audio, npyfilepath):
     fn = audio.split(".")[0]
 
     index_name = "-".join(fn.split("-")[:-2])
+    # print(index_name)
+
     search = os.path.join(raw_path, path, index_name + "*")
-    all_mp3 = glob(search)
+    all_mp3 = sorted(glob(search), key=lambda x: int(x.split("-")[-2]))
 
     try:
-        new_fp = str(Path(npyfilepath) / (path + "/" + fn + ".mp3"))
-        # resample
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "panic",
-            "-i",
-            fp,
-            "-ar",
-            str(sample_rate),
-            new_fp,
-        ]
-        # print(cmd)
-        os.system(" ".join(cmd))
+        new_fp = str(Path(npyfilepath) / (path + "/" + index_name + "-0" + "-full.mp3"))
+        if not os.path.exists(new_fp):
+            cmd = ["cat", *all_mp3, ">", new_fp]
+            os.system(" ".join(cmd))
 
     except Exception as e:
         print("Cannot save audio {} {}".format(audio, e))
-        pass
+        # pass
         
 
 

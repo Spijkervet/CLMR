@@ -88,7 +88,7 @@ class SampleCNN59049(nn.Module):
         )
         # 1 x 512
         self.fc = nn.Linear(512, 50)
-        self.activation = nn.Sigmoid()
+        # self.activation = nn.Sigmoid()
 
     def forward(self, x):
         # input x : B x 59049 x 1

@@ -10,9 +10,9 @@ from glob import glob
 from tqdm import tqdm
 import soundfile as sf
 
-sample_rate = 22050
-MTT_DIR = "./datasets/audio/magnatagatune/concat_16000" # /processed
-AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}"
+sample_rate = 16000
+MTT_DIR = "./datasets/audio/magnatagatune/raw" # /processed
+AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_{sample_rate}"
 
 
 def process(raw_path, path, audio, npyfilepath):

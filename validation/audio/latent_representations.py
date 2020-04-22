@@ -34,15 +34,14 @@ def plot_tsne(args, embedding, labels, epoch, step, num_labels):
     )
 
     box = g.get_position()
-    g.set_position([box.x0, box.y0, box.width * 0.85, box.height]) # resize position
+    g.set_position([box.x0, box.y0, box.width * 0.85, box.height])  # resize position
 
     # Put a legend to the right side
-    g.legend(loc='center right', bbox_to_anchor=(1.25, 0.5), ncol=1)
-    
+    g.legend(loc="center right", bbox_to_anchor=(1.25, 0.5), ncol=1)
+
     plt.axis("off")
     plt.savefig(fp, bbox_inches="tight")
     return figure
-    
 
 
 def tsne(features):
@@ -50,28 +49,32 @@ def tsne(features):
     return embedding
 
 
-def audio_latent_representations(args, dataset, model, optimizer, epoch, step, global_step, writer):
+def audio_latent_representations(
+    args, dataset, model, optimizer, epoch, step, global_step, writer, train
+):
     max_tracks = 10
-    batch_size = 20 # 16 for 20480 samples, and a max.
+    batch_size = 20  # 16 for 20480 samples, and a max.
     input_size = (args.batch_size, 1, args.audio_length)
 
     model.eval()
     with torch.no_grad():
-        latent_rep_size= model.get_latent_size(input_size)
-        features = torch.zeros(
-            max_tracks, batch_size, latent_rep_size
-        ).to(args.device)
+        latent_rep_size = model.get_latent_size(input_size)
+        features = torch.zeros(max_tracks, batch_size, latent_rep_size).to(args.device)
 
         labels = torch.zeros(max_tracks, batch_size).to(args.device)
 
-        for idx, track_idx in enumerate(dataset.tracks_dict):
-
+        idx = 0
+        for _, track_idx in enumerate(dataset.tracks_dict):
             if idx == max_tracks:
                 break
 
             model_in = dataset.sample_audio_by_track_id(
                 track_idx, batch_size=batch_size
             )
+
+            if model_in == None:
+                continue
+
             # for bidx, _ in enumerate(model_in):
             #     # audio = dataset.unnorm(model_in[bidx])
             #     audio = model_in[bidx]
@@ -82,20 +85,25 @@ def audio_latent_representations(args, dataset, model, optimizer, epoch, step, g
 
             features[idx, :, :] = z.reshape((batch_size, -1))
             labels[idx, :] = int(track_idx)
+            idx += 1
 
     features = features.reshape(features.size(0) * features.size(1), -1).cpu()
     labels = labels.reshape(-1, 1).cpu().numpy()
 
     embedding = tsne(features)
     figure = plot_tsne(args, embedding, labels, epoch, step, num_labels=max_tracks)
-    writer.add_figure("TSNE", figure, global_step=global_step)
+
+    is_train = "train" if train else "test"
+    writer.add_figure(f"TSNE_{is_train}", figure, global_step=global_step)
     writer.flush()
 
     out_dir = os.path.join(args.out_dir, "tsne")
 
     if epoch % 20 == 0:
         writer.add_embedding(features, metadata=labels, global_step=global_step)
-        torch.save(features, os.path.join(out_dir, "features-{}-{}.pt".format(epoch, step)))
+        torch.save(
+            features, os.path.join(out_dir, "features-{}-{}.pt".format(epoch, step))
+        )
         torch.save(labels, os.path.join(out_dir, "labels-{}-{}.pt".format(epoch, step)))
         writer.flush()
 

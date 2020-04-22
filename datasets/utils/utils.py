@@ -225,3 +225,17 @@ def train_test(args, tracks, subsample=True):
     np.random.shuffle(train)
     np.random.shuffle(test)
     return train, test
+
+
+def write_statistics(mean, std, num_songs, stats_fp):
+    with open(stats_fp, "w") as f:
+        f.write("mean;std;num_songs\n")
+        f.write(
+            ";".join(
+                [
+                    str(mean),
+                    str(std),
+                    str(num_songs)
+                ]
+            )
+        )
