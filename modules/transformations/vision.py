@@ -1,4 +1,5 @@
 import torchvision
+from .gaussian_blur import GaussianBlur
 
 class TransformsSimCLR:
     """
@@ -7,17 +8,20 @@ class TransformsSimCLR:
     denoted x ̃i and x ̃j, which we consider as a positive pair.
     """
 
-    def __init__(self):
+    def __init__(self, args):
+
         s = 1
         color_jitter = torchvision.transforms.ColorJitter(
             0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s
         )
+
         self.train_transform = torchvision.transforms.Compose(
             [
                 torchvision.transforms.RandomResizedCrop(size=96),
                 torchvision.transforms.RandomHorizontalFlip(),  # with 0.5 probability
                 torchvision.transforms.RandomApply([color_jitter], p=0.8),
                 torchvision.transforms.RandomGrayscale(p=0.2),
+                GaussianBlur(kernel_size=int(0.1 * args.input_shape[0])),
                 torchvision.transforms.ToTensor(),
             ]
         )
