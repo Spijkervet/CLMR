@@ -7,6 +7,7 @@ def load_model(args, reload_model=False, name="context"):
     model = SimCLR(args)
 
     if reload_model:
+        print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###")
         model_fp = os.path.join(
             args.model_path, "{}_checkpoint_{}.tar".format(name, args.epoch_num)
         )

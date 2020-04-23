@@ -68,6 +68,7 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
             auc = auc.mean()
             acc = acc.mean()
         elif args.domain == "scores":
+            auc = 0
             acc = average_precision(
                 y.detach().cpu().numpy(), output.detach().cpu().numpy()
             ).mean()
@@ -134,6 +135,7 @@ def test(args, loader, simclr_model, model, criterion, optimizer, writer):
             auc = auc.mean()
             acc = acc.mean()
         elif args.domain == "scores":
+            auc = 0
             acc = average_precision(
                 y.detach().cpu().numpy(), output.detach().cpu().numpy()
             ).mean()

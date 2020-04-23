@@ -12,12 +12,12 @@ def get_deepscores_dataloader(args, num_workers=16):
 
     # train
     train_dataset = DeepScoresDataset( 
-        args, train=True, transform=TransformsSimCLR() #AudioTransforms(args)
+        args, train=True, transform=TransformsSimCLR(args) #AudioTransforms(args)
     )
 
     # test
     test_dataset = DeepScoresDataset( 
-        args, train=False, transform=TransformsSimCLR() #AudioTransforms(args)
+        args, train=False, transform=TransformsSimCLR(args) #AudioTransforms(args)
     )
 
     train_loader = torch.utils.data.DataLoader(
@@ -36,5 +36,4 @@ def get_deepscores_dataloader(args, num_workers=16):
         num_workers=num_workers,
     )
 
-    args.n_classes = args.num_tags
     return train_loader, train_dataset, test_loader, test_dataset
