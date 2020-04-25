@@ -1,15 +1,21 @@
 import os
 import torch
-from modules import SimCLR, LARS
+from modules import SimCLR, LogisticRegression, LARS
 
 
 def load_model(args, reload_model=False, name="context"):
-    model = SimCLR(args)
+
+    if name == "context":
+        model = SimCLR(args)
+    elif name == "supervised":
+        model = LogisticRegression(args.n_features, args.n_classes)
 
     if reload_model:
-        print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###")
+        model_path = args.model_path if name == "context" else args.logreg_model_path
+        epoch_num = args.epoch_num if name == "context" else args.logreg_epoch_num
+        print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {epoch_num} ###")
         model_fp = os.path.join(
-            args.model_path, "{}_checkpoint_{}.tar".format(name, args.epoch_num)
+            model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
 

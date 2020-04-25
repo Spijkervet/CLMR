@@ -6,8 +6,11 @@ class LogisticRegression(nn.Module):
         super(LogisticRegression, self).__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(n_features, n_classes)
+            nn.Linear(n_features, n_classes),
+            # nn.Softmax(dim=1)
         )
 
     def forward(self, x):
-        return self.model(x)
+        x = self.model(x)
+        # x = nn.functional.softmax(x)
+        return x

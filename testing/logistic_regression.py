@@ -9,28 +9,18 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from matplotlib import pyplot as plt
 
+from data import get_dataset
 from experiment import ex
 from model import load_model
-from utils import post_config_hook
 from model import save_model
 
-from data import get_dataset
-from modules import LogisticRegression
-from utils import tagwise_auc_ap
+from utils import post_config_hook
+from utils.eval import eval_all, average_precision
 
 # metrics
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import accuracy_score
 
-
-def average_precision(y_targets, y_preds):
-
-    ap = []
-    for by, bp in zip(y_targets, y_preds):
-        ap.append(average_precision_score(by, bp))
-        # acc = accuracy_score(y.argmax(1).detach().cpu().numpy(), output.argmax(1).detach().cpu().numpy())
-
-    return np.array(ap)
 
 
 def train(args, loader, simclr_model, model, criterion, optimizer, writer):
@@ -38,7 +28,7 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
     auc_epoch = 0
     accuracy_epoch = 0
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
-    for step, ((_, _, x), y) in enumerate(loader):
+    for step, ((_, _, x), y, idx) in enumerate(loader):
         optimizer.zero_grad()
 
         x = x.to(args.device)
@@ -53,6 +43,9 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
 
         output = model(h)
         loss = criterion(output, y)
+
+        loss.backward()
+        optimizer.step()
 
         predictions = output.argmax(1).detach()
         classes, counts = torch.unique(predictions, return_counts=True)
@@ -74,16 +67,12 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
             ).mean()
         else:
             raise NotImplementedError
-
         auc_epoch += auc
         accuracy_epoch += acc
 
         # acc
         # acc = (predictions == y.argmax(1)).sum().item() / y.size(0)
         # accuracy_epoch += acc
-
-        loss.backward()
-        optimizer.step()
 
         loss_epoch += loss.item()
         if step % 100 == 0:
@@ -154,57 +143,12 @@ def test(args, loader, simclr_model, model, criterion, optimizer, writer):
     figure = plt.figure()
     plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
     writer.add_figure("Class_distribution/test", figure, global_step=args.current_epoch)
-
     return loss_epoch, auc_epoch, accuracy_epoch
 
 
-@ex.automain
-def main(_run, _log):
-    args = argparse.Namespace(**_run.config)
-    args = post_config_hook(args, _run)
-    args.lin_eval = True
-
-    if len(_run.observers) > 1:
-        out_dir = _run.observers[1].dir
-    else:
-        out_dir = _run.observers[0].dir
-    args.out_dir = out_dir
-
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    args.batch_size = args.logistic_batch_size
-
-    root = "./datasets"
-
-    (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
-
-    simclr_model, _, _ = load_model(args, reload_model=True)
-    simclr_model = simclr_model.to(args.device)
-    simclr_model.eval()
-
-    ## Logistic Regression
-    if args.task == "tags":
-        n_classes = args.num_tags
-    else:
-        n_classes = len(train_dataset.class_names)
-        # n_classes = args.n_classes
-
-    args.n_classes = n_classes
-
-    model = LogisticRegression(simclr_model.n_features, n_classes)
-    model = model.to(args.device)
-
-    # criterion = torch.nn.CrossEntropyLoss()
-    criterion = torch.nn.BCEWithLogitsLoss()  # for tags
-    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
-
-    # initialize TensorBoard
-    tb_dir = os.path.join(out_dir, _run.experiment_info["name"])
-    os.makedirs(tb_dir)
-    writer = SummaryWriter(log_dir=tb_dir)
-
-    args.global_step = 0
-    args.current_epoch = 0
+def solve(
+    args, train_loader, test_loader, simclr_model, model, criterion, optimizer, writer
+):
     for epoch in range(args.logistic_epochs):
         loss_epoch, auc_epoch, accuracy_epoch = train(
             args, train_loader, simclr_model, model, criterion, optimizer, writer
@@ -233,4 +177,52 @@ def main(_run, _log):
 
     print(
         f"[FINAL]\t Loss: {loss_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
+    )
+
+
+@ex.automain
+def main(_run, _log):
+    args = argparse.Namespace(**_run.config)
+    args = post_config_hook(args, _run)
+    args.lin_eval = True
+
+    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    args.batch_size = args.logistic_batch_size
+
+    (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
+
+    simclr_model, _, _ = load_model(args, reload_model=True, name="context")
+    simclr_model.eval()
+
+    args.n_features = simclr_model.n_features
+
+    model, optimizer, _ = load_model(args, reload_model=False, name="supervised")
+    model = model.to(args.device)
+
+    # criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()  # for tags
+
+    # initialize TensorBoard
+    tb_dir = os.path.join(args.out_dir, _run.experiment_info["name"])
+    os.makedirs(tb_dir)
+    writer = SummaryWriter(log_dir=tb_dir)
+
+    args.global_step = 0
+    args.current_epoch = 0
+
+    # run training
+    solve(
+        args,
+        train_loader,
+        test_loader,
+        simclr_model,
+        model,
+        criterion,
+        optimizer,
+        writer,
+    )
+
+    # eval all
+    loss_epoch, auc_epoch, accuracy_epoch = eval_all(
+        args, test_loader, simclr_model, model, criterion, optimizer, writer
     )

@@ -47,8 +47,8 @@ mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
 lin_eval: True 
-mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
+# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
+mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
 list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
 num_tags: 50
@@ -57,8 +57,8 @@ num_tags: 50
 logistic_batch_size: 64
 logistic_epochs: 100
 reload_logreg: False
-logreg_model_path: "logs/0"
-logreg_epoch_num: 100
+logreg_model_path: "logs/audio/magnatagatune/23"
+logreg_epoch_num: 50
 
 ## vision
 image_height: 220
