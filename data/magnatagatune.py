@@ -224,7 +224,7 @@ class MTTDataset(Dataset):
 
         # print(f"[{name} dataset]: Loaded mean/std: {self.mean}, {self.std}")
 
-    def get_audio(self, index, fp):
+    def get_audio(self, fp):
         audio, sr = self.loader(fp)
 
         max_samples = audio.size(1)
@@ -233,6 +233,22 @@ class MTTDataset(Dataset):
         ) > 0, "max samples exceeds number of samples in crop"
         return audio
 
+    def get_full_size_audio(self, track_id, fp):
+        # segments = self.tracks_dict[track_id]
+        # batch_size = len(segments)
+        audio = self.get_audio(fp)
+
+        # split into equally sized tensors of self.audio_length
+        batch = torch.split(audio, self.audio_length, dim=1)
+
+         # remove last, since it is not a full self.audio_length, and stack
+        batch = torch.cat(batch[:-1])
+
+        # reshape to B x 1 x N
+        batch = batch.reshape(batch.shape[0], 1, -1)
+        return batch
+ 
+    
     def normalise_audio(self, audio):
         return (audio - self.mean) / self.std
 
@@ -243,17 +259,17 @@ class MTTDataset(Dataset):
     def __getitem__(self, index):
         track_id, fp, label = self.tracks_list[index]
 
-        audio = self.get_audio(index, fp)
+        audio = self.get_audio(fp)
 
         # this is done in the RandomResizeCrop transformation
         # max_samples = audio.size(1)
         # start_idx = np.random.randint(0, max_samples - self.audio_length)
         # audio = audio[:, start_idx : start_idx + self.audio_length]
-
+        
         if self.transform:
             audio = self.transform(audio)
 
-        return audio, label
+        return audio, label, track_id
 
     def __len__(self):
         return len(self.tracks_list)
@@ -268,7 +284,7 @@ class MTTDataset(Dataset):
             index = self.tracks_dict[track_id][0]
             _, fp, label = self.tracks_list_all[index]  # from non-dup!!
 
-            audio = self.get_audio(index, fp)
+            audio = self.get_audio(fp)
 
             start_idx = idx * self.audio_length
 
