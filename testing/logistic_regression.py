@@ -15,12 +15,11 @@ from model import load_model
 from model import save_model
 
 from utils import post_config_hook
-from utils.eval import eval_all, average_precision
+from utils.eval import tagwise_auc_ap, eval_all, average_precision
 
 # metrics
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import accuracy_score
-
 
 
 def train(args, loader, simclr_model, model, criterion, optimizer, writer):
@@ -28,7 +27,7 @@ def train(args, loader, simclr_model, model, criterion, optimizer, writer):
     auc_epoch = 0
     accuracy_epoch = 0
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
-    for step, ((_, _, x), y, idx) in enumerate(loader):
+    for step, ((_, _, x), y) in enumerate(loader):
         optimizer.zero_grad()
 
         x = x.to(args.device)
@@ -99,46 +98,48 @@ def test(args, loader, simclr_model, model, criterion, optimizer, writer):
     accuracy_epoch = 0
     model.eval()
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
-    for step, ((_, _, x), y) in enumerate(loader):
-        model.zero_grad()
 
-        x = x.to(args.device)
-        y = y.to(args.device)
+    with torch.no_grad():
+        for step, ((_, _, x), y) in enumerate(loader):
+            model.zero_grad()
 
-        # get encoding
-        with torch.no_grad():
-            h, z = simclr_model(x)
+            x = x.to(args.device)
+            y = y.to(args.device)
 
-        output = model(h)
-        loss = criterion(output, y)
+            # get encoding
+            with torch.no_grad():
+                h, z = simclr_model(x)
 
-        predictions = output.argmax(1).detach()
-        classes, counts = torch.unique(predictions, return_counts=True)
-        predicted_classes[classes] += counts
+            output = model(h)
+            loss = criterion(output, y)
 
-        # acc = (predictions == y.argmax(1)).sum().item() / y.size(0)
-        if args.domain == "audio":
-            auc, acc = tagwise_auc_ap(
-                y.cpu().detach().numpy(), output.cpu().detach().numpy()
-            )
-            auc = auc.mean()
-            acc = acc.mean()
-        elif args.domain == "scores":
-            auc = 0
-            acc = average_precision(
-                y.detach().cpu().numpy(), output.detach().cpu().numpy()
-            ).mean()
-        else:
-            raise NotImplementedError
+            predictions = output.argmax(1).detach()
+            classes, counts = torch.unique(predictions, return_counts=True)
+            predicted_classes[classes] += counts
 
-        auc_epoch += auc
-        accuracy_epoch += acc
+            # acc = (predictions == y.argmax(1)).sum().item() / y.size(0)
+            if args.domain == "audio":
+                auc, acc = tagwise_auc_ap(
+                    y.cpu().detach().numpy(), output.cpu().detach().numpy()
+                )
+                auc = auc.mean()
+                acc = acc.mean()
+            elif args.domain == "scores":
+                auc = 0
+                acc = average_precision(
+                    y.detach().cpu().numpy(), output.detach().cpu().numpy()
+                ).mean()
+            else:
+                raise NotImplementedError
 
-        loss_epoch += loss.item()
-        if step % 100 == 0:
-            print(
-                f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
-            )
+            auc_epoch += auc
+            accuracy_epoch += acc
+
+            loss_epoch += loss.item()
+            if step % 100 == 0:
+                print(
+                    f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
+                )
 
     figure = plt.figure()
     plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
