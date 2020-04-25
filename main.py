@@ -79,26 +79,22 @@ def train(args, train_loader, model, criterion, optimizer, writer):
 def test(args, loader, model, criterion, writer):
     model.eval()
     loss_epoch = 0
-    for step, ((x_i, x_j, _), _) in enumerate(loader):
-        x_i = x_i.to(args.device)
-        x_j = x_j.to(args.device)
+    with torch.no_grad():
+        for step, ((x_i, x_j, _), _) in enumerate(loader):
+            x_i = x_i.to(args.device)
+            x_j = x_j.to(args.device)
 
-        # positive pair, with encoding
-        h_i, z_i = model(x_i)
-        h_j, z_j = model(x_j)
+            # positive pair, with encoding
+            h_i, z_i = model(x_i)
+            h_j, z_j = model(x_j)
 
-        loss = criterion(z_i, z_j)
+            loss = criterion(z_i, z_j)
 
-        if apex and args.fp16:
-            with amp.scale_loss(loss, optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            loss.backward()
+            if step % 1 == 0:
+                print(f"Step [{step}/{len(loader)}]\t Test Loss: {loss.item()}")
 
-        if step % 1 == 0:
-            print(f"Step [{step}/{len(loader)}]\t Test Loss: {loss.item()}")
-
-        loss_epoch += loss.item()
+            loss_epoch += loss.item()
+    model.train()
     return loss_epoch
 
 

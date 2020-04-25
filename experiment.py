@@ -27,7 +27,7 @@ ex = Experiment("CLMR")
 
 @ex.config
 def my_config():
-    config_file = "./config/config.yaml"
+    config_file = "./config/config_audio.yaml"
 
     ex.add_config(config_file)
 

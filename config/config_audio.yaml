@@ -22,8 +22,8 @@ dropout: 0.5
 
 # transformations
 transforms_phase: 0.8
-transforms_gain: 0.5
-transforms_filters: 0.3
+transforms_gain: 0.8
+transforms_filters: 0.4
 
 # model options
 resnet: "resnet50"
@@ -34,8 +34,8 @@ weight_decay: 1.0e-6
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
 # reload options
-model_path: "logs/0" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 100 # set to checkpoint number
+model_path: "logs/audio/magnatagatune/22" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 970 # set to checkpoint number
 
 # mixed-precision training
 fp16: False 
@@ -43,8 +43,10 @@ fp16_opt_level: "O2"
 
 
 # magnatagatune
+mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
+lin_eval: True 
 mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
 # mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
