@@ -269,7 +269,7 @@ class MTTDataset(Dataset):
         if self.transform:
             audio = self.transform(audio)
 
-        return audio, label, track_id
+        return audio, label 
 
     def __len__(self):
         return len(self.tracks_list)
