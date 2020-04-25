@@ -6,6 +6,7 @@ from sklearn.manifold import TSNE
 from utils.chords import keys
 import seaborn as sns
 import pandas as pd
+from tqdm import tqdm
 
 # from tsnecuda import TSNE
 
@@ -52,10 +53,11 @@ def tsne(features):
 def audio_latent_representations(
     args, dataset, model, optimizer, epoch, step, global_step, writer, train
 ):
-    max_tracks = 10
-    batch_size = 20  # 16 for 20480 samples, and a max.
+    max_tracks = 20
+    batch_size = 30  # 16 for 20480 samples, and a max.
     input_size = (args.batch_size, 1, args.audio_length)
 
+    print("### Processing representations through TSNE ###")
     model.eval()
     with torch.no_grad():
         latent_rep_size = model.get_latent_size(input_size)
@@ -64,7 +66,7 @@ def audio_latent_representations(
         labels = torch.zeros(max_tracks, batch_size).to(args.device)
 
         idx = 0
-        for _, track_idx in enumerate(dataset.tracks_dict):
+        for _, track_idx in enumerate(tqdm(dataset.tracks_dict)):
             if idx == max_tracks:
                 break
 

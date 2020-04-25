@@ -11,6 +11,68 @@ from datasets.utils.utils import write_statistics
 import librosa
 
 
+"""
+From Pons et al.
+"""
+
+
+def load_id2gt(gt_file):
+    ids = []
+    fgt = open(gt_file)
+    id2gt = dict()
+    for line in fgt.readlines():
+        id, gt = line.strip().split("\t")  # id is string
+        id2gt[id] = eval(gt)  # gt is array
+        ids.append(id)
+    return ids, id2gt
+
+
+def load_id2path(index_file):
+    paths = []
+    fspec = open(index_file)
+    id2path = dict()
+    for line in fspec.readlines():
+        id, path = line.strip().split("\t")
+        id2path[id] = path
+        paths.append(path)
+    return paths, id2path
+
+
+def pons_indexer(args, path, id2audio, id2gt):
+    items = []
+    tracks_dict = defaultdict(list)
+    # index = 0
+    prev_index = None
+    index = {}
+    index_num = 0
+    for idx, (clip_id, label) in enumerate(id2gt.items()):
+        fn = Path(id2audio[clip_id].split(".")[0])
+        if args.lin_eval:
+            fp = os.path.join(path, str(fn) + ".mp3")
+            index_name = "-".join(fn.stem.split("-")[:-2])  # get all tracks together
+        else:
+            d = fn.parent.stem
+            fn = fn.stem
+            index_name = "-".join(fn.split("-")[:-2])
+            fp = os.path.join(path, d, index_name + "-0-full.mp3")
+
+        if os.path.exists(fp):
+            if index_name not in index.keys():
+                index[index_name] = index_num
+                index_num += 1
+
+            label = torch.FloatTensor(label)
+            items.append((index[index_name], fp, label))
+            tracks_dict[index[index_name]].append(idx)
+        else:
+            print("File not found: {}".format(fp))
+    return items, tracks_dict
+
+
+"""
+"""
+
+
 def default_loader(path):
     # audio, sr = librosa.core.load(path, sr=22050)
     # audio = torch.from_numpy(audio)
@@ -66,7 +128,7 @@ def default_indexer(args, path, tracks, labels, sample_rate, num_tags, tag_list)
             labels_vec = torch.FloatTensor(list(labels.iloc[idx]))
             if (label == labels_vec).all() == False:
                 raise Exception("Labels do not match")
-            
+
             items.append((index, fp, label))
             tracks_dict[index].append(idx)
         else:
@@ -100,20 +162,27 @@ class MTTDataset(Dataset):
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
 
-        self.annotations_frame = pd.read_csv(self.annotations_file, delimiter="\t")
+        if args.mtt_pons_eval:
+            [audio_repr_paths, id2audio_repr_path] = load_id2path(
+                Path(args.mtt_processed_annot) / "index_mtt.tsv"
+            )
+            [ids, id2gt] = load_id2gt(self.annotations_file)
+            self.tracks_list_all, self.tracks_dict = pons_indexer(
+                args, self.audio_dir, id2audio_repr_path, id2gt
+            )
+        else:
+            self.annotations_frame = pd.read_csv(self.annotations_file, delimiter="\t")
+            self.labels = self.annotations_frame.drop(["clip_id", "mp3_path"], axis=1)
 
-
-        self.labels = self.annotations_frame.drop(["clip_id", "mp3_path"], axis=1)
-
-        self.tracks_list_all, self.tracks_dict = self.indexer(
-            args,
-            self.audio_dir,
-            self.annotations_frame,
-            self.labels,
-            self.sample_rate,
-            self.num_tags,
-            self.tag_list,
-        )
+            self.tracks_list_all, self.tracks_dict = self.indexer(
+                args,
+                self.audio_dir,
+                self.annotations_frame,
+                self.labels,
+                self.sample_rate,
+                self.num_tags,
+                self.tag_list,
+            )
 
         self.nodups = []
         self.indexes = []
@@ -122,7 +191,12 @@ class MTTDataset(Dataset):
                 self.nodups.append([track_id, fp, label])
                 self.indexes.append(track_id)
 
-        print(len(self.nodups), len(self.tracks_list_all))
+        print(
+            "Removed duplicates from:",
+            len(self.tracks_list_all),
+            "to:",
+            len(self.nodups),
+        )
         if args.lin_eval:
             print("### Linear evaluation, using segmented dataset ###")
             self.tracks_list = self.tracks_list_all
@@ -192,7 +266,8 @@ class MTTDataset(Dataset):
         batch = torch.zeros(batch_size, 1, self.audio_length)
         for idx in range(batch_size):
             index = self.tracks_dict[track_id][0]
-            _, fp, label = self.tracks_list[index]
+            _, fp, label = self.tracks_list_all[index]  # from non-dup!!
+
             audio = self.get_audio(index, fp)
 
             start_idx = idx * self.audio_length
