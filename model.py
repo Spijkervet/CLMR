@@ -1,14 +1,16 @@
 import os
 import torch
-from modules import SimCLR, LogisticRegression, LARS
-
+from modules import SimCLR, LogisticRegression, LARS, MLP
 
 def load_model(args, reload_model=False, name="context"):
 
     if name == "context":
         model = SimCLR(args)
     elif name == "supervised":
-        model = LogisticRegression(args.n_features, args.n_classes)
+        if args.mlp:
+            model = MLP(args.n_features, args.n_classes)
+        else:
+            model = LogisticRegression(args.n_features, args.n_classes)
 
     if reload_model:
         model_path = args.model_path if name == "context" else args.logreg_model_path
@@ -22,9 +24,11 @@ def load_model(args, reload_model=False, name="context"):
     model = model.to(args.device)
 
     scheduler = None
-    if args.optimizer == "Adam":
+    if args.optimizer == "Adam" or args.lineval:
+        print("### Using Adam optimizer ###")
         optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)  # TODO: LARS
     elif args.optimizer == "LARS":
+        print("### Using LARS optimizer ###")
         # optimized using LARS with linear learning rate scaling
         # (i.e. LearningRate = 0.3 × BatchSize/256) and weight decay of 10−6.
         learning_rate = 0.3 * args.batch_size / 256
@@ -59,7 +63,9 @@ def load_model(args, reload_model=False, name="context"):
 
 
 def save_model(args, model, optimizer, name="context"):
-    out = os.path.join(args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch))
+    out = os.path.join(
+        args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
+    )
 
     # To save a DataParallel model generically, save the model.module.state_dict().
     # This way, you have the flexibility to load the model any way you want to any device you want.

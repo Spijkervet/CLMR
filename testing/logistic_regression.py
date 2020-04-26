@@ -212,16 +212,16 @@ def main(_run, _log):
     args.current_epoch = 0
 
     # run training
-    # solve(
-    #     args,
-    #     train_loader,
-    #     test_loader,
-    #     simclr_model,
-    #     model,
-    #     criterion,
-    #     optimizer,
-    #     writer,
-    # )
+    solve(
+        args,
+        train_loader,
+        test_loader,
+        simclr_model,
+        model,
+        criterion,
+        optimizer,
+        writer,
+    )
 
     # eval all
     auc, ap = eval_all(

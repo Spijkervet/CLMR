@@ -1,13 +1,14 @@
 import torch.nn as nn
 
-class LogisticRegression(nn.Module):
+class MLP(nn.Module):
     
     def __init__(self, n_features, n_classes):
-        super(LogisticRegression, self).__init__()
+        super(MLP, self).__init__()
 
         self.model = nn.Sequential(
+            nn.Linear(n_features, n_features),
+            nn.ReLU(),
             nn.Linear(n_features, n_classes),
-            nn.Sigmoid()
             # nn.Softmax(dim=1)
         )
 

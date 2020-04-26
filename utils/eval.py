@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, average_precision_score
 
+
 def itemwise_auc_ap(y, pred):
     """ Annotation : item-wise(row wise) calculation """
     n_songs = y.shape[0]
@@ -42,40 +43,50 @@ def average_precision(y_targets, y_preds):
     return np.array(ap)
 
 
-def eval_all(args, loader, simclr_model, model, criterion, optimizer, writer, n_tracks=None):
+def eval_all(
+    args, loader, simclr_model, model, criterion, optimizer, writer, n_tracks=None
+):
     model.eval()
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     pred_array = []
     id_array = []
-    
+
     # sub-sample if n_tracks is not none, else eval whole dataset
     if n_tracks:
         ids = np.random.choice(len(loader.dataset.tracks_list), n_tracks)
-        tracks = [(track_id, fp, label) for track_id, fp, label in loader.dataset.tracks_list if track_id in ids]
+        tracks = [
+            (track_id, fp, label)
+            for track_id, fp, label in loader.dataset.tracks_list
+            if track_id in ids
+        ]
     else:
         tracks = loader.dataset.tracks_list[:n_tracks]
+        n_tracks = len(tracks)
 
-    # run all audio through model and make prediction array
-    for step, (track_id, fp, y) in enumerate(tracks):
-        x = loader.dataset.get_full_size_audio(track_id, fp)
+    with torch.no_grad():
+        # run all audio through model and make prediction array
+        for step, (track_id, fp, y) in enumerate(tracks):
+            x = loader.dataset.get_full_size_audio(track_id, fp)
 
-        model.zero_grad()
+            x = x.to(args.device)
+            y = y.to(args.device)
 
-        x = x.to(args.device)
-        y = y.to(args.device)
+            # get encoding
+            with torch.no_grad():
+                h, z = simclr_model(x)
 
-        # get encoding
-        with torch.no_grad():
-            h, z = simclr_model(x)
+            output = model(h)
+            predictions = output.argmax(1).detach()
+            classes, counts = torch.unique(predictions, return_counts=True)
+            predicted_classes[classes] += counts
 
-        output = model(h)
+            # create array of predictions and ids
+            for b in output:
+                pred_array.append(b.detach().cpu().numpy())
+                id_array.append(track_id)
 
-        # create array of predictions and ids
-        for b in output:
-            pred_array.append(b.detach().cpu().numpy())
-            id_array.append(track_id)
-        
-        print(f"[Test] Step [{step}/{n_tracks}]")
+            if step % 100 == 0:
+                print(f"[Test] Step [{step}/{n_tracks}]")
 
     # normalise pred_array acc. ids
     y_pred = []
@@ -97,5 +108,8 @@ def eval_all(args, loader, simclr_model, model, criterion, optimizer, writer, n_
 
     figure = plt.figure()
     plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
-    writer.add_figure("Class_distribution/test_all", figure, global_step=args.current_epoch)
+    writer.add_figure(
+        "Class_distribution/test_all", figure, global_step=args.current_epoch
+    )
+    model.train()
     return auc, ap
