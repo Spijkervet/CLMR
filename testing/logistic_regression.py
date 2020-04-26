@@ -212,18 +212,22 @@ def main(_run, _log):
     args.current_epoch = 0
 
     # run training
-    solve(
-        args,
-        train_loader,
-        test_loader,
-        simclr_model,
-        model,
-        criterion,
-        optimizer,
-        writer,
-    )
+    # solve(
+    #     args,
+    #     train_loader,
+    #     test_loader,
+    #     simclr_model,
+    #     model,
+    #     criterion,
+    #     optimizer,
+    #     writer,
+    # )
 
     # eval all
-    loss_epoch, auc_epoch, accuracy_epoch = eval_all(
-        args, test_loader, simclr_model, model, criterion, optimizer, writer
+    auc, ap = eval_all(
+        args, test_loader, simclr_model, model, criterion, optimizer, writer, n_tracks=None
     )
+
+    print(f"[Test]: ROC-AUC {auc}")
+    print(f"[Test]: PR-AUC {ap}")
+
