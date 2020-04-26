@@ -211,6 +211,9 @@ def main(_run, _log):
     args.global_step = 0
     args.current_epoch = 0
 
+    print(simclr_model)
+    print(model)
+
     # run training
     solve(
         args,

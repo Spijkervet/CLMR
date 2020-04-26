@@ -66,7 +66,7 @@ def audio_latent_representations(
         labels = torch.zeros(max_tracks, batch_size).to(args.device)
 
         idx = 0
-        for _, track_idx in enumerate(tqdm(dataset.tracks_dict)):
+        for _, track_idx in enumerate(tqdm(dataset.tracks_dict, total=max_tracks)):
             if idx == max_tracks:
                 break
 

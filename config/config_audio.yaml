@@ -8,7 +8,7 @@ epochs: 1000
 # task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "billboard" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
 reload: False
 
@@ -56,7 +56,7 @@ epoch_num: 550 # set to checkpoint number
 
 
 # logistic regression options
-mlp: True
+mlp: False 
 logistic_batch_size: 64
 logistic_epochs: 100
 reload_logreg: True

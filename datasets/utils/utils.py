@@ -36,7 +36,10 @@ def resample_tracks(args, tracks):
     num_largest_class = len(new_labels[largest_class])
     for k, v in new_labels.items():
         new_labels[k] = resample(
-            new_labels[k], replace=True, n_samples=num_largest_class, random_state=args.seed,
+            new_labels[k],
+            replace=True,
+            n_samples=num_largest_class,
+            random_state=args.seed,
         )
         new_tracks.extend(new_labels[k])
     return new_tracks
@@ -54,14 +57,15 @@ def add_tracks(
     for t in tqdm(tracks):
         audio_path = t.audio_path
         fn, ext = os.path.splitext(audio_path)
+
+        ext = ".wav"
         sr_audio_path = os.path.join(
             os.path.dirname(audio_path), f"{fn}_{str(args.sample_rate)}{ext}"
         )
 
-
         if t.mode is None:  # discard song if mode is unknown
             continue
-        
+
         # chroma = t.chroma
         if os.path.exists(audio_path):
             if not os.path.exists(sr_audio_path):
@@ -74,84 +78,105 @@ def add_tracks(
                 sr == args.sample_rate
             ), "Sample rate is not consistent throughout the dataset"
 
-            # # discard last part that is not a full 5 seconds
-            ms = sr / audio_length_sec
-            max_length = int(audio.size(1) // ms * ms)
-            # samples = np.arange(ms, max_length, ms)
+            track_dir = os.path.join(data_dir, t.track_id)
+            if not os.path.exists(track_dir):
+                os.makedirs(track_dir)
 
-            samples_splits = np.arange(0, max_length, sr * audio_length_sec)
-            samples = torch.split(audio, sr * audio_length_sec, dim=1)
+            if args.lin_eval:
+                # # discard last part that is not a full 5 seconds
+                ms = sr / audio_length_sec
+                max_length = int(audio.size(1) // ms * ms)
+                # samples = np.arange(ms, max_length, ms)
 
-            # transform track_chords
-            for sample_idx, sample in enumerate(samples):
-                if sample.size(1) < args.audio_length:
-                    continue
-                
-                start_idx = samples_splits[sample_idx]
-                end_idx = samples_splits[sample_idx] + sample.size(1)
+                samples_splits = np.arange(0, max_length, sr * audio_length_sec)
+                samples = torch.split(audio, sr * audio_length_sec, dim=1)
 
-                track_dir = os.path.join(data_dir, t.track_id)
-                if not os.path.exists(track_dir):
-                    os.makedirs(track_dir)
+                # transform track_chords
+                for sample_idx, sample in enumerate(samples):
+                    if sample.size(1) < args.audio_length:
+                        continue
 
-                """
-                label for task
-                """
+                    start_idx = samples_splits[sample_idx]
+                    end_idx = samples_splits[sample_idx] + sample.size(1)
+
+                    """
+                    label for task
+                    """
+                    torchaudio.save(
+                        os.path.join(
+                            track_dir,
+                            "{}-{}-{}-{}.wav".format(
+                                sample_idx, start_idx, end_idx, t.label
+                            ),
+                        ),
+                        sample,
+                        sample_rate=sr,
+                    )
+
+                    mean = sample.mean()
+                    std = sample.std()
+                    audio_len_seconds += sample.size(1) / sr
+                    means.append(mean)
+                    stds.append(std)
+
+                    class_weights[t.label] += 1
+                    with open(label_fp, "a") as f:
+                        f.write(
+                            "{},{},{},{},{}\n".format(
+                                t.track_id, sample_idx, start_idx, end_idx, t.label
+                            )
+                        )
+
+                    # chroma_tensor = torch.zeros(sample.size(1))
+                    # for idx in range(len(chroma) - 1):
+                    #     onset = chroma[idx][1]
+                    #     chroma1 = chroma[idx][2:14]
+                    #     onset_samples = int(chroma[idx][1] * args.sample_rate)
+                    #     next_onset_samples = int(chroma[idx + 1][1] * args.sample_rate)
+                    #     # TODO
+                    #     chroma_tensor[onset_samples:next_onset_samples] = float(chroma1.argmax())
+
+                    #     if next_onset_samples > chroma_tensor.size(0):
+                    #         break
+
+                    # torch.save(
+                    #     chroma_tensor,
+                    #     os.path.join(
+                    #         track_dir,
+                    #         "{}-{}-{}-{}.chroma".format(
+                    #             sample_idx, start_idx, end_idx, t.label
+                    #         ),
+                    #     )
+                    # )
+
+                    # chroma_mean = chroma_tensor.mean()
+                    # chroma_std = chroma_tensor.std()
+                    # chroma_means.append(chroma_mean)
+                    # chroma_stds.append(chroma_std)
+            else:
+                sample = audio  # the sample is the full audio, since we do not want correlated samples in our dataset
+                sample_idx = 0
+                start_idx = 0
+                end_idx = sample.size(1)
                 torchaudio.save(
                     os.path.join(
                         track_dir,
-                        "{}-{}-{}-{}.wav".format(sample_idx, start_idx, end_idx, t.label),
+                        "{}-{}-{}-{}.wav".format(
+                            sample_idx, start_idx, end_idx, t.label
+                        ),
                     ),
                     sample,
                     sample_rate=sr,
                 )
 
-     
                 mean = sample.mean()
                 std = sample.std()
-
-
                 audio_len_seconds += sample.size(1) / sr
                 means.append(mean)
                 stds.append(std)
 
-
-                class_weights[t.label] += 1
-
-                # chroma_tensor = torch.zeros(sample.size(1))
-                # for idx in range(len(chroma) - 1):
-                #     onset = chroma[idx][1]
-                #     chroma1 = chroma[idx][2:14]
-                #     onset_samples = int(chroma[idx][1] * args.sample_rate)
-                #     next_onset_samples = int(chroma[idx + 1][1] * args.sample_rate)
-                #     # TODO
-                #     chroma_tensor[onset_samples:next_onset_samples] = float(chroma1.argmax())
-
-                #     if next_onset_samples > chroma_tensor.size(0):
-                #         break
-
-                # torch.save(
-                #     chroma_tensor,
-                #     os.path.join(
-                #         track_dir,
-                #         "{}-{}-{}-{}.chroma".format(
-                #             sample_idx, start_idx, end_idx, t.label
-                #         ),
-                #     )
-                # )
-
-                # chroma_mean = chroma_tensor.mean()
-                # chroma_std = chroma_tensor.std()
-                # chroma_means.append(chroma_mean)
-                # chroma_stds.append(chroma_std)
-                
-
                 with open(label_fp, "a") as f:
-                    f.write(
-                        "{},{},{},{},{}\n".format(
-                            t.track_id, sample_idx, start_idx, end_idx, t.label
-                        )
-                    )
+                    f.write("{},{},{},{},{}\n".format(t.track_id, sample_idx, start_idx, end_idx, t.label))
 
     return (
         np.array(means).mean(),
@@ -198,7 +223,7 @@ def train_test(args, tracks, subsample=True):
             elif args.task == "key":
                 t.label = t.key
             else:
-                raise NotImplementedError
+                t.label = None
 
             analysed_tracks.append(t)
 
@@ -230,12 +255,5 @@ def train_test(args, tracks, subsample=True):
 def write_statistics(mean, std, num_songs, stats_fp):
     with open(stats_fp, "w") as f:
         f.write("mean;std;num_songs\n")
-        f.write(
-            ";".join(
-                [
-                    str(mean),
-                    str(std),
-                    str(num_songs)
-                ]
-            )
-        )
+        f.write(";".join([str(mean), str(std), str(num_songs)]))
+
