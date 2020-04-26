@@ -9,17 +9,19 @@ def get_mir_loaders(args, num_workers=16, diff_train_dataset=None):
 
     train_dataset = MIRDataset(
         args,
-        os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
-        os.path.join(args.data_input_dir, f"{args.dataset}_labels/train_split.txt"),
+        train=True,
+        unlabeled=True, # the whole dataset, incl. test set(!!)
         audio_length=args.audio_length,
+        transform=AudioTransforms(args)
     )
 
     test_dataset = MIRDataset(
         args,
-        os.path.join(args.data_input_dir, f"{args.dataset}_samples"),
-        os.path.join(args.data_input_dir, f"{args.dataset}_labels/test_split.txt"),
+        train=False,
+        unlabeled=False,
         audio_length=args.audio_length,
         diff_train_dataset=diff_train_dataset,
+        transform=AudioTransforms(args)
     )
 
     train_loader = torch.utils.data.DataLoader(

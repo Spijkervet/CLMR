@@ -10,3 +10,6 @@ datasets/vision
 .tmp/
 detection/
 images/
+
+*.mp3
+*.wav

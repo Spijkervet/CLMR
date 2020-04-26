@@ -7,7 +7,7 @@ class LogisticRegression(nn.Module):
 
         self.model = nn.Sequential(
             nn.Linear(n_features, n_classes),
-            nn.Sigmoid()
+            # nn.Sigmoid()
             # nn.Softmax(dim=1)
         )
 

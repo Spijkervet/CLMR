@@ -15,7 +15,7 @@ def convert_samplerate(source, target, sample_rate):
             "-ar",
             str(sample_rate),
             "-f",
-            "mp3",
+            "wav",
             target,
         ],
         stdout=subprocess.PIPE,
@@ -29,6 +29,6 @@ def convert_samplerate(source, target, sample_rate):
         re.DOTALL,
     ).groupdict()
 
-    if float(matches["seconds"]) < 20:
-        print("removed track")
-        os.remove(target)
+    # if float(matches["seconds"]) < 20:
+    #     print("removed track")
+    #     os.remove(target)

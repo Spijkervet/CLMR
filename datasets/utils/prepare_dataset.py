@@ -1,15 +1,12 @@
 import sys
 import os
 import numpy as np
+import pandas as pd
 import mirdata
-import torch
-import pickle
-import torchaudio
 from tqdm import tqdm
 from collections import defaultdict
 
 from datasets.utils.utils import add_tracks, train_test
-
 from utils.chords import chords, keys
 
 
@@ -33,9 +30,11 @@ def prepare_dataset(args):
         args.n_classes = len(keys)
     elif args.task == "mode":
         args.n_classes = 2
+    else:
+        args.n_classes = 0
 
-    DATA_DIR = os.path.join(args.data_input_dir, f"{args.dataset}_samples")
-    LABEL_DIR = os.path.join(args.data_input_dir, f"{args.dataset}_labels")
+    DATA_DIR = os.path.join(args.data_input_dir, args.dataset, "samples")
+    LABEL_DIR = os.path.join(args.data_input_dir, args.dataset, "labels")
     print(args.dataset, len(tracks))
  
     audio_length_sec = (1 + int(args.audio_length / args.sample_rate)) * 2  # TODO parameterize this window
@@ -44,6 +43,7 @@ def prepare_dataset(args):
 
     train_label_fp = os.path.join(LABEL_DIR, "train_split.txt")
     test_label_fp = os.path.join(LABEL_DIR, "test_split.txt")
+    unlabeled_label_fp = os.path.join(LABEL_DIR, "unlabeled_split.txt")
 
     if os.path.exists(DATA_DIR):
         os.system("rm -rf {}".format(DATA_DIR))
@@ -73,7 +73,6 @@ def prepare_dataset(args):
         args, test, audio_length_sec, DATA_DIR, test_label_fp, train=False,
     )
 
-    # torch.save(chord_labels, os.path.join("./datasets/audio/", "billboard_chord_labels.p"))
 
     print("mean", train_mean)
     print("std", train_std)
@@ -101,3 +100,9 @@ def prepare_dataset(args):
             )
         )
 
+
+    print("### Creating unlabeled file ###")
+    train_df = pd.read_csv(train_label_fp, header=None)
+    test_df = pd.read_csv(test_label_fp, header=None)
+    unlabeled_df = pd.concat([train_df, test_df], axis=0)
+    unlabeled_df.to_csv(unlabeled_label_fp, header=False, index=False)
