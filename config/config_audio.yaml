@@ -33,10 +33,6 @@ optimizer: "Adam" # [Adam, LARS]
 weight_decay: 1.0e-6
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
-# reload options
-model_path: "logs/audio/magnatagatune/22" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 970 # set to checkpoint number
-
 # mixed-precision training
 fp16: False 
 fp16_opt_level: "O2"
@@ -47,18 +43,27 @@ mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
 lin_eval: True 
-mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
+# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
+mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
 list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
 num_tags: 50
 
+
+# reload options
+model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 550 # set to checkpoint number
+
+
 # logistic regression options
+mlp: True
 logistic_batch_size: 64
 logistic_epochs: 100
-reload_logreg: False
-logreg_model_path: "logs/audio/magnatagatune/23"
-logreg_epoch_num: 50
+reload_logreg: True
+# logreg_model_path: "logs/audio/magnatagatune/41"
+# logreg_epoch_num: 30 
+logreg_model_path: "logs/audio/magnatagatune/47"
+logreg_epoch_num: 27
 
 ## vision
 image_height: 220
