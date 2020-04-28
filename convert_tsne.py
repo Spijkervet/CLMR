@@ -34,8 +34,8 @@ tracks_index = track_index(args)
 tracks_list, tracks_dict = default_indexer(fp, tracks_index, sr=sample_rate)
 
 
-features = torch.load("./logs/audio/billboard/2/tsne/features-900-0.pt")
-labels = torch.load("./logs/audio/billboard/2/tsne/labels-900-0.pt")
+features = torch.load("./logs/audio/billboard/9/tsne/features-8200-0.pt")
+labels = torch.load("./logs/audio/billboard/9/tsne/labels-8200-0.pt")
 
 print("Loaded features, processing TSNE")
 
@@ -46,9 +46,6 @@ x, y = embedding[:, 0], embedding[:, 1]
 # between [0, 1]
 x = (x - np.min(x)) / np.ptp(x)
 y = (y - np.min(y)) / np.ptp(y)
-
-print(x)
-print(y)
 
 
 all_d = {}
@@ -70,7 +67,6 @@ for x, y, label in tqdm(zip(x, y, labels)):
 
     track = tracks_index[str(int(label.item()))]
     year = track.chart_date.split("-")[0]
-
 
     start_idx = idx * audio_length
     fn = os.path.join(

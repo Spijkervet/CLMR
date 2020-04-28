@@ -10,7 +10,6 @@ domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-reload: False
 
 # audio
 audio_length: 42848 # 59049 
@@ -43,14 +42,15 @@ mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
 lin_eval: True 
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
+mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
+# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
 list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
 num_tags: 50
 
 
 # reload options
+reload: False
 model_path: "logs/audio/billboard/2" # set to the directory containing `checkpoint_##.tar` 
 epoch_num: 1000 # set to checkpoint number
 # model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 

@@ -7,11 +7,8 @@ class LogisticRegression(nn.Module):
 
         self.model = nn.Sequential(
             nn.Linear(n_features, n_classes),
-            # nn.Sigmoid()
-            # nn.Softmax(dim=1)
         )
 
     def forward(self, x):
         x = self.model(x)
-        # x = nn.functional.softmax(x)
         return x

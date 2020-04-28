@@ -8,6 +8,7 @@ import numpy as np
 
 from torchaudio.transforms import Vol
 
+
 class RandomResizedCrop:
     def __init__(self, sr, n_samples):
         self.sr = sr
@@ -15,7 +16,7 @@ class RandomResizedCrop:
 
     def __call__(self, audio, prev_transform=None):
         # do not end at end of audio (silence)
-        max_samples = audio.size(1) - (self.n_samples * 4)
+        max_samples = audio.size(1)  #  - (self.n_samples * 4)
 
         assert (
             max_samples - self.n_samples
@@ -26,7 +27,8 @@ class RandomResizedCrop:
             self.n_samples * 4
         )  # do not start at the start of the audio (silence)
 
-        start_idx = random.randint(start_sample, max_samples - (self.n_samples * 2))
+        # TODO start sample
+        start_idx = random.randint(0, max_samples - self.n_samples)  # * 2))
 
         # if x0 is cropped, crop x1 within a frame of 5 seconds (do not get "too" global) # TODO variable
         # if prev_transform and abs(start_idx - prev_transform) > (3 * self.sr):
@@ -88,7 +90,7 @@ class HighLowBandPass:
                 )
             elif highlowband == 1:
                 filt = essentia.standard.LowPass(
-                    cutoffFrequency=5000, sampleRate=self.sr
+                    cutoffFrequency=4000, sampleRate=self.sr
                 )
             # else:
             #     filt = essentia.standard.BandPass(bandwidth=1000, cutoffFrequency=1500, sampleRate=self.sr)
@@ -190,6 +192,11 @@ class AudioTransforms:
     def __call__(self, x):
         x0, transformations = self.transform(x)
         x1, transformations = self.transform(x, prev_transforms=transformations)
+
+        # clamp the values again between [-1, 1], in case any
+        # unwanted transformations went to [-inf, inf]
+        x0 = torch.clamp(x0, min=-1, max=1)
+        x1 = torch.clamp(x0, min=-1, max=1)
 
         # randomly get segment
         max_samples = x.size(1)

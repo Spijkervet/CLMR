@@ -8,12 +8,12 @@ epochs: 10000
 # task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "fma" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
 reload: False
 
 # audio
-audio_length: 42848 # 59049 
+audio_length: 43740 # 59049 
 sample_rate: 16000 # 22050
 
 normalize: True
@@ -22,7 +22,7 @@ dropout: 0.5
 
 # transformations
 transforms_phase: 0.8
-transforms_gain: 0.8
+transforms_gain: 0.6
 transforms_filters: 0.4
 
 # model options
@@ -37,45 +37,40 @@ temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal tempera
 fp16: False 
 fp16_opt_level: "O2"
 
+# fma
+fma_version: "fma_medium"
 
 # magnatagatune
 mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
-lin_eval: True 
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
+lin_eval: False 
+mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
+# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
 list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
 num_tags: 50
 
 
 # reload options
-model_path: "logs/audio/billboard/2" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 1000 # set to checkpoint number
-# model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 
-# epoch_num: 550 # set to checkpoint number
-
+model_path: "" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 0 # set to checkpoint number
 
 # logistic regression options
 mlp: False 
 logistic_batch_size: 64
 logistic_epochs: 100
 reload_logreg: False
-# logreg_model_path: "logs/audio/magnatagatune/41"
-# logreg_epoch_num: 30 
-# logreg_model_path: "logs/audio/magnatagatune/47"
-# logreg_epoch_num: 27
-logreg_model_path: "logs/audio/magnatagatune/54"
-logreg_epoch_num: 50
+logreg_model_path: ""
+logreg_epoch_num: 0
 
 ## vision
-image_height: 220
-image_width: 120
-image_channels: 1
+# image_height: 220
+# image_width: 120
+# image_channels: 1
 
 
-universal_symbol_processed: "./datasets/vision/universal_symbol"
+# universal_symbol_processed: "./datasets/vision/universal_symbol"
 # image_height: 96
 # image_width: 96
 # image_channels: 3

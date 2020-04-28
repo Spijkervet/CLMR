@@ -51,16 +51,15 @@ num_tags: 50
 
 
 # reload options
-model_path: "logs/audio/billboard/2" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 1000 # set to checkpoint number
+model_path: "logs/audio/billboard/3"
+epoch_num: 8200 # set to checkpoint number
 # model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 
 # epoch_num: 550 # set to checkpoint number
 
-
 # logistic regression options
-mlp: False 
+mlp: True
 logistic_batch_size: 64
-logistic_epochs: 100
+logistic_epochs: 300
 reload_logreg: False
 # logreg_model_path: "logs/audio/magnatagatune/41"
 # logreg_epoch_num: 30 

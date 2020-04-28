@@ -10,42 +10,42 @@ from glob import glob
 from tqdm import tqdm
 import soundfile as sf
 
-sample_rate = 8000
-MTT_DIR = "./datasets/audio/magnatagatune/processed_concat_16000" # /processed
-AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}"
+sample_rate = 16000
+SOURCE_DIR = "./datasets/audio/fma/fma_medium"  # /processed
+TARGET_DIR = f"./datasets/audio/fma/fma_medium_{sample_rate}"
 
 
-def process(raw_path, path, audio, npyfilepath):
-    fp = os.path.join(MTT_DIR, path, audio)
+def process(raw_path, path, audio, target_fp):
+    fp = os.path.join(SOURCE_DIR, path, audio)
 
     fn = audio.split(".")[0]
 
-    index_name = "-".join(fn.split("-")[:-2])
-    search = os.path.join(raw_path, path, index_name + "*")
-    all_mp3 = glob(search)
+    # index_name = "-".join(fn.split("-")[:-2])
+    # search = os.path.join(raw_path, path, index_name + "*")
+    # all_mp3 = glob(search)
 
     try:
-        new_fp = str(Path(npyfilepath) / (path + "/" + fn + ".mp3"))
+        new_fp = str(Path(target_fp) / (path + "/" + fn + ".mp3"))
         # resample
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "panic",
-            "-i",
-            fp,
-            "-ar",
-            str(sample_rate),
-            new_fp,
-        ]
-        # print(cmd)
-        os.system(" ".join(cmd))
+        if not os.path.exists(new_fp):
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "panic",
+                "-i",
+                fp,
+                "-ar",
+                str(sample_rate),
+                new_fp,
+            ]
+            # print(cmd)
+            os.system(" ".join(cmd))
 
     except Exception as e:
         print("Cannot save audio {} {}".format(audio, e))
         pass
-        
 
 
 def save_audio_to_npy(rawfilepath, npyfilepath):
@@ -61,8 +61,8 @@ def save_audio_to_npy(rawfilepath, npyfilepath):
     if not os.path.exists(npyfilepath):
         os.makedirs(npyfilepath)
 
-    mydir = [path for path in os.listdir(rawfilepath) if path >= "0" and path <= "f"]
-    for path in tqdm(mydir):
+    dirs = [path for path in os.listdir(rawfilepath)]
+    for path in tqdm(dirs):
         # create directory with names '0' to 'f' if it doesn't already exist
         try:
             os.mkdir(Path(npyfilepath) / path)
@@ -71,10 +71,12 @@ def save_audio_to_npy(rawfilepath, npyfilepath):
                 raise
 
         p = multiprocessing.Pool()
+        audio_path = Path(rawfilepath) / path
+        if not os.path.isdir(audio_path):
+            continue
+
         audios = [
-            audio
-            for audio in os.listdir(Path(rawfilepath) / path)
-            if audio.split(".")[-1] == "mp3"
+            audio for audio in os.listdir(audio_path) if audio.split(".")[-1] == "mp3"
         ]
         for audio in tqdm(audios):
             if "mp3" in audio:
@@ -87,4 +89,4 @@ def save_audio_to_npy(rawfilepath, npyfilepath):
 
 if __name__ == "__main__":
     # read audio signal and save to npy format
-    save_audio_to_npy(MTT_DIR, AUDIO_DIR)
+    save_audio_to_npy(SOURCE_DIR, TARGET_DIR)
