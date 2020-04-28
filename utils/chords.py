@@ -112,11 +112,15 @@ def get_chord_at_interval(chord_data, start_idx, end_idx, samplerate):
     chords = []
     for idx, intervals in enumerate(chord_data.intervals):
         if start_sec >= intervals[0] and start_sec <= intervals[1]:
-            chords.append(chord_data.labels[idx])
+            chords.append([chord_data.labels[idx], intervals[1]-intervals[0]])
             for idx, intervals in enumerate(chord_data.intervals):
                 if end_sec >= intervals[0] and end_sec <= intervals[1]:
-                    chords.append(chord_data.labels[idx])
-    return list(set(chords))
+                    chords.append([chord_data.labels[idx], intervals[1]-intervals[0]])
+                    break
+    
+    chords_sorted = sorted(chords, key=lambda x: x[1], reverse=True)
+    return [chords_sorted[0][0]] # get most frequent chord, "majority vote"
+    # return list(set(chords))
 
 
 def key_to_label(key):

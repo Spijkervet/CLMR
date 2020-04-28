@@ -14,7 +14,13 @@ from model import load_model
 from model import save_model
 
 from utils import post_config_hook
-from utils.eval import tagwise_auc_ap, eval_all, average_precision
+from utils.eval import (
+    itemwise_auc_ap,
+    tagwise_auc_ap,
+    eval_all,
+    average_precision,
+    evaluate_key_mirex,
+)
 
 # metrics
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -121,11 +127,8 @@ def plot_predicted_classes(predicted_classes, epoch, writer, train):
 
 
 def eval_chords(y, output):
-    auc = roc_auc_score(y.detach().cpu().numpy(), output.detach().cpu().numpy()).mean()
-    acc = average_precision(
-        y.detach().cpu().numpy(), output.detach().cpu().numpy()
-    ).mean()
-    return auc, acc
+    auc, acc = itemwise_auc_ap(y.detach().cpu().numpy(), output.detach().cpu().numpy())
+    return auc.mean(), acc.mean()
 
 
 def train(args, loader, model, criterion, optimizer, writer):
@@ -152,11 +155,24 @@ def train(args, loader, model, criterion, optimizer, writer):
             auc, acc = get_metrics(args.domain, y, output)
         elif args.task == "chords":
             auc, acc = eval_chords(y, output)
+            # predictions = []
+            # labels = []
+            # for o, l in zip(output, y):
+            #     num_chords = (l == 1).sum()
+            #     _, preds = torch.topk(o, num_chords)
+            #     _, chord_nums = torch.topk(l, num_chords)
+            #     predictions.extend(preds)
+            #     labels.extend(chord_nums)
+            # predictions = torch.stack(predictions)
+            # labels = torch.stack(labels)
+            # weighted, metrics = evaluate_key_mirex(predictions, labels)
+            # auc = 0
+            # acc = weighted
 
         auc_epoch += auc
         accuracy_epoch += acc
-
         loss_epoch += loss.item()
+
         if step % 100 == 0:
             print(
                 f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
@@ -187,12 +203,15 @@ def test(args, loader, model, criterion, optimizer, writer):
 
             predicted_classes = get_predicted_classes(output, predicted_classes)
 
-            auc, acc = get_metrics(args.domain, y, output)
+            if args.task == "tag":
+                auc, acc = get_metrics(args.domain, y, output)
+            elif args.task == "chords":
+                auc, acc = eval_chords(y, output)
 
             auc_epoch += auc
             accuracy_epoch += acc
-
             loss_epoch += loss.item()
+
             if step % 100 == 0:
                 print(
                     f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
@@ -256,7 +275,10 @@ def main(_run, _log):
     model, _, _ = load_model(args, reload_model=False, name="supervised")
     model = model.to(args.device)
 
-    weight_decay = sample_weight_decay()
+    if not args.mlp:
+        weight_decay = sample_weight_decay()
+    else:
+        weight_decay = 0
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
     )
@@ -285,33 +307,6 @@ def main(_run, _log):
     else:
         print("### Loading features ###")
         (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
-
-    # from sklearn.multiclass import OneVsRestClassifier
-    # from sklearn.svm import SVC
-    # clf = OneVsRestClassifier(SVC(kernel='linear'))
-    # clf.fit(train_X, train_y)
-    # from sklearn.linear_model import LogisticRegression
-
-    # print("Training")
-    # clf = OneVsRestClassifier(
-    #     LogisticRegression(
-    #         max_iter=1000, solver="lbfgs", verbose=True, n_jobs=-1
-    #     )
-    # )
-    # clf.fit(train_X, train_y)
-    # print("Testing")
-    # predictions = clf.predict_proba(test_X)
-
-    # auc, ap = tagwise_auc_ap(test_y, predictions)
-    # # print(predictions)
-    # print(auc.mean(), ap.mean())
-    # exit(0)
-
-    # print(len(train_X))
-    # train_indices = np.random.choice(len(train_X), int(len(train_X)*1), replace=False)
-    # train_X = train_X[train_indices]
-    # train_y = train_y[train_indices]
-    # print(len(train_X))
 
     arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
         train_X,
