@@ -105,13 +105,18 @@ def enharmonic(chord):
     return new_chord
 
 
-def get_chord_at_interval(chord_data, start_idx, samplerate):
+def get_chord_at_interval(chord_data, start_idx, end_idx, samplerate):
     # convert samples to seconds
     start_sec = start_idx / samplerate
+    end_sec = end_idx / samplerate
+    chords = []
     for idx, intervals in enumerate(chord_data.intervals):
         if start_sec >= intervals[0] and start_sec <= intervals[1]:
-            return chord_data.labels[idx]
-    return None
+            chords.append(chord_data.labels[idx])
+            for idx, intervals in enumerate(chord_data.intervals):
+                if end_sec >= intervals[0] and end_sec <= intervals[1]:
+                    chords.append(chord_data.labels[idx])
+    return list(set(chords))
 
 
 def key_to_label(key):
@@ -147,6 +152,9 @@ def chord_to_label(chord):
         return chords[chord]
     except:
         print("Chord missing: {}".format(chord))
+
+def to_one_hot(labels, num_classes):
+    vec = np.zeros(num_classes)
 
 
 def estimate_mode(tonic, chords):

@@ -15,19 +15,30 @@ def default_loader(path):
     return torchaudio.load(path, normalization=True)
 
 
-def default_indexer(fp, tracks, sr):
+def default_indexer(path, fp, tracks, sr):
     items = []
     tracks_dict = defaultdict(list)
     index = 0
     with open(fp, "r") as f:
         for l in f.read().splitlines():
-            track_id, sample_id, start_idx, end_idx, label = l.split(",")
-            sample_id = int(sample_id)
-            start_idx = int(start_idx)
-            end_idx = int(end_idx)
-            items.append((track_id, sample_id, start_idx, end_idx, label))
-            tracks_dict[track_id].append(index)
-            index += 1
+            line = l.split("\t")
+            track_id = int(line[0])
+            sample_id = int(line[1])
+            start_idx = int(line[2])
+            end_idx = int(line[3])
+            labels = eval(line[4])
+
+            fp = os.path.join(
+                path,
+                str(track_id),
+                "{}-{}-{}.wav".format(sample_id, start_idx, end_idx),
+            )
+            if os.path.exists(fp):
+                labels = torch.FloatTensor(labels)
+                items.append((track_id, fp, labels))
+                tracks_dict[track_id].append(index)
+                index += 1
+
     return items, tracks_dict
 
 
@@ -87,11 +98,8 @@ class MIRDataset(Dataset):
 
         self.tracks_index = self.track_index(args)
         self.tracks_list, self.tracks_dict = self.indexer(
-            self.labels_file, self.tracks_index, sr=self.sample_rate
+            self.root_dir, self.labels_file, self.tracks_index, sr=self.sample_rate
         )
-
-        # labels_fp = os.path.join(args.data_input_dir, "billboard_chord_labels.p")
-        # self.labels = torch.load(labels_fp)
 
         if not diff_train_dataset:
             with open(
@@ -119,28 +127,34 @@ class MIRDataset(Dataset):
         self.chroma_std = chroma_std
 
         print(f"Train Dataset mean: {mean}, std: {std}")
+        print(f"[{split_name}]: {len(self.tracks_list)} segments")
 
     def get_audio_fp(self, track_id, sample_id, start_idx, end_idx, label):
-        fp = os.path.join(
-            self.root_dir,
-            track_id,
-            "{}-{}-{}-{}.wav".format(sample_id, start_idx, end_idx, label),
-        )
+
         return fp
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
 
-        assert (
-            sr == self.sample_rate
-        ), "Sample rate is not consistent throughout the dataset"
+        max_samples = audio.size(1)
+        if sr != self.sample_rate:
+            raise Exception("Sample rate is not consistent throughout the dataset")
+
+        if max_samples - self.audio_length < 0:
+            raise Exception("Max samples exceeds number of samples in crop")
+
         return audio
 
     def __getitem__(self, index):
-        track_id, sample_id, start_idx, end_idx, label = self.tracks_list[index]
-        fp = self.get_audio_fp(track_id, sample_id, start_idx, end_idx, label)
+        track_id, fp, labels = self.tracks_list[index]
 
-        audio = self.get_audio(fp)
+        try:
+            audio = self.get_audio(fp)
+        except:
+            pass
+            print(f"Skipped {track_id, fp}, could not load audio")
+            return self.__getitem__(index+1)
+
 
         # Normalize audio
         # audio = (audio - self.mean) / self.std
@@ -148,11 +162,7 @@ class MIRDataset(Dataset):
         if self.transform:
             audio = self.transform(audio)
 
-        if label == "None":
-            label = 0
-        else:
-            label = int(label)
-        return audio, label
+        return audio, labels
 
         ## chroma
         # fp = os.path.join(
@@ -185,8 +195,7 @@ class MIRDataset(Dataset):
         batch = torch.zeros(batch_size, 1, self.audio_length)
         for idx in range(batch_size):
             index = self.tracks_dict[track_id][0]
-            track_id, sample_id, start_idx, end_idx, label = self.tracks_list[index]
-            fp = self.get_audio_fp(track_id, sample_id, start_idx, end_idx, label)
+            track_id, fp, label = self.tracks_list[index]
             audio = self.get_audio(fp)
 
             start_idx = idx * self.audio_length
@@ -203,12 +212,7 @@ class MIRDataset(Dataset):
         get audio samples that cover the full length of the input files
         used for testing the phone classification performance
         """
-        track_id, sample_id, start_idx, end_idx = self.tracks_list[index]
-        fp = os.path.join(
-            self.root_dir,
-            track_id,
-            "{}-{}-{}.wav".format(sample_id, start_idx, end_idx),
-        )
+        track_id, fp, _ = self.tracks_list[index]
 
         audio, sr = self.loader(fp)
 
