@@ -44,7 +44,7 @@ def average_precision(y_targets, y_preds):
 
 
 def eval_all(
-    args, loader, simclr_model, model, criterion, optimizer, writer, n_tracks=None
+    args, loader, simclr_model, model, writer, n_tracks=None
 ):
     model.eval()
     predicted_classes = torch.zeros(args.n_classes).to(args.device)

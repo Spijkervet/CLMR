@@ -51,10 +51,13 @@ def tsne(features):
 
 
 def audio_latent_representations(
-    args, dataset, model, optimizer, epoch, step, global_step, writer, train
+    args, dataset, model, epoch, step, global_step, writer, train, max_tracks=20, vis=False
 ):
-    max_tracks = 20
-    batch_size = 30  # 16 for 20480 samples, and a max.
+
+    if max_tracks is None:
+        max_tracks = len(dataset.tracks_dict)
+
+    batch_size = 10 # 16 for 20480 samples, and a max.
     input_size = (args.batch_size, 1, args.audio_length)
 
     print("### Processing representations through TSNE ###")
@@ -101,7 +104,7 @@ def audio_latent_representations(
 
     out_dir = os.path.join(args.out_dir, "tsne")
 
-    if epoch % 20 == 0:
+    if epoch % 20 == 0 or vis:
         writer.add_embedding(features, metadata=labels, global_step=global_step)
         torch.save(
             features, os.path.join(out_dir, "features-{}-{}.pt".format(epoch, step))

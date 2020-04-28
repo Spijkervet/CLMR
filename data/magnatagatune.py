@@ -15,7 +15,6 @@ import librosa
 From Pons et al.
 """
 
-
 def load_id2gt(gt_file):
     ids = []
     fgt = open(gt_file)
@@ -161,7 +160,7 @@ class MTTDataset(Dataset):
         self.transform = transform
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
-
+        
         if args.mtt_pons_eval:
             [audio_repr_paths, id2audio_repr_path] = load_id2path(
                 Path(args.mtt_processed_annot) / "index_mtt.tsv"
@@ -170,6 +169,13 @@ class MTTDataset(Dataset):
             self.tracks_list_all, self.tracks_dict = pons_indexer(
                 args, self.audio_dir, id2audio_repr_path, id2gt
             )
+
+            # oversample to balance classes for logistic regression
+            # if args.lin_eval:
+            #     print(self.annotations_file)
+            #     exit(0)
+
+
         else:
             self.annotations_frame = pd.read_csv(self.annotations_file, delimiter="\t")
             self.labels = self.annotations_frame.drop(["clip_id", "mp3_path"], axis=1)
@@ -191,17 +197,17 @@ class MTTDataset(Dataset):
                 self.nodups.append([track_id, fp, label])
                 self.indexes.append(track_id)
 
-        print(
-            "Removed duplicates from:",
-            len(self.tracks_list_all),
-            "to:",
-            len(self.nodups),
-        )
         if args.lin_eval:
             print("### Linear evaluation, using segmented dataset ###")
             self.tracks_list = self.tracks_list_all
         else:
             print("### Pre-training, using whole dataset ###")
+            print(
+                "Removed duplicates from:",
+                len(self.tracks_list_all),
+                "to:",
+                len(self.nodups),
+            )
             self.tracks_list = self.nodups
         # print(len(self.tracks_list_all), len(self.tracks_list))
 

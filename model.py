@@ -24,7 +24,7 @@ def load_model(args, reload_model=False, name="context"):
     model = model.to(args.device)
 
     scheduler = None
-    if args.optimizer == "Adam" or args.lineval:
+    if args.optimizer == "Adam" or args.lin_eval:
         print("### Using Adam optimizer ###")
         optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)  # TODO: LARS
     elif args.optimizer == "LARS":
