@@ -196,7 +196,7 @@ class AudioTransforms:
         # clamp the values again between [-1, 1], in case any
         # unwanted transformations went to [-inf, inf]
         x0 = torch.clamp(x0, min=-1, max=1)
-        x1 = torch.clamp(x0, min=-1, max=1)
+        x1 = torch.clamp(x1, min=-1, max=1)
 
         # randomly get segment
         max_samples = x.size(1)
