@@ -56,7 +56,7 @@ epoch_num: 8200 # set to checkpoint number
 mlp: True 
 logistic_batch_size: 64
 logistic_epochs: 100
-logistic_lr: 0.0002
+logistic_lr: 0.0003
 reload_logreg: True
 # logreg_model_path: "logs/audio/magnatagatune/41"
 # logreg_epoch_num: 30

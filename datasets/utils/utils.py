@@ -210,6 +210,8 @@ def train_test(args, tracks, subsample=True):
                 t.label = t.mode
             elif args.task == "key":
                 t.label = t.key
+            elif args.task == "chords":
+                t.label = t.key
             else:
                 t.label = None
 
