@@ -55,7 +55,7 @@ def pons_indexer(args, path, id2audio, id2gt):
             index_name = "-".join(fn.split("-")[:-2])
             fp = os.path.join(path, d, index_name + "-0-full.mp3")
 
-        if os.path.exists(fp):
+        if os.path.exists(fp) and os.path.getsize(fp) > 0:
             if index_name not in index.keys():
                 index[index_name] = index_num
                 index_num += 1

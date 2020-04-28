@@ -17,7 +17,7 @@ from utils import post_config_hook
 from utils.eval import tagwise_auc_ap, eval_all, average_precision
 
 # metrics
-from sklearn.metrics import average_precision_score
+from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 
@@ -35,6 +35,7 @@ def sample_weight_decay():
     # We selected the l2 regularization parameter from a range of 45 logarithmically spaced values between 10−6 and 105
     weight_decay = np.logspace(-6, 5, num=45, base=10.0)
     weight_decay = np.random.choice(weight_decay)
+    weight_decay = 0.001
     print("Sampled weight decay:", weight_decay)
     return weight_decay
 
@@ -112,10 +113,19 @@ def get_metrics(domain, y, output):
     return auc, acc
 
 
-def plot_predicted_classes(predicted_classes, epoch, writer):
+def plot_predicted_classes(predicted_classes, epoch, writer, train):
+    train_test = "train" if train else "test"
     figure = plt.figure()
     plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
-    writer.add_figure("Class_distribution/train", figure, global_step=epoch)
+    writer.add_figure(f"Class_distribution/{train_test}", figure, global_step=epoch)
+
+
+def eval_chords(y, output):
+    auc = roc_auc_score(y.detach().cpu().numpy(), output.detach().cpu().numpy()).mean()
+    acc = average_precision(
+        y.detach().cpu().numpy(), output.detach().cpu().numpy()
+    ).mean()
+    return auc, acc
 
 
 def train(args, loader, model, criterion, optimizer, writer):
@@ -138,7 +148,11 @@ def train(args, loader, model, criterion, optimizer, writer):
 
         predicted_classes = get_predicted_classes(output, predicted_classes)
 
-        auc, acc = get_metrics(args.domain, y, output)
+        if args.task == "tag":
+            auc, acc = get_metrics(args.domain, y, output)
+        elif args.task == "chords":
+            auc, acc = eval_chords(y, output)
+
         auc_epoch += auc
         accuracy_epoch += acc
 
@@ -153,7 +167,7 @@ def train(args, loader, model, criterion, optimizer, writer):
         writer.add_scalar("Loss/train_step", loss, args.global_step)
         args.global_step += 1
 
-    plot_predicted_classes(predicted_classes, args.current_epoch, writer)
+    plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
     return loss_epoch, auc_epoch, accuracy_epoch
 
 
@@ -184,7 +198,7 @@ def test(args, loader, model, criterion, optimizer, writer):
                     f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
                 )
 
-    plot_predicted_classes(predicted_classes, args.current_epoch, writer)
+    plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=False)
     return loss_epoch, auc_epoch, accuracy_epoch
 
 
@@ -244,9 +258,7 @@ def main(_run, _log):
 
     weight_decay = sample_weight_decay()
     optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=3e-4,
-        # , weight_decay=weight_decay)
+        model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
     )
 
     # criterion = torch.nn.CrossEntropyLoss()
@@ -274,28 +286,32 @@ def main(_run, _log):
         print("### Loading features ###")
         (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
-    from sklearn.multiclass import OneVsRestClassifier
-
+    # from sklearn.multiclass import OneVsRestClassifier
     # from sklearn.svm import SVC
     # clf = OneVsRestClassifier(SVC(kernel='linear'))
     # clf.fit(train_X, train_y)
+    # from sklearn.linear_model import LogisticRegression
 
-    from sklearn.linear_model import LogisticRegression
+    # print("Training")
+    # clf = OneVsRestClassifier(
+    #     LogisticRegression(
+    #         max_iter=1000, solver="lbfgs", verbose=True, n_jobs=-1
+    #     )
+    # )
+    # clf.fit(train_X, train_y)
+    # print("Testing")
+    # predictions = clf.predict_proba(test_X)
 
-    print("Training")
-    clf = OneVsRestClassifier(
-        LogisticRegression(
-            max_iter=1000, solver="lbfgs", verbose=True, n_jobs=-1
-        )
-    )
-    clf.fit(train_X, train_y)
-    print("Testing")
-    predictions = clf.predict_proba(test_X)
+    # auc, ap = tagwise_auc_ap(test_y, predictions)
+    # # print(predictions)
+    # print(auc.mean(), ap.mean())
+    # exit(0)
 
-    auc, ap = tagwise_auc_ap(test_y, predictions)
-    # print(predictions)
-    print(auc.mean(), ap.mean())
-    exit(0)
+    # print(len(train_X))
+    # train_indices = np.random.choice(len(train_X), int(len(train_X)*1), replace=False)
+    # train_X = train_X[train_indices]
+    # train_y = train_y[train_indices]
+    # print(len(train_X))
 
     arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
         train_X,

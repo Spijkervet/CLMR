@@ -20,7 +20,7 @@ class RandomResizedCrop:
 
         assert (
             max_samples - self.n_samples
-        ) > 0, "max samples exceeds number of samples in crop"
+        ) >= 0, "max samples exceeds number of samples in crop"
 
         # keep a frame of 1 x n_samples so we have a margin
         start_sample = (

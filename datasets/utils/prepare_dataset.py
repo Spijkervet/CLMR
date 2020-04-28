@@ -11,7 +11,6 @@ from utils.chords import chords, keys
 
 
 def prepare_dataset(args):
-    np.random.seed(args.seed)
 
     if args.dataset == "billboard":
         mirdata.billboard.download()
@@ -24,12 +23,12 @@ def prepare_dataset(args):
     else:
         raise Exception("No valid dataset was given")
 
-
-    # TODO
     if args.task == "key":
         args.n_classes = len(keys)
     elif args.task == "mode":
         args.n_classes = 2
+    elif args.task == "chords":
+        args.n_classes = len(chords)
     else:
         args.n_classes = 0
 
@@ -38,8 +37,6 @@ def prepare_dataset(args):
     print(args.dataset, len(tracks))
  
     audio_length_sec = (1 + int(args.audio_length / args.sample_rate)) * 2  # TODO parameterize this window
-
-    # chord_labels = defaultdict(list)
 
     train_label_fp = os.path.join(LABEL_DIR, "train_split.txt")
     test_label_fp = os.path.join(LABEL_DIR, "test_split.txt")

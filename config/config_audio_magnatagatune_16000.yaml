@@ -42,8 +42,8 @@ mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
 lin_eval: True 
-mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
+# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
+mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
 list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
 num_tags: 50
@@ -51,21 +51,15 @@ num_tags: 50
 
 # reload options
 reload: False
-model_path: "logs/audio/billboard/2" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 1000 # set to checkpoint number
-# model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 
-# epoch_num: 550 # set to checkpoint number
-
+model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 560 # set to checkpoint number
 
 # logistic regression options
-mlp: False 
+mlp: True 
 logistic_batch_size: 64
-logistic_epochs: 100
+logistic_epochs: 275
+logistic_lr: 0.0002
 reload_logreg: False
-# logreg_model_path: "logs/audio/magnatagatune/41"
-# logreg_epoch_num: 30 
-# logreg_model_path: "logs/audio/magnatagatune/47"
-# logreg_epoch_num: 27
 logreg_model_path: "logs/audio/magnatagatune/54"
 logreg_epoch_num: 50
 
