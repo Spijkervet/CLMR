@@ -45,9 +45,9 @@ def train(args, train_loader, model, criterion, optimizer, writer):
         #     save_image(j, f"{TMP_DIR}/x_j{idx}_{args.current_epoch}.png")
 
         # hear transformations
-        for idx, (i, j) in enumerate(zip(x_i, x_j)):
-            tensor_to_audio(f"{TMP_DIR}/x_i{idx}_{args.current_epoch}.mp3", i, sr=args.sample_rate)
-            tensor_to_audio(f"{TMP_DIR}/x_j{idx}_{args.current_epoch}.mp3", j, sr=args.sample_rate)
+        # for idx, (i, j) in enumerate(zip(x_i, x_j)):
+        #     tensor_to_audio(f"{TMP_DIR}/x_i{idx}_{args.current_epoch}.mp3", i, sr=args.sample_rate)
+        #     tensor_to_audio(f"{TMP_DIR}/x_j{idx}_{args.current_epoch}.mp3", j, sr=args.sample_rate)
 
         optimizer.zero_grad()
         x_i = x_i.to(args.device)
