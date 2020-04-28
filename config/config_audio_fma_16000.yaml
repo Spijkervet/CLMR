@@ -45,8 +45,8 @@ mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
 lin_eval: False 
-mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
+# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
+mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
 list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
 num_tags: 50
