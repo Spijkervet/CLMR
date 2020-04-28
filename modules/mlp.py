@@ -9,10 +9,8 @@ class MLP(nn.Module):
             nn.Linear(n_features, n_features),
             nn.ReLU(),
             nn.Linear(n_features, n_classes),
-            # nn.Softmax(dim=1)
         )
 
     def forward(self, x):
         x = self.model(x)
-        # x = nn.functional.softmax(x)
         return x

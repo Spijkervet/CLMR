@@ -8,7 +8,7 @@ epochs: 10000
 # task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "billboard" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
 reload: False
 
@@ -21,9 +21,9 @@ projection_dim: 128
 dropout: 0.5
 
 # transformations
-transforms_phase: 0.8
+transforms_phase: 0.5
 transforms_gain: 0.8
-transforms_filters: 0.4
+transforms_filters: 0.7
 
 # model options
 resnet: "resnet50"
@@ -51,23 +51,19 @@ num_tags: 50
 
 
 # reload options
-model_path: "logs/audio/billboard/2" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 1000 # set to checkpoint number
-# model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 
-# epoch_num: 550 # set to checkpoint number
+model_path: "logs/audio/billboard/3" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 8200 # set to checkpoint number
 
 
 # logistic regression options
 mlp: False 
 logistic_batch_size: 64
 logistic_epochs: 100
-reload_logreg: False
+reload_logreg: True
 # logreg_model_path: "logs/audio/magnatagatune/41"
 # logreg_epoch_num: 30 
-# logreg_model_path: "logs/audio/magnatagatune/47"
-# logreg_epoch_num: 27
-logreg_model_path: "logs/audio/magnatagatune/54"
-logreg_epoch_num: 50
+logreg_model_path: "logs/audio/magnatagatune/47"
+logreg_epoch_num: 27
 
 ## vision
 image_height: 220

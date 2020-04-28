@@ -9,7 +9,7 @@ from datasets.utils.prepare_dataset import prepare_dataset
 def get_dataset(args):
     if args.domain == "audio":
         if args.dataset == "billboard":
-            prepare_dataset(args)
+            # prepare_dataset(args)
             (train_loader, train_dataset, test_loader, test_dataset) = get_mir_loaders(args)
         elif args.dataset == "fma":
             (train_loader, train_dataset, test_loader, test_dataset) = get_fma_loaders(args)

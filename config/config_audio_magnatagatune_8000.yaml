@@ -1,6 +1,6 @@
 # train options
 seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 64 # 64 for audio, 256 for images
+batch_size: 128 # 64 for audio, 256 for images
 num_workers: 16
 start_epoch: 0
 epochs: 10000
@@ -10,18 +10,17 @@ domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-reload: False
 
 # audio
-audio_length: 42848 # 59049 
-sample_rate: 16000 # 22050
+audio_length: 20736 
+sample_rate: 8000
 
 normalize: True
 projection_dim: 128
 dropout: 0.5
 
 # transformations
-transforms_phase: 0.8
+transforms_phase: 0.5
 transforms_gain: 0.8
 transforms_filters: 0.4
 
@@ -42,15 +41,16 @@ fp16_opt_level: "O2"
 mtt_pons_eval: True
 # use FULL dataset for pre-training, since segmented version are COROLLATED
 # use normal dataset for lin. eval.
-lin_eval: True 
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
+lin_eval: False
+mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_8000"
+# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
 mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
 list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
 num_tags: 50
 
 
 # reload options
+reload: False
 model_path: "logs/audio/billboard/2" # set to the directory containing `checkpoint_##.tar` 
 epoch_num: 1000 # set to checkpoint number
 # model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 

@@ -1,0 +1,1 @@
+python -m testing.logistic_regression --name clmr-logreg-pretrainbillboard-evalmagnatagatune-mlp-8200epoch
