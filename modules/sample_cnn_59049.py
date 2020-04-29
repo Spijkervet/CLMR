@@ -49,7 +49,6 @@ class SampleCNN59049(nn.Module):
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.MaxPool1d(3, stride=3),
-            nn.Dropout(args.dropout),
         )
         # 81 x 256
         self.conv7 = nn.Sequential(
