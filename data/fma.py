@@ -73,6 +73,9 @@ class FmaDataset(Dataset):
         y_train = train_df["track"]["genre_top"]
         y_test = test_df["track"]["genre_top"]
 
+        print(y_train)
+        exit(0) # TODO
+
         # fill missing genres with unknown token
         y_train = y_train.cat.add_categories("<UNK>")
         y_test = y_test.cat.add_categories("<UNK>")
