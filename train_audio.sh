@@ -1,1 +1,1 @@
-python main.py --name clmr-magnatagatune-16000
+python main.py --name clmr-magnatagatune-22050-temp0.25

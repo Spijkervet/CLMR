@@ -1,2 +1,2 @@
-# python -m testing.logistic_regression --name clmr-logreg-ptmagnatagatune-evalmagnatagatune-perceptron-560epochs-lr2-fulldata
-python -m testing.logistic_regression --name clmr-logreg-ptbillboard-evalbillboard-500epochs-mlp
+python -m testing.logistic_regression --name clmr-logreg-ptmagnatagatune-evalmagnatagatune-mlp-11000epochs-lr2-50perc
+# python -m testing.logistic_regression --name clmr-logreg-ptbillboard-evalbillboard-500epochs-mlp

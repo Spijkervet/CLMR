@@ -41,7 +41,6 @@ def sample_weight_decay():
     # We selected the l2 regularization parameter from a range of 45 logarithmically spaced values between 10−6 and 105
     weight_decay = np.logspace(-6, 5, num=45, base=10.0)
     weight_decay = np.random.choice(weight_decay)
-    weight_decay = 0.001
     print("Sampled weight decay:", weight_decay)
     return weight_decay
 
@@ -151,7 +150,7 @@ def train(args, loader, model, criterion, optimizer, writer):
 
         predicted_classes = get_predicted_classes(output, predicted_classes)
 
-        if args.task == "tag":
+        if args.task == "tags":
             auc, acc = get_metrics(args.domain, y, output)
         elif args.task == "chords":
             auc, acc = eval_chords(y, output)
@@ -203,7 +202,7 @@ def test(args, loader, model, criterion, optimizer, writer):
 
             predicted_classes = get_predicted_classes(output, predicted_classes)
 
-            if args.task == "tag":
+            if args.task == "tags":
                 auc, acc = get_metrics(args.domain, y, output)
             elif args.task == "chords":
                 auc, acc = eval_chords(y, output)
@@ -276,9 +275,9 @@ def main(_run, _log):
     model = model.to(args.device)
 
     if not args.mlp:
-        weight_decay = sample_weight_decay()
+        weight_decay = args.weight_decay # sample_weight_decay()
     else:
-        weight_decay = 0
+        weight_decay = args.weight_decay # TODO
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
     )
@@ -307,14 +306,21 @@ def main(_run, _log):
     else:
         print("### Loading features ###")
         (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
+    
+    print("Train dataset size:", len(train_X))
+    train_indices = np.random.choice(len(train_X), int(len(train_X) * args.perc_train_data), replace=False)
+    train_X = train_X[train_indices]
+    train_y = train_y[train_indices]
+    print("Train dataset size:", len(train_X))
 
     arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
         train_X,
         train_y,
         test_X,
         test_y,
-        len(test_loader.dataset),  # args.logistic_batch_size
+        len(test_loader.dataset) # args.logistic_batch_size
     )
+
 
     # run training
     solve(
