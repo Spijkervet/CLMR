@@ -39,7 +39,7 @@ class SampleCNN16000(nn.Module):
         )
 
         self.conv5 = nn.Sequential(
-            nn.Conv1d(256, 256, kernel_size=2, stride=1, padding=1),
+            nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.MaxPool1d(3, stride=3),
