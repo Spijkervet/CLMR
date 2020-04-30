@@ -42,7 +42,7 @@ def main(_run, _log):
     if args.model_name == "supervised":
 
         supervised = Supervised(args, model)
-        supervised.solve(train_loader, test_loader, args.start_epoch, args.epochs)
+        supervised.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
         auc, ap = eval_all(
             args, test_loader, None, supervised.model, writer, n_tracks=None
         )
