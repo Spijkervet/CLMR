@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from data import get_dataset
 from model import load_model, save_model
+from modules.sync_batchnorm import convert_model
 from solvers import CLMR, Supervised
 from utils import eval_all, post_config_hook
 from validation import audio_latent_representations, vision_latent_representations
@@ -19,7 +20,13 @@ from experiment import ex
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
     args.lin_eval = False  # first, pre-train, after that, lin. evaluation
-    
+    args.n_gpu = torch.cuda.device_count()  
+    args.batch_size = args.batch_size * args.n_gpu
+    args.epochs = args.epochs * args.n_gpu
+
+
+
+
     args = post_config_hook(args, _run)
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -29,7 +36,14 @@ def main(_run, _log):
     model, optimizer, scheduler = load_model(
         args, reload_model=args.reload, name=args.model_name
     )
-    print(model.summary())
+
+    if args.n_gpu > 1:
+        model = torch.nn.DataParallel(model)
+        model = convert_model(model)
+        model = model.to(args.device)
+        print(model.module.summary())
+    else:
+        print(model.summary())
 
     writer = SummaryWriter(log_dir=args.tb_dir)
 
@@ -39,6 +53,8 @@ def main(_run, _log):
 
     args.global_step = 0
     args.current_epoch = 0
+    print(args)
+
     if args.model_name == "supervised":
 
         supervised = Supervised(args, model)
