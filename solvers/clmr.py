@@ -85,7 +85,7 @@ class CLMR:
         return loss_epoch / len(loader)
 
     def visualise_latent_space(self, args, train_loader, test_loader):
-        if args.model_name == "unsupervised":
+        if args.model_name == "clmr":
             if args.domain == "audio":
                 audio_latent_representations(
                     args,
