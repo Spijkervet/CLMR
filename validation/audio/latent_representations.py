@@ -61,6 +61,9 @@ def audio_latent_representations(
     input_size = (args.batch_size, 1, args.audio_length)
 
     print("### Processing representations through TSNE ###")
+    if isinstance(model, torch.nn.DataParallel):
+        model = model.module
+
     model.eval()
     with torch.no_grad():
         latent_rep_size = model.get_latent_size(input_size)
