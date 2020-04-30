@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
+from utils import mask_correlated_samples
 
 class NT_Xent(nn.Module):
 
-    def __init__(self, batch_size, temperature, mask, device):
+    def __init__(self, batch_size, temperature, device):
         super(NT_Xent, self).__init__()
         self.batch_size = batch_size
         self.temperature = temperature
-        self.mask = mask
+        self.mask = mask_correlated_samples(batch_size)
         self.device = device
 
         self.criterion = nn.CrossEntropyLoss(reduction="sum")

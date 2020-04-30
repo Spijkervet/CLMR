@@ -10,10 +10,14 @@ from tqdm import tqdm
 from datasets.utils.utils import write_statistics
 import librosa
 
+# much faster loading
+import soundfile as sf
+
 
 """
 From Pons et al.
 """
+
 
 def load_id2gt(gt_file):
     ids = []
@@ -46,7 +50,7 @@ def pons_indexer(args, path, id2audio, id2gt):
     index_num = 0
     for idx, (clip_id, label) in enumerate(id2gt.items()):
         fn = Path(id2audio[clip_id].split(".")[0])
-        if args.lin_eval:
+        if args.lin_eval or args.model_name == "supervised":
             fp = os.path.join(path, str(fn) + ".mp3")
             index_name = "-".join(fn.stem.split("-")[:-2])  # get all tracks together
         else:
@@ -61,7 +65,17 @@ def pons_indexer(args, path, id2audio, id2gt):
                 index_num += 1
 
             label = torch.FloatTensor(label)
-            items.append((index[index_name], fp, label))
+
+            # if supervised/eval
+            if args.model_name == "supervised" or args.lin_eval:
+                # n segments so it sees all data
+                num_segments = 10
+                for n in range(num_segments):
+                    items.append((index[index_name], fp, label, n))
+            else:
+                items.append(
+                    (index[index_name], fp, label, 0)
+                )  # only one segment, since full track
             tracks_dict[index[index_name]].append(idx)
         else:
             print("File not found: {}".format(fp))
@@ -73,13 +87,12 @@ def pons_indexer(args, path, id2audio, id2gt):
 
 
 def default_loader(path):
-    # audio, sr = librosa.core.load(path, sr=22050)
-    # audio = torch.from_numpy(audio)
-    # audio = audio.reshape(1, -1)
-    # return audio ,sr
-    # return audio
-    return torchaudio.load(path, normalization=True)
-    # return torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
+    # audio, sr = sf.read(path)
+    # audio = audio / (1 << 16) # normalise
+    # audio = torch.from_numpy(audio).float().reshape(1, -1)
+    # audio, sr = torchaudio.load_wav(path, normalization=True)  # fastest for now
+    audio, sr = torchaudio.load(path, normalization=True)  # fastest for now
+    return audio, sr
 
 
 def get_dataset_stats(loader, tracks_list, stats_path):
@@ -89,61 +102,12 @@ def get_dataset_stats(loader, tracks_list, stats_path):
         audio, sr = loader(fp)
         means.append(audio.mean())
         stds.append(audio.std())
-
     return np.array(means).mean(), np.array(stds).mean()
-
-
-def default_indexer(args, path, tracks, labels, sample_rate, num_tags, tag_list):
-    items = []
-    tracks_dict = defaultdict(list)
-    index = 0
-    prev_index = None
-    for idx, track in tracks.iterrows():
-        fn = Path(track["mp3_path"].split(".")[0])
-        if args.lin_eval:
-            fp = os.path.join(path, str(fn) + ".mp3")
-            index_name = "-".join(fn.stem.split("-")[:-2])  # get all tracks together
-        else:
-            d = fn.parent.stem
-            fn = fn.stem
-            index_name = "-".join(fn.split("-")[:-2])
-            fp = os.path.join(path, d, index_name + "-0-full.mp3")
-
-        if os.path.exists(fp) and os.path.getsize(fp) > 0:
-            if index_name != prev_index:
-                prev_index = index_name
-                index += 1
-
-            # build label in the order of 50_tags.txt
-            label = np.zeros(num_tags)
-            for i, tag in enumerate(tag_list):
-                if tag == "":
-                    continue
-
-                if track[tag] == 1:
-                    label[i] = 1
-            label = torch.FloatTensor(label)
-
-            labels_vec = torch.FloatTensor(list(labels.iloc[idx]))
-            if (label == labels_vec).all() == False:
-                raise Exception("Labels do not match")
-
-            items.append((index, fp, label))
-            tracks_dict[index].append(idx)
-        else:
-            print(f"File not found or empty: {fp}")
-    return items, tracks_dict
 
 
 class MTTDataset(Dataset):
     def __init__(
-        self,
-        args,
-        annotations_file,
-        train,
-        indexer=default_indexer,
-        loader=default_loader,
-        transform=None,
+        self, args, annotations_file, train, loader=default_loader, transform=None,
     ):
         """
         Args : 
@@ -151,54 +115,40 @@ class MTTDataset(Dataset):
             audio_dir : directory that contains folders 0 - f
         """
 
-        self.indexer = indexer
+        self.indexer = pons_indexer
         self.loader = loader
         self.tag_list = open(args.list_of_tags, "r").read().split("\n")
-        self.audio_dir = args.mtt_processed_audio
+
+        if args.model_name == "supervised" or args.lin_eval:
+            dir_name = f"processed_{args.sample_rate}"
+        else:
+            dir_name = f"processed_concat_{args.sample_rate}"
+
+        self.audio_dir = os.path.join(args.data_input_dir, "magnatagatune", dir_name)
         self.num_tags = args.num_tags
         self.annotations_file = annotations_file
         self.transform = transform
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
-        
-        if args.mtt_pons_eval:
-            [audio_repr_paths, id2audio_repr_path] = load_id2path(
-                Path(args.mtt_processed_annot) / "index_mtt.tsv"
-            )
-            [ids, id2gt] = load_id2gt(self.annotations_file)
-            self.tracks_list_all, self.tracks_dict = pons_indexer(
-                args, self.audio_dir, id2audio_repr_path, id2gt
-            )
+        self.model_name = args.model_name
 
-            # oversample to balance classes for logistic regression
-            # if args.lin_eval:
-            #     print(self.annotations_file)
-            #     exit(0)
-
-
-        else:
-            self.annotations_frame = pd.read_csv(self.annotations_file, delimiter="\t")
-            self.labels = self.annotations_frame.drop(["clip_id", "mp3_path"], axis=1)
-
-            self.tracks_list_all, self.tracks_dict = self.indexer(
-                args,
-                self.audio_dir,
-                self.annotations_frame,
-                self.labels,
-                self.sample_rate,
-                self.num_tags,
-                self.tag_list,
-            )
+        [audio_repr_paths, id2audio_repr_path] = load_id2path(
+            Path(args.mtt_processed_annot) / "index_mtt.tsv"
+        )
+        [ids, id2gt] = load_id2gt(self.annotations_file)
+        self.tracks_list_all, self.tracks_dict = self.indexer(
+            args, self.audio_dir, id2audio_repr_path, id2gt
+        )
 
         self.nodups = []
         self.indexes = []
-        for track_id, fp, label in self.tracks_list_all:
+        for track_id, fp, label, segment in self.tracks_list_all:
             if track_id not in self.indexes:
-                self.nodups.append([track_id, fp, label])
+                self.nodups.append([track_id, fp, label, segment])
                 self.indexes.append(track_id)
 
-        if args.lin_eval:
-            print("### Linear evaluation, using segmented dataset ###")
+        if args.lin_eval or args.model_name == "supervised":
+            print("### Linear / Supervised training, using segmented dataset ###")
             self.tracks_list = self.tracks_list_all
         else:
             print("### Pre-training, using whole dataset ###")
@@ -209,7 +159,16 @@ class MTTDataset(Dataset):
                 len(self.nodups),
             )
             self.tracks_list = self.nodups
-        # print(len(self.tracks_list_all), len(self.tracks_list))
+
+        self.tracks_list_test = []
+        for track_id, fp, label, segment in self.tracks_list:
+            if (
+                segment == 0
+            ):  # remove segment, since we will evaluate with get_full_size_audio()
+                self.tracks_list_test.append([track_id, fp, label, -1])
+
+        print(f"Num segments: {len(self.tracks_list)}")
+        print(f"Num tracks: {len(self.tracks_list_test)}")
 
         # normalise entire dataset
         # name = "Train" if train else "Test"
@@ -232,8 +191,7 @@ class MTTDataset(Dataset):
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
-
-        max_samples = audio.size(1)
+        max_samples = audio.shape[1]
         assert (
             max_samples - self.audio_length
         ) > 0, "max samples exceeds number of samples in crop"
@@ -247,14 +205,13 @@ class MTTDataset(Dataset):
         # split into equally sized tensors of self.audio_length
         batch = torch.split(audio, self.audio_length, dim=1)
 
-         # remove last, since it is not a full self.audio_length, and stack
+        # remove last, since it is not a full self.audio_length, and stack
         batch = torch.cat(batch[:-1])
 
         # reshape to B x 1 x N
         batch = batch.reshape(batch.shape[0], 1, -1)
         return batch
- 
-    
+
     def normalise_audio(self, audio):
         return (audio - self.mean) / self.std
 
@@ -263,19 +220,16 @@ class MTTDataset(Dataset):
 
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, index):
-        track_id, fp, label = self.tracks_list[index]
-
+        track_id, fp, label, segment = self.tracks_list[index]
         audio = self.get_audio(fp)
 
-        # this is done in the RandomResizeCrop transformation
-        # max_samples = audio.size(1)
-        # start_idx = np.random.randint(0, max_samples - self.audio_length)
-        # audio = audio[:, start_idx : start_idx + self.audio_length]
-        
-        if self.transform:
+        # only transform if supervised
+        if self.model_name == "clmr" and self.transform:
             audio = self.transform(audio)
-
-        return audio, label 
+        elif self.model_name == "supervised":
+            start_idx = segment * self.audio_length
+            audio = audio[:, start_idx : start_idx + self.audio_length]
+        return audio, label, track_id
 
     def __len__(self):
         return len(self.tracks_list)

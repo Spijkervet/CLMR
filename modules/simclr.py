@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torchvision
+from .model import Model
 from .encoder import WaveEncoder
-from .sample_cnn_16000 import SampleCNN16000
 from .sample_cnn_59049 import SampleCNN59049
+from .sample_cnn_16000 import SampleCNN16000
 from .sample_cnn_8000 import SampleCNN8000
 
 
@@ -15,7 +16,7 @@ class Identity(nn.Module):
         return x
 
 
-class SimCLR(nn.Module):
+class SimCLR(Model):
     """
     We opt for simplicity and adopt the commonly used ResNet (He et al., 2016) to obtain hi = f(x ̃i) = ResNet(x ̃i) where hi ∈ Rd is the output after the average pooling layer.
     """
@@ -29,10 +30,10 @@ class SimCLR(nn.Module):
         # self.encoder = WaveEncoder(input_dim)
         # self.encoder = SampleCNN42848()
         if args.domain == "audio":
-            if args.sample_rate == 16000:
-                self.encoder = SampleCNN16000(args)
-            elif args.sample_rate == 22050:
+            if args.sample_rate == 22050:
                 self.encoder = SampleCNN59049(args)
+            elif args.sample_rate == 16000:
+                self.encoder = SampleCNN16000(args)
             elif args.sample_rate == 8000:
                 self.encoder = SampleCNN8000(args)
             print(f"### {self.encoder.__class__.__name__} ###")
