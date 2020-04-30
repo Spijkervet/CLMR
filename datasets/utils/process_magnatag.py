@@ -1,18 +1,14 @@
 import os
 import errno
 import numpy as np
-import torch
-import torchaudio
-import librosa
 from pathlib import Path
 import multiprocessing
 from glob import glob
 from tqdm import tqdm
-import soundfile as sf
 
 file_format = ".wav" #.mp3
 sample_rate = 22050 
-MTT_DIR = "./datasets/audio/magnatagatune/processed_concat_22050" # /processed
+MTT_DIR = "./datasets/audio/magnatagatune/concat_16000" # /processed
 AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}_wav"
 
 
