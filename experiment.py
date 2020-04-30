@@ -29,6 +29,7 @@ ex = Experiment("CLMR")
 def my_config():
     # config_file = "./config/config_audio_fma_16000.yaml"
     # config_file = "./config/config_audio_billboard_16000.yaml"
+    # config_file = "./config/config_audio_magnatagatune_8000.yaml"
     # config_file = "./config/config_audio_magnatagatune_16000.yaml"
     config_file = "./config/config_audio_magnatagatune_22050.yaml"
 
@@ -39,7 +40,7 @@ def my_config():
 
 
     #### file output directory
-    ex.observers.append(FileStorageObserver(Path("./logs", cfg["domain"], cfg["dataset"], cfg["task"])))
+    ex.observers.append(FileStorageObserver(Path("./logs", cfg["domain"], cfg["dataset"], cfg["model_name"])))
     del cfg
 
 

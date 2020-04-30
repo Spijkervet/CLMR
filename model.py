@@ -1,20 +1,23 @@
 import os
 import torch
-from modules import SimCLR, LogisticRegression, LARS, MLP
+from modules import SimCLR, LogisticRegression, LARS, MLP, SampleCNN
 
-def load_model(args, reload_model=False, name="context"):
 
-    if name == "context":
+def load_model(args, reload_model=False, name="clmr"):
+
+    if name == "clmr":
         model = SimCLR(args)
     elif name == "supervised":
+        model = SampleCNN(args)
+    elif name == "eval":
         if args.mlp:
             model = MLP(args.n_features, args.n_classes)
         else:
             model = LogisticRegression(args.n_features, args.n_classes)
 
     if reload_model:
-        model_path = args.model_path if name == "context" else args.logreg_model_path
-        epoch_num = args.epoch_num if name == "context" else args.logreg_epoch_num
+        model_path = args.model_path if name == "clmr" else args.logreg_model_path
+        epoch_num = args.epoch_num if name == "clmr" else args.logreg_epoch_num
         print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {epoch_num} ###")
         model_fp = os.path.join(
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
@@ -46,23 +49,10 @@ def load_model(args, reload_model=False, name="context"):
     else:
         raise NotImplementedError
 
-    if args.fp16:
-        try:
-            from apex import amp
-        except ImportError:
-            raise ImportError(
-                "Install the apex package from https://www.github.com/nvidia/apex to use fp16 for training"
-            )
-
-        print("### USING FP16 ###")
-        model, optimizer = amp.initialize(
-            model, optimizer, opt_level=args.fp16_opt_level
-        )
-
     return model, optimizer, scheduler
 
 
-def save_model(args, model, optimizer, name="context"):
+def save_model(args, model, optimizer, name="clmr"):
     out = os.path.join(
         args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
     )

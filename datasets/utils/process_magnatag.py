@@ -10,9 +10,10 @@ from glob import glob
 from tqdm import tqdm
 import soundfile as sf
 
-sample_rate = 22050
-MTT_DIR = "./datasets/audio/magnatagatune/raw" # /processed
-AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_{sample_rate}"
+file_format = ".wav" #.mp3
+sample_rate = 22050 
+MTT_DIR = "./datasets/audio/magnatagatune/processed_concat_22050" # /processed
+AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}_wav"
 
 
 def process(raw_path, path, audio, npyfilepath):
@@ -25,7 +26,7 @@ def process(raw_path, path, audio, npyfilepath):
     all_mp3 = glob(search)
 
     try:
-        new_fp = str(Path(npyfilepath) / (path + "/" + fn + ".mp3"))
+        new_fp = str(Path(npyfilepath) / (path + "/" + fn + file_format))
         # resample
         cmd = [
             "ffmpeg",
