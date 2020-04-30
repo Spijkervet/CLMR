@@ -242,7 +242,7 @@ class MTTDataset(Dataset):
         batch = torch.zeros(batch_size, 1, self.audio_length)
         for idx in range(batch_size):
             index = self.tracks_dict[track_id][0]
-            _, fp, label = self.tracks_list_all[index]  # from non-dup!!
+            _, fp, label, _ = self.tracks_list_all[index]  # from non-dup!!
 
             audio = self.get_audio(fp)
 
