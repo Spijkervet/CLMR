@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from model import save_model
 from utils import tagwise_auc_ap
 
 
@@ -21,7 +22,7 @@ class Supervised:
 
         self.criterion = torch.nn.BCEWithLogitsLoss()
 
-    def solve(self, train_loader, test_loader, start_epoch, epochs):
+    def solve(self, args, train_loader, test_loader, start_epoch, epochs):
         for epoch in range(start_epoch, epochs):
             for step, (x, y, _) in enumerate(train_loader):
                 self.optimizer.zero_grad()
@@ -52,6 +53,10 @@ class Supervised:
             self.scheduler.step(eval_loss)
             curr_lr = self.optimizer.param_groups[0]["lr"]
             print("Learning rate : {}".format(curr_lr))
+
+            if epoch % 10 == 0:
+                save_model(args, self.model, self.optimizer)
+
             if curr_lr < 1e-7:
                 print("Early stopping")
                 break
