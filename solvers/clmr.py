@@ -1,7 +1,7 @@
 import torch
 from model import save_model
 from modules import NT_Xent
-
+from validation.audio.latent_representations import audio_latent_representations
 
 class CLMR:
     def __init__(self, args, model, optimizer, scheduler, writer):
