@@ -306,12 +306,13 @@ def main(_run, _log):
     else:
         print("### Loading features ###")
         (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
-    
-    print("Train dataset size:", len(train_X))
-    train_indices = np.random.choice(len(train_X), int(len(train_X) * args.perc_train_data), replace=False)
-    train_X = train_X[train_indices]
-    train_y = train_y[train_indices]
-    print("Train dataset size:", len(train_X))
+
+    if args.perc_train_data < 1.0:    
+        print("Train dataset size:", len(train_X))
+        train_indices = np.random.choice(len(train_X), int(len(train_X) * args.perc_train_data), replace=False)
+        train_X = train_X[train_indices]
+        train_y = train_y[train_indices]
+        print("Train dataset size:", len(train_X))
 
     arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
         train_X,

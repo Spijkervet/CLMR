@@ -24,7 +24,7 @@ def main(_run, _log):
 
     (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
 
-    simclr_model, _, _ = load_model(args, reload_model=True, name="context")
+    simclr_model, _, _ = load_model(args, reload_model=True, name="clmr")
     simclr_model.eval()
 
     args.n_features = simclr_model.n_features

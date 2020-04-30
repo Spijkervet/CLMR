@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, average_precision_score
 from utils.chords import chords, chromatic_scale
 
+
 def itemwise_auc_ap(y, pred):
     """ Annotation : item-wise(row wise) calculation """
     n_songs = y.shape[0]
@@ -50,29 +51,30 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
 
     # sub-sample if n_tracks is not none, else eval whole dataset
     if n_tracks:
-        ids = np.random.choice(len(loader.dataset.tracks_list), n_tracks)
+        ids = np.random.choice(len(loader.dataset.tracks_list_test), n_tracks)
         tracks = [
             (track_id, fp, label)
-            for track_id, fp, label in loader.dataset.tracks_list
+            for track_id, fp, label in loader.dataset.tracks_list_test
             if track_id in ids
         ]
     else:
-        tracks = loader.dataset.tracks_list[:n_tracks]
+        tracks = loader.dataset.tracks_list_test[:n_tracks]
         n_tracks = len(tracks)
 
     with torch.no_grad():
         # run all audio through model and make prediction array
-        for step, (track_id, fp, y) in enumerate(tracks):
+        for step, (track_id, fp, y, _) in enumerate(tracks):
             x = loader.dataset.get_full_size_audio(track_id, fp)
-
             x = x.to(args.device)
             y = y.to(args.device)
 
             # get encoding
-            with torch.no_grad():
-                h, z = simclr_model(x)
+            if simclr_model:
+                with torch.no_grad():
+                    h, z = simclr_model(x)
+                x = h
 
-            output = model(h)
+            output = model(x)
             predictions = output.argmax(1).detach()
             classes, counts = torch.unique(predictions, return_counts=True)
             predicted_classes[classes] += counts
@@ -90,7 +92,7 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
     y_true = []
     pred_array = np.array(pred_array)
     id_array = np.array(id_array)
-    for track_id, _, label in tracks:
+    for track_id, _, label, _ in tracks:
         avg = np.mean(pred_array[np.where(id_array == track_id)], axis=0)
         y_pred.append(avg)
         y_true.append(label.numpy())
