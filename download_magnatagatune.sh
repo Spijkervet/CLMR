@@ -16,8 +16,17 @@ mv 0 1 2 3 4 5 6 7 8 9 a b c d e f raw
 
 
 cd $CWD
-# process magnatagatune
-python -m datasets.utils.process_magnatag_annot
-mv 50_tags.txt datasets/audio/magnatagatune
 
+mkdir -p datasets/audio/magnatagatune/processed_annotations
+cd datasets/audio/magnatagatune/processed_annotations
+wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/index_mtt.tsv
+wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/train_gt_mtt.tsv
+wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/val_gt_mtt.tsv
+wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/test_gt_mtt.tsv
+
+cd $CWD
+
+# concat samples
+python -m datasets.utils.concat_magnatag
+# process to desired samplerate
 python -m datasets.utils.process_magnatag
