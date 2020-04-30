@@ -14,7 +14,9 @@ def load_model(args, reload_model=False, name="clmr"):
             model = MLP(args.n_features, args.n_classes)
         else:
             model = LogisticRegression(args.n_features, args.n_classes)
-
+    else:
+        raise Exception("Cannot infer model from configuration")
+    
     if reload_model:
         model_path = args.model_path if name == "clmr" else args.logreg_model_path
         epoch_num = args.epoch_num if name == "clmr" else args.logreg_epoch_num

@@ -48,7 +48,7 @@ def sample_weight_decay():
 def inference(loader, context_model, device):
     feature_vector = []
     labels_vector = []
-    for step, ((_, _, x), y) in enumerate(loader):
+    for step, (x, y, _) in enumerate(loader):
         x = x.to(device)
 
         # get encoding
@@ -258,26 +258,27 @@ def solve(args, train_loader, test_loader, model, criterion, optimizer, writer):
 @ex.automain
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
-    args = post_config_hook(args, _run)
     args.lin_eval = True
+
+    args = post_config_hook(args, _run)
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.batch_size = args.logistic_batch_size
 
     (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
 
-    context_model, _, _ = load_model(args, reload_model=True, name="context")
+    context_model, _, _ = load_model(args, reload_model=True, name="clmr")
     context_model.eval()
 
     args.n_features = context_model.n_features
 
-    model, _, _ = load_model(args, reload_model=False, name="supervised")
+    model, _, _ = load_model(args, reload_model=False, name="eval")
     model = model.to(args.device)
 
     if not args.mlp:
-        weight_decay = args.weight_decay # sample_weight_decay()
+        weight_decay = args.weight_decay  # sample_weight_decay()
     else:
-        weight_decay = args.weight_decay # TODO
+        weight_decay = args.weight_decay  # TODO
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
     )
@@ -307,9 +308,11 @@ def main(_run, _log):
         print("### Loading features ###")
         (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
-    if args.perc_train_data < 1.0:    
+    if args.perc_train_data < 1.0:
         print("Train dataset size:", len(train_X))
-        train_indices = np.random.choice(len(train_X), int(len(train_X) * args.perc_train_data), replace=False)
+        train_indices = np.random.choice(
+            len(train_X), int(len(train_X) * args.perc_train_data), replace=False
+        )
         train_X = train_X[train_indices]
         train_y = train_y[train_indices]
         print("Train dataset size:", len(train_X))
@@ -319,9 +322,8 @@ def main(_run, _log):
         train_y,
         test_X,
         test_y,
-        len(test_loader.dataset) # args.logistic_batch_size
+        len(test_loader.dataset),  # args.logistic_batch_size
     )
-
 
     # run training
     solve(

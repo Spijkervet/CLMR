@@ -1,1 +1,3 @@
-run with no backprop in test
+new record:
+[Test]: ROC-AUC 0.867740143738259
+[Test]: PR-AUC 0.318668385454047
