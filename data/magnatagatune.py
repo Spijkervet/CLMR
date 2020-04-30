@@ -51,13 +51,13 @@ def pons_indexer(args, path, id2audio, id2gt):
     for idx, (clip_id, label) in enumerate(id2gt.items()):
         fn = Path(id2audio[clip_id].split(".")[0])
         if args.lin_eval or args.model_name == "supervised":
-            fp = os.path.join(path, str(fn) + ".mp3")
+            fp = os.path.join(path, str(fn) + ".wav")
             index_name = "-".join(fn.stem.split("-")[:-2])  # get all tracks together
         else:
             d = fn.parent.stem
             fn = fn.stem
             index_name = "-".join(fn.split("-")[:-2])
-            fp = os.path.join(path, d, index_name + "-0-full.mp3")
+            fp = os.path.join(path, d, index_name + "-0-full.wav")
 
         if os.path.exists(fp) and os.path.getsize(fp) > 0:
             if index_name not in index.keys():
@@ -90,8 +90,8 @@ def default_loader(path):
     # audio, sr = sf.read(path)
     # audio = audio / (1 << 16) # normalise
     # audio = torch.from_numpy(audio).float().reshape(1, -1)
-    # audio, sr = torchaudio.load_wav(path, normalization=True)  # fastest for now
-    audio, sr = torchaudio.load(path, normalization=True)  # fastest for now
+    audio, sr = torchaudio.load_wav(path, normalization=True)  # fastest for now
+    # audio, sr = torchaudio.load(path, normalization=True)  # for mp3
     return audio, sr
 
 
@@ -117,12 +117,12 @@ class MTTDataset(Dataset):
 
         self.indexer = pons_indexer
         self.loader = loader
-        self.tag_list = open(args.list_of_tags, "r").read().split("\n")
+        # self.tag_list = open(args.list_of_tags, "r").read().split("\n")
 
         if args.model_name == "supervised" or args.lin_eval:
-            dir_name = f"processed_{args.sample_rate}"
+            dir_name = f"processed_{args.sample_rate}_wav"
         else:
-            dir_name = f"processed_concat_{args.sample_rate}"
+            dir_name = f"processed_concat_{args.sample_rate}_wav"
 
         self.audio_dir = os.path.join(args.data_input_dir, "magnatagatune", dir_name)
         self.num_tags = args.num_tags
