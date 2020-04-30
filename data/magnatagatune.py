@@ -109,12 +109,8 @@ class MTTDataset(Dataset):
     def __init__(
         self, args, annotations_file, train, loader=default_loader, transform=None,
     ):
-        """
-        Args : 
-            csvfile : train/val/test csvfiles
-            audio_dir : directory that contains folders 0 - f
-        """
 
+        self.lin_eval = args.lin_eval
         self.indexer = pons_indexer
         self.loader = loader
         self.tag_list = open(args.list_of_tags, "r").read().split("\n")
@@ -223,12 +219,15 @@ class MTTDataset(Dataset):
         track_id, fp, label, segment = self.tracks_list[index]
         audio = self.get_audio(fp)
 
-        # only transform if supervised
-        if self.model_name == "clmr" and self.transform:
-            audio = self.transform(audio)
-        elif self.model_name == "supervised":
+        # only transform if unsupervised training
+        if self.lin_eval or self.model_name == "supervised":
             start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
+        elif self.model_name == "clmr" and self.transform:
+            audio = self.transform(audio)
+        else:
+            raise Exception("Transformation unknown")
+
         return audio, label, track_id
 
     def __len__(self):
