@@ -10,7 +10,7 @@ domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-model_name: "clmr" # [clmr, supervised]
+model_name: "supervised" # [clmr, supervised]
 
 # supervised params
 supervised_lr: 0.01
@@ -54,13 +54,13 @@ epoch_num: 1100 # set to checkpoint number
 # epoch_num: 550 # set to checkpoint number
 
 
-# logistic regression options
+## logistic regression options
 mlp: True 
 logistic_batch_size: 64
 logistic_epochs: 275
 logistic_lr: 0.0004
 reload_logreg: False
-perc_train_data: 0.40
+perc_train_data: 1.0
 # logreg_model_path: "logs/audio/magnatagatune/41"
 # logreg_epoch_num: 30 
 # logreg_model_path: "logs/audio/magnatagatune/47"
