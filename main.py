@@ -11,16 +11,23 @@ from modules.sync_batchnorm import convert_model
 from solvers import CLMR, Supervised
 from utils import eval_all, post_config_hook
 from validation import audio_latent_representations, vision_latent_representations
+import copy
 
 #### pass configuration
 from experiment import ex
+
+
+def args_hparams(args):
+    args_dict = copy.deepcopy(vars(args))
+    del args_dict["device"]
+    return args_dict
 
 
 @ex.automain
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
     args.lin_eval = False  # first, pre-train, after that, lin. evaluation
-    args.n_gpu = torch.cuda.device_count()  
+    args.n_gpu = torch.cuda.device_count()
     args.batch_size = args.batch_size * args.n_gpu
     args.epochs = args.epochs * args.n_gpu
 
@@ -50,20 +57,22 @@ def main(_run, _log):
 
     args.global_step = 0
     args.current_epoch = 0
-    print(args)
 
     if args.model_name == "supervised":
-
         supervised = Supervised(args, model)
         supervised.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
         auc, ap = eval_all(
             args, test_loader, None, supervised.model, writer, n_tracks=None
         )
         print(f"Final: AUC: {auc}, AP: {ap}")
-
+        writer.add_hparams(
+            args_hparams(args), {"hparam/test_auc": auc, "hparam/test_ap": ap}
+        )
     elif args.model_name == "clmr":
         clmr = CLMR(args, model, optimizer, scheduler, writer)
         clmr.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
+        test_loss_epoch = clmr.test(args, test_loader)
+        writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch})
     else:
         raise NotImplementedError()
 

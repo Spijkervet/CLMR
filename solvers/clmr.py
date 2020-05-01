@@ -40,7 +40,7 @@ class CLMR:
 
     def train(self, args, train_loader):
         loss_epoch = 0
-        for step, ((x_i, x_j, x_test), _, _) in enumerate(train_loader):
+        for step, ((x_i, x_j), _, _) in enumerate(train_loader):
             self.optimizer.zero_grad()
             x_i = x_i.to(self.device)
             x_j = x_j.to(self.device)
@@ -67,7 +67,7 @@ class CLMR:
         self.model.eval()
         loss_epoch = 0
         with torch.no_grad():
-            for step, ((x_i, x_j, _), _, _) in enumerate(loader):
+            for step, ((x_i, x_j), _, _) in enumerate(loader):
                 x_i = x_i.to(args.device)
                 x_j = x_j.to(args.device)
 
