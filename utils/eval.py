@@ -1,7 +1,8 @@
 import torch
+import torchaudio
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, average_precision_score
+from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score
 from utils.chords import chords, chromatic_scale
 
 
@@ -66,7 +67,6 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
         for step, (track_id, fp, y, _) in enumerate(tracks):
             x = loader.dataset.get_full_size_audio(track_id, fp)
             x = x.to(args.device)
-            y = y.to(args.device)
 
             # get encoding
             if simclr_model:
@@ -93,17 +93,33 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
     pred_array = np.array(pred_array)
     id_array = np.array(id_array)
     for track_id, _, label, _ in tracks:
+        ## absolute per segment
+        # for p in pred_array[np.where(id_array == track_id)]:
+        #     y_pred.append(p)
+        #     y_true.append(label.numpy())
+
+        # average over track
         avg = np.mean(pred_array[np.where(id_array == track_id)], axis=0)
         y_pred.append(avg)
-        y_true.append(label.numpy())
+
+        if isinstance(label, torch.Tensor):
+            y_true.append(label.numpy())
+        else:
+            y_true.append(label)
 
     y_pred = np.array(y_pred)
     y_true = np.array(y_true)
 
-    auc, ap = tagwise_auc_ap(y_true, y_pred)
-
-    auc = auc.mean()
-    ap = ap.mean()
+    metrics = {}
+    if args.dataset in ["magnatagatune"]:
+        auc, ap = tagwise_auc_ap(y_true, y_pred)
+        auc = auc.mean()
+        ap = ap.mean()
+        metrics["hparams/test_auc"] = auc
+        metrics["hparams/test_ap"] = ap
+    else:
+        acc = accuracy_score(y_true, y_pred.argmax(1))
+        metrics["hparams/test_accuracy"] = acc
 
     figure = plt.figure()
     plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
@@ -111,7 +127,7 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
         "Class_distribution/test_all", figure, global_step=args.current_epoch
     )
     model.train()
-    return auc, ap
+    return metrics
 
 
 def is_fifth(tonic_p, mode_p, tonic_l, mode_l):
