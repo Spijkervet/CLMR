@@ -24,9 +24,6 @@ def main(_run, _log):
     args.batch_size = args.batch_size * args.n_gpu
     args.epochs = args.epochs * args.n_gpu
 
-
-
-
     args = post_config_hook(args, _run)
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
