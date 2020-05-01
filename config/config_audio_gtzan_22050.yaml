@@ -1,7 +1,7 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "gtzan" # [audio: [billboard,fma,magnatagatune,gtzan] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
 model_name: "clmr" # [clmr, supervised]
 
@@ -24,7 +24,7 @@ supervised_lr: 0.01
 
 ## model options
 normalize: True
-projection_dim: 256
+projection_dim: 128
 dropout: 0.5
 
 ## audio
@@ -48,14 +48,14 @@ transforms_lowpass_freq: 3500
 
 ## reload options
 reload: False
-model_path: "./logs/audio/magnatagatune/tags/3" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 1100 # set to checkpoint number
+model_path: "" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: "" # set to checkpoint number
 
 
 ## linear evaluation options
 mlp: True 
 logistic_batch_size: 64
-logistic_epochs: 535
+logistic_epochs: 275
 logistic_lr: 0.0004
 reload_logreg: False
 perc_train_data: 1.0

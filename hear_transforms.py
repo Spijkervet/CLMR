@@ -16,6 +16,7 @@ if not os.path.exists(tmp_dir):
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
     args.lin_eval = False
+    args.model_name = "clmr"
     args.n_gpu = torch.cuda.device_count()
     args.batch_size = args.batch_size * args.n_gpu
     args.epochs = args.epochs * args.n_gpu
