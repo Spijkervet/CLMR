@@ -9,7 +9,7 @@ from data import get_dataset
 from model import load_model, save_model
 from modules.sync_batchnorm import convert_model
 from solvers import CLMR, Supervised
-from utils import eval_all, post_config_hook
+from utils import eval_all, post_config_hook, write_audio_tb
 from validation import audio_latent_representations, vision_latent_representations
 import copy
 
@@ -57,6 +57,9 @@ def main(_run, _log):
 
     args.global_step = 0
     args.current_epoch = 0
+
+    # write a few audio files to TensorBoard for comparison
+    write_audio_tb(args, train_loader, test_loader, writer)
 
     if args.model_name == "supervised":
         supervised = Supervised(args, model)
