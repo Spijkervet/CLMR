@@ -10,7 +10,8 @@ domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-model_name: "supervised" # [clmr, supervised]
+model_name: "clmr" # [clmr, supervised]
+standardise_dataset: True
 
 # supervised params
 supervised_lr: 0.01
@@ -24,8 +25,9 @@ projection_dim: 128
 dropout: 0.5
 
 # transformations
-transforms_phase: 0.6
-transforms_gain: 0.8
+transforms_phase: 0.8
+transforms_noise: 0.6
+transforms_gain: 0.0
 transforms_filters: 0.4
 
 # model options
@@ -48,8 +50,8 @@ num_tags: 50
 
 # reload options
 reload: False
-model_path: "logs/audio/magnatagatune/tags/4" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 1100 # set to checkpoint number
+model_path: "logs/audio/magnatagatune/EVAL/33" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: "random" # set to checkpoint number
 # model_path: "logs/audio/magnatagatune/39" # set to the directory containing `checkpoint_##.tar` 
 # epoch_num: 550 # set to checkpoint number
 

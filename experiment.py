@@ -16,21 +16,8 @@ from utils.yaml_config_hook import yaml_config_hook
 
 ex = Experiment("CLMR")
 
-#### database output
-# ex.observers.append(
-#     MongoObserver().create(
-#         url=f"mongodb://admin:admin@localhost:27017/?authMechanism=SCRAM-SHA-1",
-#         db_name="db",
-#     )
-# )
-
-
 @ex.config
 def my_config():
-    # config_file = "./config/config_audio_fma_16000.yaml"
-    # config_file = "./config/config_audio_billboard_16000.yaml"
-    # config_file = "./config/config_audio_magnatagatune_8000.yaml"
-    # config_file = "./config/config_audio_magnatagatune_16000.yaml"
     config_file = "./config/config_audio_magnatagatune_22050.yaml"
 
     ex.add_config(config_file)
@@ -38,13 +25,18 @@ def my_config():
     cfg = yaml_config_hook(config_file)
     ex.add_config(cfg)
 
-
     #### file output directory
-    ex.observers.append(FileStorageObserver(Path("./logs", cfg["domain"], cfg["dataset"], cfg["model_name"])))
+    ex.observers.append(
+        FileStorageObserver(
+            Path("./logs", cfg["domain"], cfg["dataset"], cfg["model_name"])
+        )
+    )
+
+    ## output to database
+    # ex.observers.append(
+    #     MongoObserver().create(
+    #         url=f"mongodb://admin:admin@localhost:27017/?authMechanism=SCRAM-SHA-1",
+    #         db_name="db",
+    #     )
+    # )
     del cfg
-
-
-    # override any settings here
-    # start_epoch = 100
-    # ex.add_config(
-    #   {'start_epoch': start_epoch})

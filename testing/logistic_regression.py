@@ -49,6 +49,12 @@ def inference(loader, context_model, device):
     feature_vector = []
     labels_vector = []
     for step, (x, y, _) in enumerate(loader):
+
+        # for xb in x:
+        #     import torchaudio
+        #     torchaudio.save("audio.wav", xb, sample_rate=22050)
+        #     exit(0)
+
         x = x.to(device)
 
         # get encoding

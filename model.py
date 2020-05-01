@@ -55,13 +55,14 @@ def load_model(args, reload_model=False, name="clmr"):
 
 
 def save_model(args, model, optimizer, name="clmr"):
-    out = os.path.join(
-        args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
-    )
+    if args.out_dir is not None:
+        out = os.path.join(
+            args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
+        )
 
-    # To save a DataParallel model generically, save the model.module.state_dict().
-    # This way, you have the flexibility to load the model any way you want to any device you want.
-    if isinstance(model, torch.nn.DataParallel):
-        torch.save(model.module.state_dict(), out)
-    else:
-        torch.save(model.state_dict(), out)
+        # To save a DataParallel model generically, save the model.module.state_dict().
+        # This way, you have the flexibility to load the model any way you want to any device you want.
+        if isinstance(model, torch.nn.DataParallel):
+            torch.save(model.module.state_dict(), out)
+        else:
+            torch.save(model.state_dict(), out)
