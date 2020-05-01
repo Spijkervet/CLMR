@@ -89,9 +89,7 @@ def pons_indexer(args, path, id2audio, id2gt):
 
 def default_loader(path):
     # with audio normalisation
-    audio, sr = torchaudio.load(
-        path, normalization=lambda x: torch.abs(x).max() # normalization=True
-    )
+    audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
 
     # is a bit slower with multiprocessing loading into the dataloader (num_workers > 1)
     # rate, sig = wavfile.read(path)
@@ -117,30 +115,35 @@ def get_dataset_stats(loader, tracks_list, stats_path):
 
 class MTTDataset(Dataset):
     def __init__(
-        self, args, annotations_file, train, loader=default_loader, transform=None,
+        self, args, train, loader=default_loader, transform=None,
     ):
-
+        self.num_tags = args.num_tags
         self.lin_eval = args.lin_eval
         self.standardise_dataset = args.standardise_dataset
         self.indexer = pons_indexer
         self.loader = loader
-        # self.tag_list = open(args.list_of_tags, "r").read().split("\n")
-
-        if args.model_name == "supervised" or args.lin_eval:
-            dir_name = f"processed_{args.sample_rate}_wav"
-        else:
-            dir_name = f"processed_concat_{args.sample_rate}_wav"
-
-        self.audio_dir = os.path.join(args.data_input_dir, "magnatagatune", dir_name)
-        self.num_tags = args.num_tags
-        self.annotations_file = annotations_file
         self.transform = transform
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
         self.model_name = args.model_name
 
+        if args.model_name == "supervised" or args.lin_eval:
+            dir_name = f"processed_{self.sample_rate}_wav"
+        else:
+            dir_name = f"processed_concat_{self.sample_rate}_wav"
+
+        self.audio_dir = os.path.join(args.data_input_dir, "magnatagatune", dir_name)
+
+        mtt_processed_annot = Path(
+            args.data_input_dir, "magnatagatune", "processed_annotations"
+        )
+        if train:
+            self.annotations_file = Path(mtt_processed_annot) / "train_gt_mtt.tsv"
+        else:
+            self.annotations_file = Path(mtt_processed_annot) / "test_gt_mtt.tsv"
+
         [audio_repr_paths, id2audio_repr_path] = load_id2path(
-            Path(args.mtt_processed_annot) / "index_mtt.tsv"
+            Path(mtt_processed_annot) / "index_mtt.tsv"
         )
         [ids, id2gt] = load_id2gt(self.annotations_file)
         self.tracks_list_all, self.tracks_dict = self.indexer(
