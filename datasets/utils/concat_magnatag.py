@@ -8,12 +8,12 @@ from glob import glob
 from tqdm import tqdm
 import subprocess
 
-sample_rate = 16000
+sample_rate = 16000 # MTT default sample rate
 MTT_DIR = f"./datasets/audio/magnatagatune/raw"
 AUDIO_DIR = f"./datasets/audio/magnatagatune/concat_{sample_rate}"
 
 
-def process(raw_path, path, audio, npyfilepath):
+def process(raw_path, path, audio, output_dir):
     fp = os.path.join(MTT_DIR, path, audio)
 
     fn = audio.split(".")[0]
@@ -25,7 +25,7 @@ def process(raw_path, path, audio, npyfilepath):
     all_mp3 = sorted(glob(search), key=lambda x: int(x.split("-")[-2]))
 
     try:
-        new_fp = str(Path(npyfilepath) / (path + "/" + index_name + "-0" + "-full.mp3"))
+        new_fp = str(Path(output_dir) / (path + "/" + index_name + "-0" + "-full.mp3"))
         if not os.path.exists(new_fp):
             cmd = ["cat", *all_mp3, ">", new_fp]
             os.system(" ".join(cmd))
@@ -36,24 +36,15 @@ def process(raw_path, path, audio, npyfilepath):
         
 
 
-def save_audio_to_npy(rawfilepath, npyfilepath):
-    """ Save audio signal with sr=sample_rate to npy file
-    Args :
-        rawfilepath : path to the MTT audio files
-        npyfilepath : path to save the numpy array audio signal
-    Return :
-        None
-    """
-
-    # make directory if not existing
-    if not os.path.exists(npyfilepath):
-        os.makedirs(npyfilepath)
+def process_all(rawfilepath, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     mydir = [path for path in os.listdir(rawfilepath) if path >= "0" and path <= "f"]
     for path in tqdm(mydir):
         # create directory with names '0' to 'f' if it doesn't already exist
         try:
-            os.mkdir(Path(npyfilepath) / path)
+            os.mkdir(Path(output_dir) / path)
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
@@ -66,13 +57,12 @@ def save_audio_to_npy(rawfilepath, npyfilepath):
         ]
         for audio in tqdm(audios):
             if "mp3" in audio:
-                p.apply_async(process, [rawfilepath, path, audio, npyfilepath])
-                # process(rawfilepath, path, audio, npyfilepath)
+                p.apply_async(process, [rawfilepath, path, audio, output_dir])
+                # process(rawfilepath, path, audio, output_dir)
 
         p.close()
         p.join()
 
 
 if __name__ == "__main__":
-    # read audio signal and save to npy format
-    save_audio_to_npy(MTT_DIR, AUDIO_DIR)
+    process_all(MTT_DIR, AUDIO_DIR)
