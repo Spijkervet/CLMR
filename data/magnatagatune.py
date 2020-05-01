@@ -12,6 +12,7 @@ import librosa
 
 # much faster loading
 import soundfile as sf
+from scipy.io import wavfile
 
 
 """
@@ -90,9 +91,11 @@ def default_loader(path):
     # audio, sr = sf.read(path)
     # audio = audio / (1 << 16) # normalise
     # audio = torch.from_numpy(audio).float().reshape(1, -1)
-    audio, sr = torchaudio.load_wav(path, normalization=True)  # fastest for now
-    # audio, sr = torchaudio.load(path, normalization=True)  # for mp3
-    return audio, sr
+    # audio, sr = torchaudio.load(path, normalization=True)
+    rate, sig = wavfile.read(path)
+    sig = sig.astype('float32') / 32767 # normalise 16 bit PCM between -1 and 1
+    audio = torch.FloatTensor(sig).reshape(1, -1)
+    return audio
 
 
 def get_dataset_stats(loader, tracks_list, stats_path):
@@ -186,7 +189,7 @@ class MTTDataset(Dataset):
         # print(f"[{name} dataset]: Loaded mean/std: {self.mean}, {self.std}")
 
     def get_audio(self, fp):
-        audio, sr = self.loader(fp)
+        audio = self.loader(fp)
         max_samples = audio.shape[1]
         assert (
             max_samples - self.audio_length
