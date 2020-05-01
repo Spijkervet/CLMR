@@ -127,9 +127,11 @@ class MTTDataset(Dataset):
         self.model_name = args.model_name
 
         if args.model_name == "supervised" or args.lin_eval:
-            dir_name = f"processed_{self.sample_rate}_wav"
+            version = "segments"
         else:
-            dir_name = f"processed_concat_{self.sample_rate}_wav"
+            version = "concat"
+            
+        dir_name = f"processed_{version}_{self.sample_rate}_wav"
 
         self.audio_dir = os.path.join(args.data_input_dir, "magnatagatune", dir_name)
 
@@ -156,7 +158,7 @@ class MTTDataset(Dataset):
                 self.nodups.append([track_id, fp, label, segment])
                 self.indexes.append(track_id)
 
-        if args.lin_eval or args.model_name == "supervised":
+        if version == "segments":
             print("### Linear / Supervised training, using segmented dataset ###")
             self.tracks_list = self.tracks_list_all
         else:
@@ -181,9 +183,9 @@ class MTTDataset(Dataset):
 
         ## get dataset statistics
         name = "Train" if train else "Test"
-        stats_path = os.path.join(args.data_input_dir, args.dataset, "statistics.csv")
+        stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}.csv")
         if not os.path.exists(stats_path):
-            print(f"[{name} dataset]: Fetching dataset statistics (mean/std)")
+            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version} version")
             if train:
                 self.mean, self.std = get_dataset_stats(
                     self.loader, self.tracks_list, stats_path
@@ -200,7 +202,7 @@ class MTTDataset(Dataset):
                 self.mean = float(stats[0])
                 self.std = float(stats[1])
 
-        print(f"[{name} dataset]: Loaded mean/std: {self.mean}, {self.std}")
+        print(f"[{name} dataset ({version})]: Loaded mean/std: {self.mean}, {self.std}")
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
