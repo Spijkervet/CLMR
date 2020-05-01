@@ -8,18 +8,12 @@ from .magnatagatune import MTTDataset
 
 def get_mtt_loaders(args, diff_train_dataset=None):
 
-    train_annotations = (
-        Path(args.mtt_processed_annot) / "train_gt_mtt.tsv" # "train_50_tags_annotations_final.csv"
-    )
     train_dataset = MTTDataset(
-        args, annotations_file=train_annotations, train=True, transform=AudioTransforms(args)
+        args, train=True, transform=AudioTransforms(args)
     )
 
-    test_annotations = (
-        Path(args.mtt_processed_annot) / "test_gt_mtt.tsv" # "test_50_tags_annotations_final.csv"
-    )
     test_dataset = MTTDataset(
-        args, annotations_file=test_annotations, train=False, transform=AudioTransforms(args) 
+        args, train=False, transform=AudioTransforms(args) 
     )
 
     train_loader = torch.utils.data.DataLoader(
@@ -40,5 +34,5 @@ def get_mtt_loaders(args, diff_train_dataset=None):
         pin_memory=False
     )
 
-    args.n_classes = args.num_tags
+    args.n_classes = train_dataset.num_tags
     return train_loader, train_dataset, test_loader, test_dataset

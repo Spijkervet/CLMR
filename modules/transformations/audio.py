@@ -15,19 +15,12 @@ class RandomResizedCrop:
         self.n_samples = n_samples
 
     def __call__(self, audio, prev_transform=None):
-        # do not end at end of audio (silence)
-        max_samples = audio.size(1)  #  - (self.n_samples * 4)
+        max_samples = audio.size(1)
 
         assert (
             max_samples - self.n_samples
         ) >= 0, "max samples exceeds number of samples in crop"
 
-        # keep a frame of 1 x n_samples so we have a margin
-        start_sample = (
-            self.n_samples * 4
-        )  # do not start at the start of the audio (silence)
-
-        # TODO start sample
         start_idx = random.randint(0, max_samples - self.n_samples)  # * 2))
 
         # if x0 is cropped, crop x1 within a frame of 5 seconds (do not get "too" global) # TODO variable
@@ -78,20 +71,22 @@ class Noise:
 
 
 class HighLowBandPass:
-    def __init__(self, sr, p=0.5):
+    def __init__(self, sr, highpass_freq, lowpass_freq, p=0.5):
         self.sr = sr
         self.p = p
+        self.highpass_freq = highpass_freq
+        self.lowpass_freq = lowpass_freq
 
     def __call__(self, audio, prev_transform=None):
         highlowband = random.randint(0, 1)
         if random.random() < self.p:
             if highlowband == 0:
                 filt = essentia.standard.HighPass(
-                    cutoffFrequency=800, sampleRate=self.sr
+                    cutoffFrequency=self.highpass_freq, sampleRate=self.sr
                 )
             elif highlowband == 1:
                 filt = essentia.standard.LowPass(
-                    cutoffFrequency=3500, sampleRate=self.sr
+                    cutoffFrequency=self.lowpass_freq, sampleRate=self.sr
                 )
             # else:
             #     filt = essentia.standard.BandPass(bandwidth=1000, cutoffFrequency=1500, sampleRate=self.sr)
@@ -171,7 +166,12 @@ class AudioTransforms:
             InvertSignal(p=args.transforms_phase, sr=sr),
             Noise(p=args.transforms_noise, sr=sr),
             Gain(p=args.transforms_gain, sr=sr),
-            HighLowBandPass(p=args.transforms_filters, sr=sr),
+            HighLowBandPass(
+                p=args.transforms_filters,
+                highpass_freq=args.transforms_highpass_freq,
+                lowpass_freq=args.transforms_lowpass_freq,
+                sr=sr
+            ),
             # PitchShift(p=0.1, sr=sr)
             # Reverse(p=0.5, sr=sr),
             # pseudo-standardise w.r.t. original statistics
