@@ -4,7 +4,6 @@ channels:
 dependencies:
   - pip
   - pytorch
-  - tensorflow # for full tensorboard version
   - torchvision
   - pyyaml
   - pip:
@@ -15,5 +14,6 @@ dependencies:
     - python-dotenv
     - sacred
     - seaborn
+    - tensorboard
     - torchaudio
     - torchvision
