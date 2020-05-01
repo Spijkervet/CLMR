@@ -119,7 +119,6 @@ class MTTDataset(Dataset):
     ):
         self.num_tags = args.num_tags
         self.lin_eval = args.lin_eval
-        self.standardise_dataset = args.standardise_dataset
         self.indexer = pons_indexer
         self.loader = loader
         self.transform = transform
