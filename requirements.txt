@@ -3,3 +3,4 @@ torchvision
 tensorboard
 sacred
 PyYAML
+opencv-python
