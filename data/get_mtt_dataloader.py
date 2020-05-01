@@ -28,6 +28,7 @@ def get_mtt_loaders(args, diff_train_dataset=None):
         shuffle=True,
         drop_last=True,
         num_workers=args.num_workers,
+        pin_memory=False
     )
 
     test_loader = torch.utils.data.DataLoader(
@@ -36,6 +37,7 @@ def get_mtt_loaders(args, diff_train_dataset=None):
         shuffle=False,  # do not shuffle test set
         drop_last=True,
         num_workers=args.num_workers,
+        pin_memory=False
     )
 
     args.n_classes = args.num_tags

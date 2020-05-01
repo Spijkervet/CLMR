@@ -88,20 +88,27 @@ def pons_indexer(args, path, id2audio, id2gt):
 
 
 def default_loader(path):
+    # with audio normalisation
+    audio, sr = torchaudio.load(
+        path, normalization=lambda x: torch.abs(x).max() # normalization=True
+    )
+
+    # is a bit slower with multiprocessing loading into the dataloader (num_workers > 1)
+    # rate, sig = wavfile.read(path)
+    # sig = sig.astype('float32') / 32767 # normalise 16 bit PCM between -1 and 1
+    # audio = torch.FloatTensor(sig).reshape(1, -1)
+
+    # soundfile, also fast
     # audio, sr = sf.read(path)
     # audio = audio / (1 << 16) # normalise
     # audio = torch.from_numpy(audio).float().reshape(1, -1)
-    # audio, sr = torchaudio.load(path, normalization=True)
-    rate, sig = wavfile.read(path)
-    sig = sig.astype('float32') / 32767 # normalise 16 bit PCM between -1 and 1
-    audio = torch.FloatTensor(sig).reshape(1, -1)
-    return audio
+    return audio, sr
 
 
 def get_dataset_stats(loader, tracks_list, stats_path):
     means = []
     stds = []
-    for track_id, fp, label in tqdm(tracks_list):
+    for track_id, fp, label, _ in tqdm(tracks_list):
         audio, sr = loader(fp)
         means.append(audio.mean())
         stds.append(audio.std())
@@ -114,6 +121,7 @@ class MTTDataset(Dataset):
     ):
 
         self.lin_eval = args.lin_eval
+        self.standardise_dataset = args.standardise_dataset
         self.indexer = pons_indexer
         self.loader = loader
         # self.tag_list = open(args.list_of_tags, "r").read().split("\n")
@@ -169,27 +177,31 @@ class MTTDataset(Dataset):
         print(f"Num segments: {len(self.tracks_list)}")
         print(f"Num tracks: {len(self.tracks_list_test)}")
 
-        # normalise entire dataset
-        # name = "Train" if train else "Test"
-        # stats_path = os.path.join(args.data_input_dir, args.dataset, "statistics.csv")
-        # if not os.path.exists(stats_path):
-        #     print(f"[{name} dataset]: Fetching dataset statistics (mean/std)")
-        #     if train:
-        #         self.mean, self.std = get_dataset_stats(self.loader, self.tracks_list, stats_path)
-        #         write_statistics(self.mean, self.std, len(self.tracks_list), stats_path)
-        #     else:
-        #         raise FileNotFoundError(f"{stats_path} does not exist, no mean/std from train set")
-        # else:
-        #     with open(stats_path, "r") as f:
-        #         l = f.readlines()
-        #         stats = l[1].split(";")
-        #         self.mean = float(stats[0])
-        #         self.std = float(stats[1])
+        ## get dataset statistics
+        name = "Train" if train else "Test"
+        stats_path = os.path.join(args.data_input_dir, args.dataset, "statistics.csv")
+        if not os.path.exists(stats_path):
+            print(f"[{name} dataset]: Fetching dataset statistics (mean/std)")
+            if train:
+                self.mean, self.std = get_dataset_stats(
+                    self.loader, self.tracks_list, stats_path
+                )
+                write_statistics(self.mean, self.std, len(self.tracks_list), stats_path)
+            else:
+                raise FileNotFoundError(
+                    f"{stats_path} does not exist, no mean/std from train set"
+                )
+        else:
+            with open(stats_path, "r") as f:
+                l = f.readlines()
+                stats = l[1].split(";")
+                self.mean = float(stats[0])
+                self.std = float(stats[1])
 
-        # print(f"[{name} dataset]: Loaded mean/std: {self.mean}, {self.std}")
+        print(f"[{name} dataset]: Loaded mean/std: {self.mean}, {self.std}")
 
     def get_audio(self, fp):
-        audio = self.loader(fp)
+        audio, sr = self.loader(fp)
         max_samples = audio.shape[1]
         assert (
             max_samples - self.audio_length
@@ -226,8 +238,10 @@ class MTTDataset(Dataset):
         if self.lin_eval or self.model_name == "supervised":
             start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = self.normalise_audio(audio)
+
         elif self.model_name == "clmr" and self.transform:
-            audio = self.transform(audio)
+            audio = self.transform(audio, self.mean, self.std)
         else:
             raise Exception("Transformation unknown")
 

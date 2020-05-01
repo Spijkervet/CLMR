@@ -62,6 +62,7 @@ class Noise:
             audio = audio + (torch.FloatTensor(*audio.shape).normal_(0, 1) * 0.001)
             audio = audio.reshape(1, -1)
             # target_snr_db = random.randint(2, 10)  # signal-to-noise ratio
+            # gen gauss. noise std 2.5 == rms
             # x = audio[0]
             # sig_avg_watts = abs(x.mean())
             # sig_avg_db = 10 * np.log10(sig_avg_watts)
@@ -86,11 +87,11 @@ class HighLowBandPass:
         if random.random() < self.p:
             if highlowband == 0:
                 filt = essentia.standard.HighPass(
-                    cutoffFrequency=1000, sampleRate=self.sr
+                    cutoffFrequency=800, sampleRate=self.sr
                 )
             elif highlowband == 1:
                 filt = essentia.standard.LowPass(
-                    cutoffFrequency=4000, sampleRate=self.sr
+                    cutoffFrequency=3500, sampleRate=self.sr
                 )
             # else:
             #     filt = essentia.standard.BandPass(bandwidth=1000, cutoffFrequency=1500, sampleRate=self.sr)
@@ -165,16 +166,35 @@ class AudioTransforms:
         sr = args.sample_rate
 
         self.train_transform = [
+            # Ashley: store mean/std/cov of the whole dataset
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
             InvertSignal(p=args.transforms_phase, sr=sr),
-            # Noise(p=1.0, sr=sr),
+            Noise(p=args.transforms_noise, sr=sr),
             Gain(p=args.transforms_gain, sr=sr),
             HighLowBandPass(p=args.transforms_filters, sr=sr),
             # PitchShift(p=0.1, sr=sr)
             # Reverse(p=0.5, sr=sr),
+            # pseudo-standardise w.r.t. original statistics
         ]
 
         self.test_transform = []
+
+    def __call__(self, x, mean, std):
+        x0, transformations = self.transform(x)
+        x1, _ = self.transform(x, prev_transforms=transformations)
+
+        # clamp the values again between [-1, 1], in case any
+        # unwanted transformations went to [-inf, inf]
+        x0 = torch.clamp(x0, min=-1, max=1)
+        x1 = torch.clamp(x1, min=-1, max=1)
+
+        # pseudo-standardise
+        x0 = self.normalise(x0, mean, std)
+        x1 = self.normalise(x1, mean, std)
+        return x0, x1
+
+    def normalise(self, audio, mean, std):
+        return (audio - mean) / std
 
     def transform(self, x, prev_transforms=None):
         transformations = {}
@@ -188,18 +208,3 @@ class AudioTransforms:
                 x, transformation = t(x, prev_transform=prev_transform)
                 transformations[t.__class__.__name__] = transformation
         return x, transformations
-
-    def __call__(self, x):
-        x0, transformations = self.transform(x)
-        x1, transformations = self.transform(x, prev_transforms=transformations)
-
-        # clamp the values again between [-1, 1], in case any
-        # unwanted transformations went to [-inf, inf]
-        x0 = torch.clamp(x0, min=-1, max=1)
-        x1 = torch.clamp(x1, min=-1, max=1)
-
-        # randomly get segment
-        max_samples = x.size(1)
-        start_idx = random.randint(0, max_samples - self.args.audio_length)
-        x_test = x[:, start_idx : start_idx + self.args.audio_length]
-        return x0, x1, x_test
