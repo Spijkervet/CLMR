@@ -1,15 +1,12 @@
 import os
 import errno
 import numpy as np
+import argparse
 from pathlib import Path
 import multiprocessing
 from glob import glob
 from tqdm import tqdm
 
-file_format = ".wav" #.mp3
-sample_rate = 22050 
-MTT_DIR = "./datasets/audio/magnatagatune/concat_16000" # /processed
-AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}_wav"
 
 
 def process(raw_path, path, audio, npyfilepath):
@@ -22,7 +19,7 @@ def process(raw_path, path, audio, npyfilepath):
     all_mp3 = glob(search)
 
     try:
-        new_fp = str(Path(npyfilepath) / (path + "/" + fn + file_format))
+        new_fp = str(Path(npyfilepath) / (path + "/" + fn + "." + file_format))
         # resample
         cmd = [
             "ffmpeg",
@@ -45,7 +42,7 @@ def process(raw_path, path, audio, npyfilepath):
         
 
 
-def save_audio_to_npy(rawfilepath, npyfilepath):
+def process_all(rawfilepath, npyfilepath):
     """ Save audio signal with sr=sample_rate to npy file
     Args :
         rawfilepath : path to the MTT audio files
@@ -83,5 +80,20 @@ def save_audio_to_npy(rawfilepath, npyfilepath):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sample_rate", required=True)
+    parser.add_argument("--file_format", default="wav")
+    parser.add_argument("--from_concat", action="store_true")
+    args = parser.parse_args()
+    
+    sample_rate = args.sample_rate
+    file_format = args.file_format
+    if args.from_concat:
+        MTT_DIR = f"./datasets/audio/magnatagatune/concat_16000" # concat default SR is 16000
+        AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}_wav"
+    else:
+        MTT_DIR = f"./datasets/audio/magnatagatune/raw"
+        AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_{sample_rate}_wav"
+    
     # read audio signal and save to npy format
-    save_audio_to_npy(MTT_DIR, AUDIO_DIR)
+    process_all(MTT_DIR, AUDIO_DIR)
