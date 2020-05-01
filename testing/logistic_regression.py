@@ -164,17 +164,14 @@ def train(args, loader, model, criterion, optimizer, writer):
             auc = 0
             acc = (predictions == y).sum().item() / y.shape[0]
 
-            print((predictions == y).sum().item(), y.shape[0])
-    
-
         auc_epoch += auc
         accuracy_epoch += acc
         loss_epoch += loss.item()
 
-        if step % 100 == 0:
-            print(
-                f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
-            )
+        # if step % 100 == 0:
+        #     print(
+        #         f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
+        #     )
 
         writer.add_scalar("AUC/train_step", auc, args.global_step)
         writer.add_scalar("AP/train_step", acc, args.global_step)
@@ -214,10 +211,10 @@ def test(args, loader, model, criterion, optimizer, writer):
             accuracy_epoch += acc
             loss_epoch += loss.item()
 
-            if step % 100 == 0:
-                print(
-                    f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
-                )
+            # if step % 100 == 0:
+            #     print(
+            #         f"[Test] Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
+            #     )
 
     plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=False)
     return loss_epoch, auc_epoch, accuracy_epoch
@@ -260,85 +257,89 @@ def solve(args, train_loader, test_loader, model, criterion, optimizer, writer):
 
 @ex.automain
 def main(_run, _log):
-    args = argparse.Namespace(**_run.config)
-    args.lin_eval = True
 
-    args = post_config_hook(args, _run)
+    for i in range(900, 1150, 50):
+        args = argparse.Namespace(**_run.config)
+        args.lin_eval = True
+        args.model_name = "eval"
 
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    args.batch_size = args.logistic_batch_size
+        # load from epoch num
+        args.epoch_num = i
 
-    (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
+        args = post_config_hook(args, _run)
 
-    context_model, _, _ = load_model(args, reload_model=True, name="clmr")
-    context_model.eval()
+        args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        args.batch_size = args.logistic_batch_size
 
-    args.n_features = context_model.n_features
+        (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
 
-    model, _, _ = load_model(args, reload_model=False, name="eval")
-    model = model.to(args.device)
+        context_model, _, _ = load_model(args, reload_model=True, name="clmr")
+        context_model.eval()
 
-    if not args.mlp:
-        weight_decay = args.weight_decay  # sample_weight_decay()
-    else:
-        weight_decay = args.weight_decay  # TODO
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
-    )
+        args.n_features = context_model.n_features
 
-    # set criterion, e.g. gtzan has one label per segment, MTT has multiple
-    if args.dataset in ["gtzan"]:
-        criterion = torch.nn.CrossEntropyLoss()
-    else:
-        criterion = torch.nn.BCEWithLogitsLoss()  # for tags
+        model, _, _ = load_model(args, reload_model=False, name="eval")
+        model = model.to(args.device)
 
-    # initialize TensorBoard
-    tb_dir = os.path.join(args.out_dir, _run.experiment_info["name"])
-    os.makedirs(tb_dir)
-    writer = SummaryWriter(log_dir=tb_dir)
+        if not args.mlp:
+            weight_decay = args.weight_decay  # sample_weight_decay()
+        else:
+            weight_decay = args.weight_decay  # TODO
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
+        )
 
-    args.global_step = 0
-    args.current_epoch = 0
+        # set criterion, e.g. gtzan has one label per segment, MTT has multiple
+        if args.dataset in ["gtzan"]:
+            criterion = torch.nn.CrossEntropyLoss()
+        else:
+            criterion = torch.nn.BCEWithLogitsLoss()  # for tags
 
-    print(context_model)
-    print(model)
+        # initialize TensorBoard
+        writer = SummaryWriter(log_dir=args.tb_dir + "-" + str(i))
 
-    # create features from pre-trained model
-    if not os.path.exists("features.p"):
+        args.global_step = 0
+        args.current_epoch = 0
+
+        print(context_model)
+        print(model)
+
+        # create features from pre-trained model
+        # if not os.path.exists("features.p"):
         print("### Creating features from pre-trained context model ###")
         (train_X, train_y, test_X, test_y) = get_features(
             context_model, train_loader, test_loader, args.device
         )
-        pickle.dump((train_X, train_y, test_X, test_y), open("features.p", "wb"))
-    else:
-        print("### Loading features ###")
-        (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
+            # pickle.dump((train_X, train_y, test_X, test_y), open("features.p", "wb"))
+        # else:
+        #     print("### Loading features ###")
+        #     (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
-    if args.perc_train_data < 1.0:
-        print("Train dataset size:", len(train_X))
-        train_indices = np.random.choice(
-            len(train_X), int(len(train_X) * args.perc_train_data), replace=False
+        if args.perc_train_data < 1.0:
+            print("Train dataset size:", len(train_X))
+            train_indices = np.random.choice(
+                len(train_X), int(len(train_X) * args.perc_train_data), replace=False
+            )
+            train_X = train_X[train_indices]
+            train_y = train_y[train_indices]
+            print("Train dataset size:", len(train_X))
+
+        arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
+            train_X,
+            train_y,
+            test_X,
+            test_y,
+            len(test_loader.dataset)
         )
-        train_X = train_X[train_indices]
-        train_y = train_y[train_indices]
-        print("Train dataset size:", len(train_X))
 
-    arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
-        train_X,
-        train_y,
-        test_X,
-        test_y,
-        len(test_loader.dataset)
-    )
+        # run training
+        solve(
+            args, arr_train_loader, arr_test_loader, model, criterion, optimizer, writer,
+        )
 
-    # run training
-    solve(
-        args, arr_train_loader, arr_test_loader, model, criterion, optimizer, writer,
-    )
+        # eval all
+        metrics = eval_all(args, test_loader, context_model, model, writer, n_tracks=None,)
+        for k, v in metrics.items():
+            print("[Test]:", k, v)
 
-    # eval all
-    metrics = eval_all(args, test_loader, context_model, model, writer, n_tracks=None,)
-    for k, v in metrics.items():
-        print("[Test]:", k, v)
-
-    writer.add_hparams(args_hparams(args), metrics)
+        writer.add_hparams(args_hparams(args), metrics)
