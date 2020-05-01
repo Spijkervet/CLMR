@@ -187,6 +187,9 @@ class GTZANDataset(Dataset):
         # segments = self.tracks_dict[track_id]
         # batch_size = len(segments)
         audio = self.get_audio(fp)
+        
+        # normalise audio
+        audio = self.normalise_audio(audio)
 
         # split into equally sized tensors of self.audio_length
         batch = torch.split(audio, self.audio_length, dim=1)
@@ -219,7 +222,7 @@ class GTZANDataset(Dataset):
             audio = self.transform(audio, self.mean, self.std)
         else:
             raise Exception("Transformation unknown")
-        
+
         return audio, label, track_id
 
     def __len__(self):
