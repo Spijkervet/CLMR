@@ -12,12 +12,12 @@ from tqdm import tqdm
 def process(raw_path, path, audio, npyfilepath):
     fp = os.path.join(MTT_DIR, path, audio)
 
-    fn = audio.split(".")[0]
+    fn = os.path.splitext(audio)[0]
 
     index_name = "-".join(fn.split("-")[:-2])
     search = os.path.join(raw_path, path, index_name + "*")
     all_mp3 = glob(search)
-
+    
     try:
         new_fp = str(Path(npyfilepath) / (path + "/" + fn + "." + file_format))
         # resample
@@ -55,25 +55,28 @@ def process_all(rawfilepath, npyfilepath):
     if not os.path.exists(npyfilepath):
         os.makedirs(npyfilepath)
 
-    mydir = [path for path in os.listdir(rawfilepath) if path >= "0" and path <= "f"]
+    mydir = [path for path in os.listdir(rawfilepath)]
     for path in tqdm(mydir):
-        # create directory with names '0' to 'f' if it doesn't already exist
+        raw_dir = Path(rawfilepath) / path
+        print(raw_dir)
+        if os.path.isfile(raw_dir):
+            continue
+
         try:
             os.mkdir(Path(npyfilepath) / path)
         except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+            print(e)
+            pass
 
         p = multiprocessing.Pool()
         audios = [
             audio
             for audio in os.listdir(Path(rawfilepath) / path)
-            if audio.split(".")[-1] == "mp3"
+            if audio.split(".")[-1] == "mp3" or audio.split(".")[-1] == "wav"
         ]
         for audio in tqdm(audios):
-            if "mp3" in audio:
-                p.apply_async(process, [rawfilepath, path, audio, npyfilepath])
-                # process(rawfilepath, path, audio, npyfilepath)
+            p.apply_async(process, [rawfilepath, path, audio, npyfilepath])
+            # process(rawfilepath, path, audio, npyfilepath)
 
         p.close()
         p.join()
@@ -81,6 +84,7 @@ def process_all(rawfilepath, npyfilepath):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", required=True)
     parser.add_argument("--sample_rate", required=True)
     parser.add_argument("--file_format", default="wav")
     parser.add_argument("--from_concat", action="store_true")
@@ -89,11 +93,11 @@ if __name__ == "__main__":
     sample_rate = args.sample_rate
     file_format = args.file_format
     if args.from_concat:
-        MTT_DIR = f"./datasets/audio/magnatagatune/concat_16000" # concat default SR is 16000
-        AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_concat_{sample_rate}_wav"
+        MTT_DIR = f"./datasets/audio/{args.dataset}/concat_16000" # concat default SR is 16000
+        AUDIO_DIR = f"./datasets/audio/{args.dataset}/processed_concat_{sample_rate}_wav"
     else:
-        MTT_DIR = f"./datasets/audio/magnatagatune/raw"
-        AUDIO_DIR = f"./datasets/audio/magnatagatune/processed_{sample_rate}_wav"
+        MTT_DIR = f"./datasets/audio/{args.dataset}/raw"
+        AUDIO_DIR = f"./datasets/audio/{args.dataset}/processed_{sample_rate}_wav"
     
     # read audio signal and save to npy format
     process_all(MTT_DIR, AUDIO_DIR)
