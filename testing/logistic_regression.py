@@ -13,7 +13,7 @@ from experiment import ex
 from model import load_model
 from model import save_model
 
-from utils import post_config_hook
+from utils import post_config_hook, args_hparams
 from utils.eval import (
     itemwise_auc_ap,
     tagwise_auc_ap,
@@ -149,30 +149,23 @@ def train(args, loader, model, criterion, optimizer, writer):
 
         output = model(x)
 
-        loss = criterion(output, y)
-
+        loss = criterion(output, y.long())
         loss.backward()
         optimizer.step()
 
         predicted_classes = get_predicted_classes(output, predicted_classes)
 
-        if args.task == "tags":
+        if args.task == "tags" and args.dataset in ["magnatagatune"]:
             auc, acc = get_metrics(args.domain, y, output)
         elif args.task == "chords":
             auc, acc = eval_chords(y, output)
-            # predictions = []
-            # labels = []
-            # for o, l in zip(output, y):
-            #     num_chords = (l == 1).sum()
-            #     _, preds = torch.topk(o, num_chords)
-            #     _, chord_nums = torch.topk(l, num_chords)
-            #     predictions.extend(preds)
-            #     labels.extend(chord_nums)
-            # predictions = torch.stack(predictions)
-            # labels = torch.stack(labels)
-            # weighted, metrics = evaluate_key_mirex(predictions, labels)
-            # auc = 0
-            # acc = weighted
+        else:
+            predictions = output.argmax(1).detach()
+            auc = 0
+            acc = (predictions == y).sum().item() / y.shape[0]
+
+            print((predictions == y).sum().item(), y.shape[0])
+    
 
         auc_epoch += auc
         accuracy_epoch += acc
@@ -204,14 +197,18 @@ def test(args, loader, model, criterion, optimizer, writer):
             y = y.to(args.device)
 
             output = model(x)
-            loss = criterion(output, y)
+            loss = criterion(output, y.long())
 
             predicted_classes = get_predicted_classes(output, predicted_classes)
 
-            if args.task == "tags":
+            if args.task == "tags" and args.dataset in ["magnatagatune"]:
                 auc, acc = get_metrics(args.domain, y, output)
             elif args.task == "chords":
                 auc, acc = eval_chords(y, output)
+            else:
+                predictions = output.argmax(1).detach()
+                auc = 0
+                acc = (predictions == y).sum().item() / y.shape[0]
 
             auc_epoch += auc
             accuracy_epoch += acc
@@ -289,8 +286,11 @@ def main(_run, _log):
         model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
     )
 
-    # criterion = torch.nn.CrossEntropyLoss()
-    criterion = torch.nn.BCEWithLogitsLoss()  # for tags
+    # set criterion, e.g. gtzan has one label per segment, MTT has multiple
+    if args.dataset in ["gtzan"]:
+        criterion = torch.nn.CrossEntropyLoss()
+    else:
+        criterion = torch.nn.BCEWithLogitsLoss()  # for tags
 
     # initialize TensorBoard
     tb_dir = os.path.join(args.out_dir, _run.experiment_info["name"])
@@ -328,7 +328,7 @@ def main(_run, _log):
         train_y,
         test_X,
         test_y,
-        len(test_loader.dataset),  # args.logistic_batch_size
+        len(test_loader.dataset)
     )
 
     # run training
@@ -337,7 +337,8 @@ def main(_run, _log):
     )
 
     # eval all
-    auc, ap = eval_all(args, test_loader, context_model, model, writer, n_tracks=None,)
+    metrics = eval_all(args, test_loader, context_model, model, writer, n_tracks=None,)
+    for k, v in metrics.items():
+        print("[Test]:", k, v)
 
-    print(f"[Test]: ROC-AUC {auc}")
-    print(f"[Test]: PR-AUC {ap}")
+    writer.add_hparams(args_hparams(args), metrics)
