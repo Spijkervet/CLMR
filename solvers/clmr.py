@@ -13,7 +13,7 @@ class CLMR:
         self.criterion = NT_Xent(args.batch_size, args.temperature, args.device)
 
     def solve(self, args, train_loader, test_loader, start_epoch, epochs):
-        validate_idx = 50
+        validate_idx = 5
         for epoch in range(start_epoch, epochs):
             lr = self.optimizer.param_groups[0]["lr"]
             if epoch % validate_idx == 0:
