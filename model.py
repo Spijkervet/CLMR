@@ -31,7 +31,7 @@ def load_model(args, reload_model=False, name="clmr"):
     scheduler = None
     if args.optimizer == "Adam" or args.lin_eval:
         print("### Using Adam optimizer ###")
-        optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)  # TODO: LARS
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  # TODO: LARS
     elif args.optimizer == "LARS":
         print("### Using LARS optimizer ###")
         # optimized using LARS with linear learning rate scaling
