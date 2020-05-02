@@ -265,6 +265,7 @@ def solve(args, train_loader, test_loader, model, criterion, optimizer, writer):
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
     args.lin_eval = True
+    args.model_name = "eval"
 
     args = post_config_hook(args, _run)
 
