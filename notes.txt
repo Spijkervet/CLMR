@@ -2,5 +2,5 @@ new record:
 [Test]: ROC-AUC 0.867740143738259
 [Test]: PR-AUC 0.318668385454047
 
-
-now running supervised baseline
+ran on mtt long, should be eval still
+now running gtzan
