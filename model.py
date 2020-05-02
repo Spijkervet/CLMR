@@ -16,7 +16,7 @@ def load_model(args, reload_model=False, name="clmr"):
             model = LogisticRegression(args.n_features, args.n_classes)
     else:
         raise Exception("Cannot infer model from configuration")
-    
+
     if reload_model:
         model_path = args.model_path if name == "clmr" else args.logreg_model_path
         epoch_num = args.epoch_num if name == "clmr" else args.logreg_epoch_num
@@ -26,7 +26,7 @@ def load_model(args, reload_model=False, name="clmr"):
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
         if not os.path.exists(model_fp):
-            model_fp = model_fp.replace("clmr_", "context_") # legacy name
+            model_fp = model_fp.replace("clmr_", "context_")  # legacy name
 
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
 
@@ -35,7 +35,9 @@ def load_model(args, reload_model=False, name="clmr"):
     scheduler = None
     if args.optimizer == "Adam" or args.lin_eval:
         print("### Using Adam optimizer ###")
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  # TODO: LARS
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=args.learning_rate
+        )  # TODO: LARS
     elif args.optimizer == "LARS":
         print("### Using LARS optimizer ###")
         # optimized using LARS with linear learning rate scaling
@@ -64,9 +66,15 @@ def save_model(args, model, optimizer, name="clmr"):
             args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
         )
 
+        optim_out = os.path.join(
+            args.out_dir, "{}_checkpoint_{}_optim.tar".format(name, args.current_epoch)
+        )
+
         # To save a DataParallel model generically, save the model.module.state_dict().
         # This way, you have the flexibility to load the model any way you want to any device you want.
         if isinstance(model, torch.nn.DataParallel):
             torch.save(model.module.state_dict(), out)
         else:
             torch.save(model.state_dict(), out)
+
+        torch.save(optimizer.state_dict(), optim_out)
