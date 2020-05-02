@@ -97,7 +97,7 @@ if __name__ == "__main__":
         AUDIO_DIR = f"./datasets/audio/{args.dataset}/processed_concat_{sample_rate}_wav"
     else:
         MTT_DIR = f"./datasets/audio/{args.dataset}/raw"
-        AUDIO_DIR = f"./datasets/audio/{args.dataset}/processed_{sample_rate}_wav"
+        AUDIO_DIR = f"./datasets/audio/{args.dataset}/processed_segments_{sample_rate}_wav"
     
     # read audio signal and save to npy format
     process_all(MTT_DIR, AUDIO_DIR)

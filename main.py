@@ -9,18 +9,11 @@ from data import get_dataset
 from model import load_model, save_model
 from modules.sync_batchnorm import convert_model
 from solvers import CLMR, Supervised
-from utils import eval_all, post_config_hook, write_audio_tb
+from utils import eval_all, post_config_hook, write_audio_tb, args_hparams
 from validation import audio_latent_representations, vision_latent_representations
-import copy
 
 #### pass configuration
 from experiment import ex
-
-
-def args_hparams(args):
-    args_dict = copy.deepcopy(vars(args))
-    del args_dict["device"]
-    return args_dict
 
 
 @ex.automain
