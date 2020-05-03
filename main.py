@@ -34,6 +34,9 @@ def main(_run, _log):
         args, reload_model=args.reload, name=args.model_name
     )
 
+    # weight init.
+    model.apply(model.initialize)
+
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
         model = convert_model(model)
