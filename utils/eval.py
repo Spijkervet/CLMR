@@ -59,7 +59,7 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
             if track_id in ids
         ]
     else:
-        tracks = loader.dataset.tracks_list_test[:n_tracks]
+        tracks = loader.dataset.tracks_list_test
         n_tracks = len(tracks)
 
     with torch.no_grad():

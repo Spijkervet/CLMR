@@ -23,8 +23,7 @@ from utils.eval import (
 )
 
 # metrics
-from sklearn.metrics import average_precision_score, roc_auc_score
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, confusion_matrix
 from sklearn.preprocessing import StandardScaler
 
 
@@ -261,7 +260,7 @@ def main(_run, _log):
     args.lin_eval = True
     args.model_name = "eval"
 
-    for i in range(900, 1150, 50):
+    for i in range(args.epoch_num, args.epoch_num+1, 1):
         args = argparse.Namespace(**_run.config)
         args.lin_eval = True
         args.model_name = "eval"
@@ -326,6 +325,67 @@ def main(_run, _log):
             train_X = train_X[train_indices]
             train_y = train_y[train_indices]
             print("Train dataset size:", len(train_X))
+
+
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.svm import SVC
+        from sklearn import decomposition
+        from sklearn.metrics import accuracy_score
+        from sklearn.neural_network import MLPClassifier
+
+
+        # model = LogisticRegression(random_state=args.seed, max_iter=1000)
+        model = SVC(C=1, kernel='rbf')# , gamma='scale')
+        # model = MLPClassifier(hidden_layer_sizes=(20,), max_iter=600, verbose=10, 
+        #        solver='sgd', learning_rate='constant', learning_rate_init=0.001)
+
+        # train_X, test_X = normalize_dataset(train_X, test_X)
+
+        pca = decomposition.PCA(n_components=128, whiten=True)
+        # pca.fit(train_X)
+        # train_X = pca.transform(train_X)
+        print("Shape after PCA: ", train_X.shape)
+        print('Fitting model..')
+
+        model.fit(train_X, train_y)
+
+        print('Evaluating model..')
+        # test_X = pca.transform(test_X)
+
+        print('Predict labels on evaluation data')
+        pred = model.predict(test_X)
+        score = model.score(test_X, test_y)
+        
+        # agreggating same ID: majority voting
+        y_true = []
+        y_pred = []
+        id_array = np.array([track_id for track_id, _, _, _ in test_loader.dataset.tracks_list])
+        for track_id, _, label, _ in test_loader.dataset.tracks_list:
+            maj_vote = np.argmax(np.bincount(pred[np.where(id_array == track_id)]))
+            y_pred.append(maj_vote)
+            y_true.append(label)
+
+        conf_matrix = confusion_matrix(y_true, y_pred)
+        acc = accuracy_score(y_true, y_pred)
+        print('raw score', score)
+        print(conf_matrix)
+        print(acc)
+        exit(0)
+
+
+  
+        
+        print(score)
+        exit(0)
+
+
+
+
+
+
+
+
+
 
         arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
             train_X,

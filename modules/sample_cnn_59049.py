@@ -83,11 +83,12 @@ class SampleCNN59049(Model):
             nn.Conv1d(512, 512, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Dropout(args.dropout),
+            # nn.Dropout(args.dropout)
         )
         # 1 x 512
+
+        # self.avgpool = nn.AdaptiveAvgPool1d(1)
         self.fc = nn.Linear(512, 50)
-        # self.activation = nn.Sigmoid()
 
     def forward(self, x):
         # input x : B x 59049 x 1
@@ -104,9 +105,8 @@ class SampleCNN59049(Model):
         out = self.conv10(out)
         out = self.conv11(out)
 
-        out = out.view(x.shape[0], out.size(1) * out.size(2))
+        # out = self.avgpool(out)
+        out = out.reshape(x.shape[0], out.size(1) * out.size(2))
+
         logit = self.fc(out)
-
-        # logit = self.activation(logit)
-
         return logit
