@@ -8,7 +8,7 @@ from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
 from datasets.utils.utils import write_statistics
-import librosa
+import random
 
 # much faster loading
 import soundfile as sf
@@ -201,7 +201,7 @@ class MTTDataset(Dataset):
                 stats = l[1].split(";")
                 self.mean = float(stats[0])
                 self.std = float(stats[1])
-
+        
         print(f"[{name} dataset ({version})]: Loaded mean/std: {self.mean}, {self.std}")
 
     def get_audio(self, fp):
@@ -243,12 +243,17 @@ class MTTDataset(Dataset):
 
         # only transform if unsupervised training
         if self.lin_eval or self.model_name == "supervised":
-            start_idx = segment * self.audio_length
+            start_idx = random.randint(0, audio.size(1) - self.audio_length) # segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
             audio = self.normalise_audio(audio)
-
         elif self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
+        elif self.model_name == "cpc":
+            max_samples = audio.size(1)
+            start_idx = random.randint(0, max_samples - self.audio_length)
+            audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = self.normalise_audio(audio)
+            audio = (audio, audio)
         else:
             raise Exception("Transformation unknown")
 

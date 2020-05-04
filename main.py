@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from data import get_dataset
 from model import load_model, save_model
 from modules.sync_batchnorm import convert_model
-from solvers import CLMR, Supervised
+from solvers import CLMR, Supervised, CPC
 from utils import eval_all, post_config_hook, write_audio_tb, args_hparams
 from validation import audio_latent_representations, vision_latent_representations
 
@@ -49,7 +49,7 @@ def main(_run, _log):
 
     # save random init. model
     args.current_epoch = "random"
-    save_model(args, model, optimizer)
+    save_model(args, model, optimizer, args.model_name)
 
     args.global_step = 0
     args.current_epoch = 0
@@ -72,6 +72,11 @@ def main(_run, _log):
         clmr.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
         test_loss_epoch = clmr.test(args, test_loader)
         writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch})
+    elif args.model_name == "cpc":
+        cpc = CPC(args, model, optimizer, scheduler, writer)
+        cpc.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
+        test_loss_epoch = clmr.test(args, test_loader)
+        writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch}) 
     else:
         raise NotImplementedError()
 

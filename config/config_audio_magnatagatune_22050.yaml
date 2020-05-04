@@ -3,7 +3,7 @@ domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-model_name: "clmr" # [clmr, supervised]
+model_name: "cpc" # [clmr, supervised]
 
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
@@ -24,7 +24,7 @@ supervised_lr: 0.01
 
 ## model options
 normalize: True
-projection_dim: 256
+projection_dim: 128
 dropout: 0.5
 
 ## audio
@@ -48,15 +48,15 @@ transforms_lowpass_freq: 3500
 
 ## reload options
 reload: False
-model_path: "./logs/audio/magnatagatune/tags/3" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 1100 # set to checkpoint number
+model_path: "./logs/audio/magnatagatune/cpc/25" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 670 # set to checkpoint number
 
 
 ## linear evaluation options
 mlp: True 
 logistic_batch_size: 64
-logistic_epochs: 535
-logistic_lr: 0.0004
+logistic_epochs: 60 
+logistic_lr: 0.003 # clmr: 0.0004, cpc: 0.003
 reload_logreg: False
 perc_train_data: 1.0
 logreg_model_path: ""
@@ -77,3 +77,10 @@ num_tags: 50
 # image_height: 96
 # image_width: 96
 # image_channels: 3
+
+
+## cpc
+loss: 0 # InfoNCE: 0, Supervised: 1
+prediction_step: 20 # Time steps k to predict into future
+negative_samples: 25 # Number of negative samples to be used for training
+subsample: False # Boolean to decide whether to subsample from the total sequence lengh within intermediate layers

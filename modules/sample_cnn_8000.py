@@ -86,7 +86,7 @@ class SampleCNN8000(nn.Module):
             ),  # keep recept. field
             nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Dropout(args.dropout),
+            # nn.Dropout(args.dropout),
         )
 
         # 1 x 128

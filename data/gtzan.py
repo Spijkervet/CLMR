@@ -8,7 +8,7 @@ from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
 from datasets.utils.utils import write_statistics
-import librosa
+import random
 
 # much faster loading
 import soundfile as sf
@@ -220,6 +220,12 @@ class GTZANDataset(Dataset):
 
         elif self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
+        elif self.model_name == "cpc":
+            max_samples = audio.size(1)
+            start_idx = random.randint(0, max_samples - self.audio_length)
+            audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = self.normalise_audio(audio)
+            audio = (audio, audio)
         else:
             raise Exception("Transformation unknown")
 
