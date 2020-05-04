@@ -1,12 +1,34 @@
 import os
 import torch
 from modules import SimCLR, LogisticRegression, LARS, MLP, SampleCNN
+from modules.cpc import CPCModel
+
+def cpc_model(args):
+    strides = [5, 3, 2, 2, 2, 2, 2]
+    filter_sizes = [10, 6, 4, 4, 4, 2, 2]
+    padding = [2, 2, 2, 2, 1, 1, 1]
+    genc_hidden = 512
+    gar_hidden = 256
+
+    model = CPCModel(
+        args,
+        strides=strides,
+        filter_sizes=filter_sizes,
+        padding=padding,
+        genc_hidden=genc_hidden,
+        gar_hidden=gar_hidden,
+    )
+    return model
+
+
 
 
 def load_model(args, reload_model=False, name="clmr"):
 
     if name == "clmr":
         model = SimCLR(args)
+    elif name == "cpc":
+        model = cpc_model(args)
     elif name == "supervised":
         model = SampleCNN(args)
     elif name == "eval":
@@ -16,10 +38,10 @@ def load_model(args, reload_model=False, name="clmr"):
             model = LogisticRegression(args.n_features, args.n_classes)
     else:
         raise Exception("Cannot infer model from configuration")
-
+    
     if reload_model:
-        model_path = args.model_path if name == "clmr" else args.logreg_model_path
-        epoch_num = args.epoch_num if name == "clmr" else args.logreg_epoch_num
+        model_path = args.model_path if name in ["clmr", "cpc"] else args.logreg_model_path
+        epoch_num = args.epoch_num if name in ["clmr", "cpc"] else args.logreg_epoch_num
         print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {epoch_num} ###")
 
         model_fp = os.path.join(
@@ -27,6 +49,7 @@ def load_model(args, reload_model=False, name="clmr"):
         )
         if not os.path.exists(model_fp):
             model_fp = model_fp.replace("clmr_", "context_")  # legacy name
+            model_fp = model_fp.replace("cpc_", "context_")  # legacy name
 
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
 

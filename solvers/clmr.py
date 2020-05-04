@@ -34,7 +34,7 @@ class CLMR:
                 self.scheduler.step()
 
             if epoch % 10 == 0:
-                save_model(args, self.model, self.optimizer)
+                save_model(args, self.model, self.optimizer, name="clmr")
 
             args.current_epoch += 1
 

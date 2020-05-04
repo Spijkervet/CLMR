@@ -23,7 +23,12 @@ from utils.eval import (
 )
 
 # metrics
-from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, confusion_matrix
+from sklearn.metrics import (
+    average_precision_score,
+    roc_auc_score,
+    accuracy_score,
+    confusion_matrix,
+)
 from sklearn.preprocessing import StandardScaler
 
 
@@ -48,7 +53,6 @@ def inference(loader, context_model, device):
     feature_vector = []
     labels_vector = []
     for step, (x, y, _) in enumerate(loader):
-
         # for xb in x:
         #     import torchaudio
         #     torchaudio.save("audio.wav", xb, sample_rate=22050)
@@ -58,7 +62,9 @@ def inference(loader, context_model, device):
 
         # get encoding
         with torch.no_grad():
-            h, z = context_model(x)
+            # h, z = context_model(x) # clmr
+            z, c = context_model.model.get_latent_representations(x)  # cpc
+            h = c  # use context vector
 
         h = h.detach()
 
@@ -146,9 +152,15 @@ def train(args, loader, model, criterion, optimizer, writer):
         x = x.to(args.device)
         y = y.to(args.device)
 
+        # cpc
+        x = x.permute(0, 2, 1)
+        pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
+        pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
+        x = pooled
+
         output = model(x)
 
-        loss = criterion(output, y.long())
+        loss = criterion(output, y)
         loss.backward()
         optimizer.step()
 
@@ -192,8 +204,14 @@ def test(args, loader, model, criterion, optimizer, writer):
             x = x.to(args.device)
             y = y.to(args.device)
 
+            # cpc
+            x = x.permute(0, 2, 1)
+            pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
+            pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
+            x = pooled
+
             output = model(x)
-            loss = criterion(output, y.long())
+            loss = criterion(output, y)
 
             predicted_classes = get_predicted_classes(output, predicted_classes)
 
@@ -260,7 +278,7 @@ def main(_run, _log):
     args.lin_eval = True
     args.model_name = "eval"
 
-    for i in range(args.epoch_num, args.epoch_num+1, 1):
+    for i in range(args.epoch_num, args.epoch_num + 1, 1):
         args = argparse.Namespace(**_run.config)
         args.lin_eval = True
         args.model_name = "eval"
@@ -275,7 +293,7 @@ def main(_run, _log):
 
         (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
 
-        context_model, _, _ = load_model(args, reload_model=True, name="clmr")
+        context_model, _, _ = load_model(args, reload_model=True, name="cpc")
         context_model.eval()
 
         args.n_features = context_model.n_features
@@ -307,15 +325,17 @@ def main(_run, _log):
         print(model)
 
         # create features from pre-trained model
-        # if not os.path.exists("features.p"):
-        print("### Creating features from pre-trained context model ###")
-        (train_X, train_y, test_X, test_y) = get_features(
-            context_model, train_loader, test_loader, args.device
-        )
-            # pickle.dump((train_X, train_y, test_X, test_y), open("features.p", "wb"))
-        # else:
-        #     print("### Loading features ###")
-        #     (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
+        if not os.path.exists("features.p"):
+            print("### Creating features from pre-trained context model ###")
+            (train_X, train_y, test_X, test_y) = get_features(
+                context_model, train_loader, test_loader, args.device
+            )
+            pickle.dump(
+                (train_X, train_y, test_X, test_y), open("features.p", "wb"), protocol=4
+            )
+        else:
+            print("### Loading features ###")
+            (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
         if args.perc_train_data < 1.0:
             print("Train dataset size:", len(train_X))
@@ -326,82 +346,80 @@ def main(_run, _log):
             train_y = train_y[train_indices]
             print("Train dataset size:", len(train_X))
 
-
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.svm import SVC
-        from sklearn import decomposition
-        from sklearn.metrics import accuracy_score
-        from sklearn.neural_network import MLPClassifier
-
-
+        # from sklearn.linear_model import LogisticRegression
+        # from sklearn.svm import SVC
+        # from sklearn import decomposition
+        # from sklearn.metrics import accuracy_score
+        # from sklearn.neural_network import MLPClassifier
         # model = LogisticRegression(random_state=args.seed, max_iter=1000)
-        model = SVC(C=1, kernel='rbf')# , gamma='scale')
-        # model = MLPClassifier(hidden_layer_sizes=(20,), max_iter=600, verbose=10, 
+        # model = SVC(C=1, kernel='rbf')# , gamma='scale')
+        # model = MLPClassifier(hidden_layer_sizes=(20,), max_iter=600, verbose=10,
         #        solver='sgd', learning_rate='constant', learning_rate_init=0.001)
 
-        # train_X, test_X = normalize_dataset(train_X, test_X)
+        # train_X = torch.from_numpy(train_X)
+        # train_X = train_X.permute(0, 2, 1)
+        # train_X = torch.nn.functional.adaptive_avg_pool1d(train_X, 1) # one label
+        # train_X = train_X.permute(0, 2, 1).reshape(-1, args.n_features)
 
-        pca = decomposition.PCA(n_components=128, whiten=True)
+        # test_X = torch.from_numpy(test_X)
+        # test_X = test_X.permute(0, 2, 1)
+        # test_X = torch.nn.functional.adaptive_avg_pool1d(test_X, 1) # one label
+        # test_X = test_X.permute(0, 2, 1).reshape(-1, args.n_features)
+
+        # train_X, test_X = normalize_dataset(train_X, test_X)
+        # pca = decomposition.PCA(n_components=128, whiten=True)
+        # train_X = train_X.reshape(-1, 256, 124)
         # pca.fit(train_X)
         # train_X = pca.transform(train_X)
-        print("Shape after PCA: ", train_X.shape)
-        print('Fitting model..')
-
-        model.fit(train_X, train_y)
-
-        print('Evaluating model..')
         # test_X = pca.transform(test_X)
+        # print("Shape after PCA: ", train_X.shape)
 
-        print('Predict labels on evaluation data')
-        pred = model.predict(test_X)
-        score = model.score(test_X, test_y)
-        
-        # agreggating same ID: majority voting
-        y_true = []
-        y_pred = []
-        id_array = np.array([track_id for track_id, _, _, _ in test_loader.dataset.tracks_list])
-        for track_id, _, label, _ in test_loader.dataset.tracks_list:
-            maj_vote = np.argmax(np.bincount(pred[np.where(id_array == track_id)]))
-            y_pred.append(maj_vote)
-            y_true.append(label)
+        # print('Fitting model..')
+        # model.fit(train_X, train_y)
+        # print('Evaluating model..')
 
-        conf_matrix = confusion_matrix(y_true, y_pred)
-        acc = accuracy_score(y_true, y_pred)
-        print('raw score', score)
-        print(conf_matrix)
-        print(acc)
-        exit(0)
+        # print('Predict labels on evaluation data')
+        # pred = model.predict(test_X)
+        # score = model.score(test_X, test_y)
 
+        ## agreggating same ID: majority voting
+        # y_true = []
+        # y_pred = []
+        # id_array = np.array([track_id for track_id, _, _, _ in test_loader.dataset.tracks_list])
+        # for track_id, _, label, _ in test_loader.dataset.tracks_list:
+        #     maj_vote = np.argmax(np.bincount(pred[np.where(id_array == track_id)]))
+        #     y_pred.append(maj_vote)
+        #     y_true.append(label)
 
-  
-        
-        print(score)
-        exit(0)
-
-
-
-
-
-
-
-
-
+        # conf_matrix = confusion_matrix(y_true, y_pred)
+        # acc = accuracy_score(y_true, y_pred)
+        # print('raw score', score)
+        # print(conf_matrix)
+        # print(acc)
+        # exit(0)
 
         arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
-            train_X,
-            train_y,
-            test_X,
-            test_y,
-            len(test_loader.dataset)
+            train_X, train_y, test_X, test_y, len(test_loader.dataset)
         )
 
         # run training
-        solve(
-            args, arr_train_loader, arr_test_loader, model, criterion, optimizer, writer,
-        )
+        try:
+            solve(
+                args,
+                arr_train_loader,
+                arr_test_loader,
+                model,
+                criterion,
+                optimizer,
+                writer,
+            )
+        except KeyboardInterrupt:
+            print("\n\nTerminated training, starting evaluation\n")
 
         # eval all
-        metrics = eval_all(args, test_loader, context_model, model, writer, n_tracks=None,)
+        metrics = eval_all(
+            args, test_loader, context_model, model, writer, n_tracks=None,
+        )
         for k, v in metrics.items():
             print("[Test]:", k, v)
 
