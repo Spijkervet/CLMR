@@ -55,7 +55,7 @@ class Supervised:
             print("Learning rate : {}".format(curr_lr))
 
             if epoch % 10 == 0:
-                save_model(args, self.model, self.optimizer)
+                save_model(args, self.model, self.optimizer, name="supervised")
 
             if curr_lr < 1e-7:
                 print("Early stopping")

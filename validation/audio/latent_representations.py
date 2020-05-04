@@ -66,6 +66,9 @@ def audio_latent_representations(
 
     model.eval()
     with torch.no_grad():
+        if args.model_name == "cpc":
+            model = model.model # quick fix
+
         latent_rep_size = model.get_latent_size(input_size)
         features = torch.zeros(max_tracks, batch_size, latent_rep_size).to(args.device)
 
@@ -89,9 +92,14 @@ def audio_latent_representations(
             #     torchaudio.save(f"{idx}_{bidx}_{track_idx}_.wav", audio, dataset.sample_rate)
 
             model_in = model_in.to(args.device)
-            h, z = model.get_latent_representations(model_in)
+            
+            if args.model_name == "cpc":
+                z, c = model.get_latent_representations(model_in)
+                h = c # context vector
+            else:
+                h, z = model.get_latent_representations(model_in)
 
-            features[idx, :, :] = z.reshape((batch_size, -1))
+            features[idx, :, :] = h.reshape((batch_size, -1))
             labels[idx, :] = int(track_idx)
             idx += 1
 
