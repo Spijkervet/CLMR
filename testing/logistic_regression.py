@@ -278,7 +278,7 @@ def main(_run, _log):
     args.lin_eval = True
     args.model_name = "eval"
 
-    for i in range(args.epoch_num, args.epoch_num + 1, 1):
+    for i in range(args.epoch_num, args.epoch_num+1, 1):
         args = argparse.Namespace(**_run.config)
         args.lin_eval = True
         args.model_name = "eval"
@@ -325,17 +325,17 @@ def main(_run, _log):
         print(model)
 
         # create features from pre-trained model
-        if not os.path.exists("features.p"):
-            print("### Creating features from pre-trained context model ###")
-            (train_X, train_y, test_X, test_y) = get_features(
-                context_model, train_loader, test_loader, args.device
-            )
-            pickle.dump(
-                (train_X, train_y, test_X, test_y), open("features.p", "wb"), protocol=4
-            )
-        else:
-            print("### Loading features ###")
-            (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
+        # if not os.path.exists("features.p"):
+        #     print("### Creating features from pre-trained context model ###")
+        (train_X, train_y, test_X, test_y) = get_features(
+            context_model, train_loader, test_loader, args.device
+        )
+            # pickle.dump(
+            #     (train_X, train_y, test_X, test_y), open("features.p", "wb"), protocol=4
+            # )
+        # else:
+        #     print("### Loading features ###")
+        #     (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
         if args.perc_train_data < 1.0:
             print("Train dataset size:", len(train_X))
