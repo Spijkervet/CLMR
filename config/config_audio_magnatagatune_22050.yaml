@@ -3,7 +3,7 @@ domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-model_name: "cpc" # [clmr, supervised]
+model_name: "clmr" # [clmr, supervised]
 
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
