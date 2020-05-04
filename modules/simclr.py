@@ -68,7 +68,7 @@ class SimCLR(Model):
     def get_latent_size(self, input_size):
         x = torch.zeros(input_size).to(self.args.device)
         h, z = self.get_latent_representations(x)
-        return z.size(1)
+        return h.size(1)
 
     def get_latent_representations(self, x):
         h = self.encoder(x)
