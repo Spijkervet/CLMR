@@ -18,7 +18,6 @@ learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
 weight_decay: 1.0e-6
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
-
 ## supervised params (if model_name == supervised)
 supervised_lr: 0.01
 
@@ -30,6 +29,7 @@ dropout: 0.5
 ## audio
 audio_length: 59049
 sample_rate: 22050
+
 
 ## transformations
 transforms_phase: 0.8
@@ -55,7 +55,7 @@ epoch_num: 670 # set to checkpoint number
 ## linear evaluation options
 mlp: True 
 logistic_batch_size: 64
-logistic_epochs: 60 
+logistic_epochs: 100
 logistic_lr: 0.003 # clmr: 0.0004, cpc: 0.003
 reload_logreg: False
 perc_train_data: 1.0
