@@ -1,6 +1,7 @@
 import os
 import yaml
-
+import json
+import argparse
 
 def yaml_config_hook(config_file):
     """
@@ -45,3 +46,17 @@ def post_config_hook(args, _run):
         if not os.path.exists(args.tb_dir):
             os.makedirs(args.tb_dir)
     return args
+
+def load_context_config(args):
+    context_model_path = args.model_path
+    epoch_num = args.epoch_num
+    logistic_epochs = args.logistic_epochs
+
+    json_config = os.path.join(context_model_path, "config.json")
+    context_args = json.load(open(json_config, "r"))
+    new_args = argparse.Namespace(**context_args)
+
+    new_args.model_path = context_model_path
+    new_args.epoch_num = epoch_num
+    new_args.logistic_epochs = logistic_epochs
+    return new_args

@@ -1,3 +1,4 @@
+import essentia.standard
 import os
 import argparse
 import time
@@ -23,12 +24,13 @@ def validate_latent_space(args, model, writer):
     global_step = 0
     epoch = args.epoch_num
     step = 0
-    audio_latent_representations(args, train_dataset, model, epoch, step, global_step, writer, train=True, max_tracks=None, vis=True)
+    audio_latent_representations(args, train_dataset, model, epoch, step, global_step, writer, train=True, max_tracks=10, vis=True)
 
 
 @ex.automain
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
+    args.lin_eval = False
     args = post_config_hook(args, _run)
 
     # set start time
@@ -47,9 +49,7 @@ def main(_run, _log):
     
 
     # initialize TensorBoard
-    tb_dir = os.path.join(args.out_dir, _run.experiment_info["name"])
-    os.makedirs(tb_dir)
-    writer = SummaryWriter(log_dir=tb_dir)
+    writer = SummaryWriter(log_dir=args.tb_dir)
 
     try:
         validate_latent_space(args, model, writer)

@@ -47,10 +47,6 @@ def load_model(args, reload_model=False, name="clmr"):
         model_fp = os.path.join(
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
-        if not os.path.exists(model_fp):
-            model_fp = model_fp.replace("clmr_", "context_")  # legacy name
-            model_fp = model_fp.replace("cpc_", "context_")  # legacy name
-
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
 
     model = model.to(args.device)

@@ -1,3 +1,4 @@
+import essentia.standard
 import torch
 import argparse
 import os
@@ -13,7 +14,7 @@ from experiment import ex
 from model import load_model
 from model import save_model
 
-from utils import post_config_hook, args_hparams
+from utils import post_config_hook, args_hparams, load_context_config
 from utils.eval import (
     itemwise_auc_ap,
     tagwise_auc_ap,
@@ -62,9 +63,9 @@ def inference(loader, context_model, device):
 
         # get encoding
         with torch.no_grad():
-            # h, z = context_model(x) # clmr
-            z, c = context_model.model.get_latent_representations(x)  # cpc
-            h = c  # use context vector
+            h, z = context_model(x) # clmr
+            # z, c = context_model.model.get_latent_representations(x)  # cpc
+            # h = c  # use context vector
 
         h = h.detach()
 
@@ -108,7 +109,7 @@ def create_data_loaders_from_arrays(X_train, y_train, X_test, y_test, batch_size
 def get_predicted_classes(output, predicted_classes):
     predictions = output.argmax(1).detach()
     classes, counts = torch.unique(predictions, return_counts=True)
-    predicted_classes[classes] += counts
+    predicted_classes[classes] += counts.float()
     return predicted_classes
 
 
@@ -153,10 +154,10 @@ def train(args, loader, model, criterion, optimizer, writer):
         y = y.to(args.device)
 
         # cpc
-        x = x.permute(0, 2, 1)
-        pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
-        pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
-        x = pooled
+        # x = x.permute(0, 2, 1)
+        # pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
+        # pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
+        # x = pooled
 
         output = model(x)
 
@@ -205,10 +206,10 @@ def test(args, loader, model, criterion, optimizer, writer):
             y = y.to(args.device)
 
             # cpc
-            x = x.permute(0, 2, 1)
-            pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
-            pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
-            x = pooled
+            # x = x.permute(0, 2, 1)
+            # pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
+            # pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
+            # x = pooled
 
             output = model(x)
             loss = criterion(output, y)
@@ -275,25 +276,23 @@ def solve(args, train_loader, test_loader, model, criterion, optimizer, writer):
 @ex.automain
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
-    args.lin_eval = True
-    args.model_name = "eval"
 
     for i in range(args.epoch_num, args.epoch_num+1, 1):
-        args = argparse.Namespace(**_run.config)
-        args.lin_eval = True
-        args.model_name = "eval"
 
         # load from epoch num
-        args.epoch_num = i
 
+        args = load_context_config(args)
+        args.lin_eval = True
+        
         args = post_config_hook(args, _run)
+        args.epoch_num = i
 
         args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         args.batch_size = args.logistic_batch_size
 
         (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
 
-        context_model, _, _ = load_model(args, reload_model=True, name="cpc")
+        context_model, _, _ = load_model(args, reload_model=True, name=args.model_name)
         context_model.eval()
 
         args.n_features = context_model.n_features
