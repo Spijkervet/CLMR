@@ -283,6 +283,7 @@ def main(_run, _log):
 
         args = load_context_config(args)
         args.lin_eval = True
+        args.at_least_one_pos = False
         
         args = post_config_hook(args, _run)
         args.epoch_num = i
