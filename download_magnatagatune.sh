@@ -26,8 +26,8 @@ wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/dat
 
 cd $CWD
 # process to desired samplerate
-python -m datasets.utils.process_magnatag --sample_rate 22050
+python -m datasets.utils.process_magnatag --dataset magnatagatune --sample_rate 22050
 # concat samples
-python -m datasets.utils.concat_magnatag
+python -m datasets.utils.concat_magnatag --dataset magnatagatune
 # process concat samples to desired samplerate
-python -m datasets.utils.process_magnatag --sample_rate 22050 --from_concat
+python -m datasets.utils.process_magnatag --dataset magnatagatune --sample_rate 22050 --from_concat

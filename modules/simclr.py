@@ -5,6 +5,7 @@ from .model import Model
 from .encoder import WaveEncoder
 from .sample_cnn_59049 import SampleCNN59049
 from .sample_cnn_16000 import SampleCNN16000
+from .sample_cnn_12000 import SampleCNN12000
 from .sample_cnn_8000 import SampleCNN8000
 
 
@@ -34,6 +35,8 @@ class SimCLR(Model):
                 self.encoder = SampleCNN59049(args)
             elif args.sample_rate == 16000:
                 self.encoder = SampleCNN16000(args)
+            elif args.sample_rate == 12000:
+                self.encoder = SampleCNN12000(args)
             elif args.sample_rate == 8000:
                 self.encoder = SampleCNN8000(args)
             print(f"### {self.encoder.__class__.__name__} ###")

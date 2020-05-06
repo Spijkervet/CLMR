@@ -1,3 +1,4 @@
+import essentia.standard
 import os
 import torch
 import torchvision
