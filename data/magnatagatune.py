@@ -138,10 +138,15 @@ class MTTDataset(Dataset):
         mtt_processed_annot = Path(
             args.data_input_dir, "magnatagatune", "processed_annotations"
         )
+
+        at_least_one_pos = ""
+        if args.at_least_one_pos:
+            at_least_one_pos = "_onepos"
+
         if train:
-            self.annotations_file = Path(mtt_processed_annot) / "train_gt_mtt.tsv"
+            self.annotations_file = Path(mtt_processed_annot) / f"train_gt_mtt{at_least_one_pos}.tsv"
         else:
-            self.annotations_file = Path(mtt_processed_annot) / "test_gt_mtt.tsv"
+            self.annotations_file = Path(mtt_processed_annot) / f"test_gt_mtt{at_least_one_pos}.tsv"
 
         [audio_repr_paths, id2audio_repr_path] = load_id2path(
             Path(mtt_processed_annot) / "index_mtt.tsv"
@@ -183,9 +188,9 @@ class MTTDataset(Dataset):
 
         ## get dataset statistics
         name = "Train" if train else "Test"
-        stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}_{self.sample_rate}.csv")
+        stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
         if not os.path.exists(stats_path):
-            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate} version")
+            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate}{at_least_one_pos} version")
             if train:
                 self.mean, self.std = get_dataset_stats(
                     self.loader, self.tracks_list, stats_path
