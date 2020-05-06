@@ -51,6 +51,7 @@ def load_context_config(args):
     context_model_path = args.model_path
     epoch_num = args.epoch_num
     logistic_epochs = args.logistic_epochs
+    mlp = args.mlp
 
     json_config = os.path.join(context_model_path, "config.json")
     context_args = json.load(open(json_config, "r"))
@@ -59,4 +60,5 @@ def load_context_config(args):
     new_args.model_path = context_model_path
     new_args.epoch_num = epoch_num
     new_args.logistic_epochs = logistic_epochs
+    new_args.mlp = mlp
     return new_args
