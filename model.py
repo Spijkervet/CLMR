@@ -77,11 +77,13 @@ def load_model(args, reload_model=False, name="clmr"):
         raise NotImplementedError
 
     if reload_model:
-        print(f"### RELOADING {name.upper()} OPTIMIZER FROM CHECKPOINT {epoch_num} ###")
         optim_fp = os.path.join(
             model_path, "{}_checkpoint_{}_optim.tar".format(name, epoch_num)
         )
-        optimizer.load_state_dict(torch.load(optim_fp, map_location=args.device.type))
+        if os.path.exists(optim_fp):
+            print(f"### RELOADING {name.upper()} OPTIMIZER FROM CHECKPOINT {epoch_num} ###")
+            optimizer.load_state_dict(torch.load(optim_fp, map_location=args.device.type))
+            
     model.train()
     return model, optimizer, scheduler
 
