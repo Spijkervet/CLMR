@@ -40,8 +40,8 @@ def load_model(args, reload_model=False, name="clmr"):
         raise Exception("Cannot infer model from configuration")
     
     if reload_model:
-        model_path = args.model_path if name in ["clmr", "cpc"] else args.logreg_model_path
-        epoch_num = args.epoch_num if name in ["clmr", "cpc"] else args.logreg_epoch_num
+        model_path = args.model_path if name != "eval" else args.logreg_model_path
+        epoch_num = args.epoch_num if name != "eval" else args.logreg_epoch_num
         print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {epoch_num} ###")
 
         model_fp = os.path.join(
@@ -56,7 +56,7 @@ def load_model(args, reload_model=False, name="clmr"):
         print("### Using Adam optimizer ###")
         optimizer = torch.optim.Adam(
             model.parameters(), lr=args.learning_rate
-        )  # TODO: LARS
+        )
     elif args.optimizer == "LARS":
         print("### Using LARS optimizer ###")
         # optimized using LARS with linear learning rate scaling
@@ -76,6 +76,15 @@ def load_model(args, reload_model=False, name="clmr"):
     else:
         raise NotImplementedError
 
+    if reload_model:
+        optim_fp = os.path.join(
+            model_path, "{}_checkpoint_{}_optim.tar".format(name, epoch_num)
+        )
+        if os.path.exists(optim_fp):
+            print(f"### RELOADING {name.upper()} OPTIMIZER FROM CHECKPOINT {epoch_num} ###")
+            optimizer.load_state_dict(torch.load(optim_fp, map_location=args.device.type))
+            
+    model.train()
     return model, optimizer, scheduler
 
 

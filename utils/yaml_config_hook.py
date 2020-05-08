@@ -40,7 +40,7 @@ def post_config_hook(args, _run):
         lin_txt = "-lineval"
 
     if args.out_dir:
-        tb_str = f"{args.domain}-{args.model_name}-{args.sample_rate}-{args.batch_size}-{lin_txt}"
+        tb_str = f"{args.domain}-{args.model_name}-{args.sample_rate}-{args.batch_size}bs-{lin_txt}"
         tb_dir = os.path.join(args.out_dir, tb_str)
         args.tb_dir = tb_dir
         if not os.path.exists(args.tb_dir):
@@ -52,6 +52,7 @@ def load_context_config(args):
     epoch_num = args.epoch_num
     logistic_epochs = args.logistic_epochs
     mlp = args.mlp
+    perc_train_data = args.perc_train_data
 
     json_config = os.path.join(context_model_path, "config.json")
     context_args = json.load(open(json_config, "r"))
@@ -61,4 +62,5 @@ def load_context_config(args):
     new_args.epoch_num = epoch_num
     new_args.logistic_epochs = logistic_epochs
     new_args.mlp = mlp
+    new_args.perc_train_data = perc_train_data
     return new_args

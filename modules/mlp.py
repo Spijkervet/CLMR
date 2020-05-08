@@ -1,6 +1,7 @@
 import torch.nn as nn
+from .model import Model
 
-class MLP(nn.Module):
+class MLP(Model):
     
     def __init__(self, n_features, n_classes):
         super(MLP, self).__init__()
