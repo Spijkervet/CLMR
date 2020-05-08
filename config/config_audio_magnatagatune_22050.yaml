@@ -8,7 +8,7 @@ model_name: "clmr" # [clmr, supervised]
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 48 # for audio, 256 for images
-num_workers: 16
+num_workers: 8
 start_epoch: 0
 epochs: 10000
 
