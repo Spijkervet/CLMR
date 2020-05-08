@@ -40,8 +40,8 @@ def load_model(args, reload_model=False, name="clmr"):
         raise Exception("Cannot infer model from configuration")
     
     if reload_model:
-        model_path = args.model_path if name in ["clmr", "cpc"] else args.logreg_model_path
-        epoch_num = args.epoch_num if name in ["clmr", "cpc"] else args.logreg_epoch_num
+        model_path = args.model_path if name != "eval" else args.logreg_model_path
+        epoch_num = args.epoch_num if name != "eval" else args.logreg_epoch_num
         print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {epoch_num} ###")
 
         model_fp = os.path.join(
