@@ -6,13 +6,26 @@ import torchaudio
 from collections import defaultdict
 import mirdata
 import mirdata.billboard
-import scipy.signal as signal
 from matplotlib import pyplot as plt
-import librosa
+from tqdm import tqdm
 
+from datasets.utils.utils import write_statistics
 
 def default_loader(path):
-    return torchaudio.load(path, normalization=True)
+    audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
+    return audio, sr
+
+def get_dataset_stats(loader, tracks_list, stats_path):
+    means = []
+    stds = []
+    for track_id, fp, label, _ in tqdm(tracks_list):
+        audio, sr = loader(fp)
+        if np.isnan(audio.mean()) or np.isnan(audio.std()):
+            continue
+
+        means.append(audio.mean())
+        stds.append(audio.std())
+    return np.array(means).mean(), np.array(stds).mean()
 
 
 def default_indexer(path, fp, tracks, sr):
@@ -34,8 +47,11 @@ def default_indexer(path, fp, tracks, sr):
                 "{}-{}-{}.wav".format(sample_id, start_idx, end_idx),
             )
             if os.path.exists(fp):
+                if labels is None:
+                    labels = [0]
                 labels = torch.FloatTensor(labels)
-                items.append((track_id, fp, labels))
+                segment = 0
+                items.append((track_id, fp, labels, segment))
                 tracks_dict[track_id].append(index)
                 index += 1
 
@@ -77,6 +93,7 @@ class MIRDataset(Dataset):
 
         self.root_dir = os.path.join(args.data_input_dir, args.dataset, "samples")
 
+        version = "unlabeled" # TODO
         if unlabeled:
             split_name = "unlabeled"
         elif train:
@@ -101,52 +118,68 @@ class MIRDataset(Dataset):
             self.root_dir, self.labels_file, self.tracks_index, sr=self.sample_rate
         )
 
+        # TODO: crucial!
         if not diff_train_dataset:
-            with open(
-                os.path.join(args.data_input_dir, f"{args.dataset}_statistics.csv"), "r"
-            ) as f:
-                l = f.readlines()
-                stats = l[1].split(";")
-                mean = float(stats[0])
-                std = float(stats[1])
-                chroma_mean = float(stats[2])
-                chroma_std = float(stats[3])
+            ## get dataset statistics
+            name = "Train" if train else "Test"
+            stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}_{self.sample_rate}.csv")
+            if not os.path.exists(stats_path):
+                print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate} version")
+                if train:
+                    self.mean, self.std = get_dataset_stats(
+                        self.loader, self.tracks_list, stats_path
+                    )
+                    write_statistics(self.mean, self.std, len(self.tracks_list), stats_path)
+                else:
+                    raise FileNotFoundError(
+                        f"{stats_path} does not exist, no mean/std from train set"
+                    )
+            else:
+                with open(stats_path, "r") as f:
+                    l = f.readlines()
+                    stats = l[1].split(";")
+                    self.mean = float(stats[0])
+                    self.std = float(stats[1])
+            
+
         else:
             print("### USING DIFFERENT TRAIN DATASET MEAN/STD ###")
             mean = diff_train_dataset.mean
             std = diff_train_dataset.std
-            chroma_mean = diff_train_dataset.chroma_mean
-            std_mean = diff_train_dataset.chroma_std
-            print(mean, std, chroma_mean, chroma_std)
+            print(mean, std)
             print("###")
 
-        self.mean = mean
-        self.std = std
-
-        self.chroma_mean = chroma_mean
-        self.chroma_std = chroma_std
-
-        print(f"Train Dataset mean: {mean}, std: {std}")
-        print(f"[{split_name}]: {len(self.tracks_list)} segments")
+        print(f"[{name} dataset ({version}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}")
+        print(f"[{split_name}]: {len(self.tracks_list)} tracks")
 
     def get_audio_fp(self, track_id, sample_id, start_idx, end_idx, label):
-
         return fp
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
+        audio = audio.mean(axis=0).reshape(1, -1)  # to mono
 
         max_samples = audio.size(1)
+
         if sr != self.sample_rate:
             raise Exception("Sample rate is not consistent throughout the dataset")
 
-        if max_samples - self.audio_length < 0:
+        if max_samples - self.audio_length <= 0:
             raise Exception("Max samples exceeds number of samples in crop")
+        
+        if torch.isnan(audio).any():
+            raise Exception("Audio contains NaN values")
 
         return audio
 
+    def normalise_audio(self, audio):
+        return (audio - self.mean) / self.std
+
+    def denormalise_audio(self, norm_audio):
+        return (norm_audio * self.std) + self.mean
+
     def __getitem__(self, index):
-        track_id, fp, labels = self.tracks_list[index]
+        track_id, fp, labels, _ = self.tracks_list[index]
 
         try:
             audio = self.get_audio(fp)
@@ -155,14 +188,10 @@ class MIRDataset(Dataset):
             print(f"Skipped {track_id, fp}, could not load audio")
             return self.__getitem__(index+1)
 
-
-        # Normalize audio
-        # audio = (audio - self.mean) / self.std
-
         if self.transform:
-            audio = self.transform(audio)
+            audio = self.transform(audio, self.mean, self.std)
 
-        return audio, labels
+        return audio, labels, track_id
 
         ## chroma
         # fp = os.path.join(
@@ -189,22 +218,24 @@ class MIRDataset(Dataset):
 
     def sample_audio_by_track_id(self, track_id, batch_size=20):
         """
-        Get audio samples based on the track_id
+        Get audio samples based on the track_id (batch_size = num_samples)
         used for plotting the latent representations of different tracks
         """
         batch = torch.zeros(batch_size, 1, self.audio_length)
         for idx in range(batch_size):
             index = self.tracks_dict[track_id][0]
-            track_id, fp, label = self.tracks_list[index]
+            _, fp, label, _ = self.tracks_list[index]  # from non-dup!!
+
             audio = self.get_audio(fp)
+            audio = self.normalise_audio(audio)
 
             start_idx = idx * self.audio_length
+
             # too large
             if (start_idx + self.audio_length) > audio.size(1):
                 return None
 
             batch[idx, 0, :] = audio[:, start_idx : start_idx + self.audio_length]
-
         return batch
 
     def get_full_size_test_item(self, index):
