@@ -103,7 +103,7 @@ def default_loader(path):
     return audio, sr
 
 
-def get_dataset_stats(loader, tracks_list, stats_path):
+def get_dataset_stats(loader, tracks_list):
     means = []
     stds = []
     for track_id, fp, label, _ in tqdm(tracks_list):
@@ -193,7 +193,7 @@ class MTTDataset(Dataset):
             print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate}{at_least_one_pos} version")
             if train:
                 self.mean, self.std = get_dataset_stats(
-                    self.loader, self.tracks_list, stats_path
+                    self.loader, self.tracks_list
                 )
                 write_statistics(self.mean, self.std, len(self.tracks_list), stats_path)
             else:
