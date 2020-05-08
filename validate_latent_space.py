@@ -23,19 +23,20 @@ def validate_latent_space(args, model, writer):
     global_step = 0
     epoch = args.epoch_num
     step = 0
-    audio_latent_representations(args, train_dataset, model, epoch, step, global_step, writer, train=True, max_tracks=None, vis=True)
+    audio_latent_representations(args, train_dataset, model, epoch, step, global_step, writer, train=True, max_tracks=20, vis=True)
 
 
 @ex.automain
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
+    args.lin_eval = False
     args = post_config_hook(args, _run)
 
     # set start time
     args.time = time.ctime()
 
     # Device configuration
-    args.device = torch.device("cpu") # torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.current_epoch = args.start_epoch
 
     # set random seeds
