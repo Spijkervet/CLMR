@@ -1,3 +1,4 @@
+import essentia.standard
 import os
 import torch
 import argparse
@@ -49,30 +50,40 @@ class FilterVisualizer():
         activations.close()
 
 
-from viztools import viz_act_val, viz_cnn_filter
-
 @ex.automain
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
+    args.lin_eval = False  # first, pre-train, after that, lin. evaluation
+    args.n_gpu = torch.cuda.device_count()
+
     args = post_config_hook(args, _run)
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    args.lin_eval = True
 
     (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
 
-    model, optimizer, scheduler = load_model(args, reload_model=True)
+    model, optimizer, scheduler = load_model(
+        args, reload_model=args.reload, name=args.model_name
+    )
+
     model = model.eval() # set in evaluation mode (dropout, bn, etc.)
     print(model)
 
     args.global_step = 0
     args.current_epoch = 0
-    validate_idx = 50
 
-    input_audio = np.random.uniform(-1, 1, (1, 1, args.audio_length))
-    input_audio = torch.from_numpy(input_audio).float().to(args.device)
-    print(input_audio.shape)
-    print(input_audio)
 
-    fv = FilterVisualizer(args, model)
-    fv.visualize(input_audio, layer=0, filter=0)
+    ## placeholder for the input images (None,59049,1)
+    # input_audio = np.random.uniform(-1, 1, (1, 1, args.audio_length))
+    # input_audio = torch.from_numpy(input_audio).float().to(args.device)
+
+    input_img_data = np.random.random((1, args.audio_length, 1))
+    input_img_data = (x - 0.5) * 0.03
+    print(input_img_data)
+    print(input_img_data.shape)
+
+    
+
+
+    # fv = FilterVisualizer(args, model)
+    # fv.visualize(input_audio, layer=0, filter=0)

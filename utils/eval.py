@@ -71,18 +71,21 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
             # get encoding
             if simclr_model:
                 with torch.no_grad():
-                    # h, z = simclr_model(x) # clmr
-                    # x = h # clmr
-                    z, c = simclr_model.model.get_latent_representations(x) # cpc
-                    c = c.permute(0, 2, 1)
-                    pooled = torch.nn.functional.adaptive_avg_pool1d(c, 1) # one label
-                    pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
-                    x = pooled
+                    if args.model_name == "cpc":
+                        z, c = simclr_model.model.get_latent_representations(x) # cpc
+                        c = c.permute(0, 2, 1)
+                        pooled = torch.nn.functional.adaptive_avg_pool1d(c, 1) # one label
+                        pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
+                        x = pooled
+                    else:
+                        h, z = simclr_model(x) # clmr
+                        x = h # clmr
+
                     
             output = model(x)
             predictions = output.argmax(1).detach()
             classes, counts = torch.unique(predictions, return_counts=True)
-            predicted_classes[classes] += counts
+            predicted_classes[classes] += counts.float()
             
             # create array of predictions and ids
             for b in output:

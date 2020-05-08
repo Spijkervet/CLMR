@@ -103,7 +103,7 @@ def default_loader(path):
     return audio, sr
 
 
-def get_dataset_stats(loader, tracks_list, stats_path):
+def get_dataset_stats(loader, tracks_list):
     means = []
     stds = []
     for track_id, fp, label, _ in tqdm(tracks_list):
@@ -138,10 +138,15 @@ class MTTDataset(Dataset):
         mtt_processed_annot = Path(
             args.data_input_dir, "magnatagatune", "processed_annotations"
         )
+
+        at_least_one_pos = ""
+        if args.at_least_one_pos:
+            at_least_one_pos = "_onepos"
+
         if train:
-            self.annotations_file = Path(mtt_processed_annot) / "train_gt_mtt.tsv"
+            self.annotations_file = Path(mtt_processed_annot) / f"train_gt_mtt{at_least_one_pos}.tsv"
         else:
-            self.annotations_file = Path(mtt_processed_annot) / "test_gt_mtt.tsv"
+            self.annotations_file = Path(mtt_processed_annot) / f"test_gt_mtt{at_least_one_pos}.tsv"
 
         [audio_repr_paths, id2audio_repr_path] = load_id2path(
             Path(mtt_processed_annot) / "index_mtt.tsv"
@@ -183,12 +188,12 @@ class MTTDataset(Dataset):
 
         ## get dataset statistics
         name = "Train" if train else "Test"
-        stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}.csv")
+        stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
         if not os.path.exists(stats_path):
-            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version} version")
+            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate}{at_least_one_pos} version")
             if train:
                 self.mean, self.std = get_dataset_stats(
-                    self.loader, self.tracks_list, stats_path
+                    self.loader, self.tracks_list
                 )
                 write_statistics(self.mean, self.std, len(self.tracks_list), stats_path)
             else:
@@ -202,7 +207,7 @@ class MTTDataset(Dataset):
                 self.mean = float(stats[0])
                 self.std = float(stats[1])
         
-        print(f"[{name} dataset ({version})]: Loaded mean/std: {self.mean}, {self.std}")
+        print(f"[{name} dataset ({version}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}")
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)

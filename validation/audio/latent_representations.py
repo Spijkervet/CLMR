@@ -7,7 +7,7 @@ from utils.chords import keys
 import seaborn as sns
 import pandas as pd
 from tqdm import tqdm
-
+from utils import tsne_to_json
 # from tsnecuda import TSNE
 
 
@@ -83,7 +83,7 @@ def audio_latent_representations(
                 track_idx, batch_size=batch_size
             )
 
-            if model_in == None:
+            if not torch.is_tensor(model_in):
                 continue
 
             # for bidx, _ in enumerate(model_in):
@@ -122,5 +122,8 @@ def audio_latent_representations(
         )
         torch.save(labels, os.path.join(out_dir, "labels-{}-{}.pt".format(epoch, step)))
         writer.flush()
+
+    if vis:
+        tsne_to_json(args.audio_length, dataset, embedding, labels)
 
     model.train()
