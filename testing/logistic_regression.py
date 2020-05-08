@@ -14,7 +14,7 @@ from experiment import ex
 from model import load_model
 from model import save_model
 
-from utils import post_config_hook, args_hparams, load_context_config
+from utils import post_config_hook, args_hparams, load_context_config, random_undersample_balanced
 from utils.eval import (
     itemwise_auc_ap,
     tagwise_auc_ap,
@@ -50,7 +50,7 @@ def sample_weight_decay():
     return weight_decay
 
 
-def inference(loader, context_model, device):
+def inference(loader, context_model, model_name, n_features, device):
     feature_vector = []
     labels_vector = []
     for step, (x, y, _) in enumerate(loader):
@@ -63,9 +63,15 @@ def inference(loader, context_model, device):
 
         # get encoding
         with torch.no_grad():
-            h, z = context_model(x) # clmr
-            # z, c = context_model.model.get_latent_representations(x)  # cpc
-            # h = c  # use context vector
+            if model_name == "clmr":
+                h, z = context_model(x) # clmr
+            else:
+                z, c = context_model.model.get_latent_representations(x)  # cpc
+                h = c  # use context vector
+                h = h.permute(0, 2, 1)
+                pooled = torch.nn.functional.adaptive_avg_pool1d(h, 1)  # one label
+                pooled = pooled.permute(0, 2, 1).reshape(-1, n_features)
+                h = pooled
 
         h = h.detach()
 
@@ -81,9 +87,9 @@ def inference(loader, context_model, device):
     return feature_vector, labels_vector
 
 
-def get_features(context_model, train_loader, test_loader, device):
-    train_X, train_y = inference(train_loader, context_model, device)
-    test_X, test_y = inference(test_loader, context_model, device)
+def get_features(context_model, train_loader, test_loader, model_name, n_features, device):
+    train_X, train_y = inference(train_loader, context_model, model_name, n_features, device)
+    test_X, test_y = inference(test_loader, context_model, model_name, n_features, device)
     return train_X, train_y, test_X, test_y
 
 
@@ -153,12 +159,6 @@ def train(args, loader, model, criterion, optimizer, writer):
         x = x.to(args.device)
         y = y.to(args.device)
 
-        # cpc
-        # x = x.permute(0, 2, 1)
-        # pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
-        # pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
-        # x = pooled
-
         output = model(x)
 
         loss = criterion(output, y)
@@ -204,12 +204,6 @@ def test(args, loader, model, criterion, optimizer, writer):
         for step, (x, y) in enumerate(loader):
             x = x.to(args.device)
             y = y.to(args.device)
-
-            # cpc
-            # x = x.permute(0, 2, 1)
-            # pooled = torch.nn.functional.adaptive_avg_pool1d(x, 1)  # one label
-            # pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
-            # x = pooled
 
             output = model(x)
             loss = criterion(output, y)
@@ -301,6 +295,8 @@ def main(_run, _log):
         model, _, _ = load_model(args, reload_model=False, name="eval")
         model = model.to(args.device)
 
+        print(model.summary())
+
         if not args.mlp:
             weight_decay = args.weight_decay  # sample_weight_decay()
         else:
@@ -325,78 +321,23 @@ def main(_run, _log):
         print(model)
 
         # create features from pre-trained model
-        # if not os.path.exists("features.p"):
-        #     print("### Creating features from pre-trained context model ###")
-        (train_X, train_y, test_X, test_y) = get_features(
-            context_model, train_loader, test_loader, args.device
-        )
-            # pickle.dump(
-            #     (train_X, train_y, test_X, test_y), open("features.p", "wb"), protocol=4
-            # )
-        # else:
-        #     print("### Loading features ###")
-        #     (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
+        if not os.path.exists("features.p"):
+            print("### Creating features from pre-trained context model ###")
+            (train_X, train_y, test_X, test_y) = get_features(
+                context_model, train_loader, test_loader, args.model_name, args.n_features, args.device
+            )
+            pickle.dump(
+                (train_X, train_y, test_X, test_y), open("features.p", "wb"), protocol=4
+            )
+        else:
+            print("### Loading features ###")
+            (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
         if args.perc_train_data < 1.0:
             print("Train dataset size:", len(train_X))
-            train_indices = np.random.choice(
-                len(train_X), int(len(train_X) * args.perc_train_data), replace=False
-            )
-            train_X = train_X[train_indices]
-            train_y = train_y[train_indices]
-            print("Train dataset size:", len(train_X))
+            train_X, train_y = random_undersample_balanced(train_X, train_y, args.perc_train_data)
+            print("Undersampled train dataset size:", len(train_X))
 
-        # from sklearn.linear_model import LogisticRegression
-        # from sklearn.svm import SVC
-        # from sklearn import decomposition
-        # from sklearn.metrics import accuracy_score
-        # from sklearn.neural_network import MLPClassifier
-        # model = LogisticRegression(random_state=args.seed, max_iter=1000)
-        # model = SVC(C=1, kernel='rbf')# , gamma='scale')
-        # model = MLPClassifier(hidden_layer_sizes=(20,), max_iter=600, verbose=10,
-        #        solver='sgd', learning_rate='constant', learning_rate_init=0.001)
-
-        # train_X = torch.from_numpy(train_X)
-        # train_X = train_X.permute(0, 2, 1)
-        # train_X = torch.nn.functional.adaptive_avg_pool1d(train_X, 1) # one label
-        # train_X = train_X.permute(0, 2, 1).reshape(-1, args.n_features)
-
-        # test_X = torch.from_numpy(test_X)
-        # test_X = test_X.permute(0, 2, 1)
-        # test_X = torch.nn.functional.adaptive_avg_pool1d(test_X, 1) # one label
-        # test_X = test_X.permute(0, 2, 1).reshape(-1, args.n_features)
-
-        # train_X, test_X = normalize_dataset(train_X, test_X)
-        # pca = decomposition.PCA(n_components=128, whiten=True)
-        # train_X = train_X.reshape(-1, 256, 124)
-        # pca.fit(train_X)
-        # train_X = pca.transform(train_X)
-        # test_X = pca.transform(test_X)
-        # print("Shape after PCA: ", train_X.shape)
-
-        # print('Fitting model..')
-        # model.fit(train_X, train_y)
-        # print('Evaluating model..')
-
-        # print('Predict labels on evaluation data')
-        # pred = model.predict(test_X)
-        # score = model.score(test_X, test_y)
-
-        ## agreggating same ID: majority voting
-        # y_true = []
-        # y_pred = []
-        # id_array = np.array([track_id for track_id, _, _, _ in test_loader.dataset.tracks_list])
-        # for track_id, _, label, _ in test_loader.dataset.tracks_list:
-        #     maj_vote = np.argmax(np.bincount(pred[np.where(id_array == track_id)]))
-        #     y_pred.append(maj_vote)
-        #     y_true.append(label)
-
-        # conf_matrix = confusion_matrix(y_true, y_pred)
-        # acc = accuracy_score(y_true, y_pred)
-        # print('raw score', score)
-        # print(conf_matrix)
-        # print(acc)
-        # exit(0)
 
         arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
             train_X, train_y, test_X, test_y, len(test_loader.dataset)
