@@ -40,6 +40,11 @@ or in place:
 python -m testing.logistic_regression with model_path=./logs/0 epoch_num=40
 ```
 
+## Visualise TSNE manifold
+```
+python validate_latent_space.py with model_path=./logs/audio/magnatagatune/clmr/1 epoch_num=1490 sample_rate=22050  audio_length=59049  -u
+```
+
 
 ## Configuration
 The configuration of training can be found in: `config/config.yaml`. I personally prefer to use files instead of long strings of arguments when configuring a run. An example `config.yaml` file:

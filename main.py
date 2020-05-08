@@ -1,3 +1,4 @@
+import essentia.standard
 import os
 import torch
 import torchvision
@@ -33,7 +34,8 @@ def main(_run, _log):
     )
 
     # weight init.
-    model.apply(model.initialize)
+    if not args.reload:
+        model.apply(model.initialize)
 
     if args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
@@ -46,8 +48,10 @@ def main(_run, _log):
     writer = SummaryWriter(log_dir=args.tb_dir)
 
     # save random init. model
-    args.current_epoch = "random"
-    save_model(args, model, optimizer, args.model_name)
+
+    if not args.reload:
+        args.current_epoch = "random"
+        save_model(args, model, optimizer, args.model_name)
 
     args.global_step = 0
     args.current_epoch = 0

@@ -25,10 +25,11 @@ class CLMR:
             print(f"Epoch [{epoch}/{epochs}]\t Loss: {loss_epoch}\t lr: {round(lr, 5)}")
 
             # validate
-            if epoch % validate_idx == 0:
-                print("Validation")
-                test_loss_epoch = self.test(args, test_loader)
-                self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
+            if args.dataset != "billboard":
+                if epoch % validate_idx == 0:
+                    print("Validation")
+                    test_loss_epoch = self.test(args, test_loader)
+                    self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
 
             if self.scheduler:
                 self.scheduler.step()
