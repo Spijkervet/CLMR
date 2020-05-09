@@ -48,6 +48,7 @@ def post_config_hook(args, _run):
     return args
 
 def load_context_config(args):
+    dataset = args.dataset
     context_model_path = args.model_path
     epoch_num = args.epoch_num
     logistic_epochs = args.logistic_epochs
@@ -58,6 +59,7 @@ def load_context_config(args):
     context_args = json.load(open(json_config, "r"))
     new_args = argparse.Namespace(**context_args)
 
+    new_args.dataset = dataset
     new_args.model_path = context_model_path
     new_args.epoch_num = epoch_num
     new_args.logistic_epochs = logistic_epochs
