@@ -8,6 +8,7 @@ import mirdata
 import mirdata.billboard
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+import random
 
 from datasets.utils.utils import write_statistics
 
@@ -92,6 +93,7 @@ class MIRDataset(Dataset):
         # self.tracks = tracks
 
         self.root_dir = os.path.join(args.data_input_dir, args.dataset, "samples")
+        self.model_name = args.model_name
 
         version = "unlabeled" # TODO
         if unlabeled:
@@ -188,8 +190,14 @@ class MIRDataset(Dataset):
             print(f"Skipped {track_id, fp}, could not load audio")
             return self.__getitem__(index+1)
 
-        if self.transform:
+        if self.transform and self.model_name == "clmr":
             audio = self.transform(audio, self.mean, self.std)
+        elif self.model_name == "cpc":
+            max_samples = audio.size(1)
+            start_idx = random.randint(0, max_samples - self.audio_length)
+            audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = self.normalise_audio(audio)
+            audio = (audio, audio)
 
         return audio, labels, track_id
 
