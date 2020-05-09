@@ -47,7 +47,7 @@ def load_model(args, reload_model=False, name="clmr"):
         model_fp = os.path.join(
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
-        model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
+        model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=False)
 
     model = model.to(args.device)
 
@@ -76,7 +76,7 @@ def load_model(args, reload_model=False, name="clmr"):
     else:
         raise NotImplementedError
 
-    if reload_model:
+    if reload_model and not args.transfer:
         optim_fp = os.path.join(
             model_path, "{}_checkpoint_{}_optim.tar".format(name, epoch_num)
         )
