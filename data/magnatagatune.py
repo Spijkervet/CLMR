@@ -188,9 +188,13 @@ class MTTDataset(Dataset):
 
         ## get dataset statistics
         name = "Train" if train else "Test"
-        stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
+        if args.pretrain_dataset == "billboard":
+            version = "unlabeled"
+            
+        stats_path = os.path.join(args.data_input_dir, args.pretrain_dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
+        print(stats_path)
         if not os.path.exists(stats_path):
-            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate}{at_least_one_pos} version")
+            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) from pre-trained {args.pretrain_dataset} for {version}_{self.sample_rate}{at_least_one_pos} version")
             if train:
                 self.mean, self.std = get_dataset_stats(
                     self.loader, self.tracks_list
@@ -207,7 +211,7 @@ class MTTDataset(Dataset):
                 self.mean = float(stats[0])
                 self.std = float(stats[1])
         
-        print(f"[{name} dataset ({version}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}")
+        print(f"[{name} dataset ({args.pretrain_dataset}_{version}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}")
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)

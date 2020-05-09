@@ -120,11 +120,15 @@ class MIRDataset(Dataset):
             self.root_dir, self.labels_file, self.tracks_index, sr=self.sample_rate
         )
 
+        at_least_one_pos = ""
+        if args.at_least_one_pos:
+            at_least_one_pos = "_onepos"
+
         # TODO: crucial!
         if not diff_train_dataset:
             ## get dataset statistics
             name = "Train" if train else "Test"
-            stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}_{self.sample_rate}.csv")
+            stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
             if not os.path.exists(stats_path):
                 print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate} version")
                 if train:
