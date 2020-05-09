@@ -16,11 +16,11 @@ from model import save_model
 
 from utils import post_config_hook, args_hparams, load_context_config, random_undersample_balanced
 from utils.eval import (
+    get_metrics,
     itemwise_auc_ap,
     tagwise_auc_ap,
     eval_all,
     average_precision,
-    evaluate_key_mirex,
 )
 
 # metrics
@@ -118,22 +118,6 @@ def get_predicted_classes(output, predicted_classes):
     predicted_classes[classes] += counts.float()
     return predicted_classes
 
-
-def get_metrics(domain, y, output):
-    if domain == "audio":
-        auc, acc = tagwise_auc_ap(
-            y.cpu().detach().numpy(), output.cpu().detach().numpy()
-        )
-        auc = auc.mean()
-        acc = acc.mean()
-    elif domain == "scores":
-        auc = 0
-        acc = average_precision(
-            y.detach().cpu().numpy(), output.detach().cpu().numpy()
-        ).mean()
-    else:
-        raise NotImplementedError
-    return auc, acc
 
 
 def plot_predicted_classes(predicted_classes, epoch, writer, train):
