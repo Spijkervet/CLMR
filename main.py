@@ -77,7 +77,7 @@ def main(_run, _log):
     elif args.model_name == "cpc":
         cpc = CPC(args, model, optimizer, scheduler, writer)
         cpc.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
-        test_loss_epoch = clmr.test(args, test_loader)
+        test_loss_epoch = cpc.test(args, test_loader)
         writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch}) 
     else:
         raise NotImplementedError()
