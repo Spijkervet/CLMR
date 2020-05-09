@@ -6,6 +6,23 @@ from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_sco
 from utils.chords import chords, chromatic_scale
 
 
+def get_metrics(domain, y, output):
+    if domain == "audio":
+        auc, acc = tagwise_auc_ap(
+            y.cpu().detach().numpy(), output.cpu().detach().numpy()
+        )
+        auc = auc.mean()
+        acc = acc.mean()
+    elif domain == "scores":
+        auc = 0
+        acc = average_precision(
+            y.detach().cpu().numpy(), output.detach().cpu().numpy()
+        ).mean()
+    else:
+        raise NotImplementedError
+    return auc, acc
+
+
 def itemwise_auc_ap(y, pred):
     """ Annotation : item-wise(row wise) calculation """
     n_songs = y.shape[0]
