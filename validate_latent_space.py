@@ -37,7 +37,7 @@ def main(_run, _log):
     args.time = time.ctime()
 
     # Device configuration
-    args.device = torch.device("cpu") # torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.current_epoch = args.start_epoch
 
     # set random seeds
