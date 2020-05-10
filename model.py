@@ -47,7 +47,11 @@ def load_model(args, reload_model=False, name="clmr"):
         model_fp = os.path.join(
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
-        model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=False)
+        
+        strict=True
+        if args.transfer:
+            strict = False
+        model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=strict)
 
     model = model.to(args.device)
 
