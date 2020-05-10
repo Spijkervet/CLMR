@@ -1,15 +1,15 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "fma" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-pretrain_dataset: "magnatagatune"
-model_name: "clmr" # [clmr]
+model_name: "clmr" # [clmr, supervised]
+fma_version: "medium"
 
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 48 # for audio, 256 for images
-num_workers: 8
+num_workers: 16
 start_epoch: 0
 epochs: 10000
 
@@ -19,26 +19,20 @@ learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
 weight_decay: 1.0e-6
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
-## supervised params
-supervised: False # to attach a FC layer
+
+## supervised params (if model_name == supervised)
 supervised_lr: 0.01
 
 ## model options
 normalize: True
 projection_dim: 128
+dropout: 0.5
 
 ## audio
 audio_length: 59049
 sample_rate: 22050
 
-## CPC
-prediction_step: 20 # Time steps k to predict into future
-negative_samples: 15 # Number of negative samples to be used for training
-subsample: True # Boolean to decide whether to subsample from the total sequence lengh within intermediate layers
-
-
-## CLMR
-### transformations
+## transformations
 transforms_phase: 0.8
 transforms_noise: 0.5
 transforms_gain: 0.0
@@ -48,23 +42,27 @@ transforms_lowpass_freq: 3500
 
 
 
+## mixed-precision training
+# fp16: False 
+# fp16_opt_level: "O2"
+
+
 ## reload options
 reload: False
-model_path: "" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 0 # set to checkpoint number
+model_path: "./logs/audio/magnatagatune/tags/3" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 1100 # set to checkpoint number
 
 
 ## linear evaluation options
 mlp: True 
 logistic_batch_size: 64
-logistic_epochs: 100
-logistic_lr: 0.003 # clmr: 0.0004, cpc: 0.003
+logistic_epochs: 535
+logistic_lr: 0.0004
 reload_logreg: False
 perc_train_data: 1.0
 logreg_model_path: ""
 logreg_epoch_num: ""
 num_tags: 50
-at_least_one_pos: False
 
 ### vision
 ## model options
@@ -80,5 +78,3 @@ at_least_one_pos: False
 # image_height: 96
 # image_width: 96
 # image_channels: 3
-
-

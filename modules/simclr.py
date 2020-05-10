@@ -7,7 +7,7 @@ from .sample_cnn_59049 import SampleCNN59049
 from .sample_cnn_16000 import SampleCNN16000
 from .sample_cnn_12000 import SampleCNN12000
 from .sample_cnn_8000 import SampleCNN8000
-
+from .cpc.encoder import Encoder as CPCEncoder
 
 class Identity(nn.Module):
     def __init__(self):
@@ -39,6 +39,15 @@ class SimCLR(Model):
                 self.encoder = SampleCNN12000(args)
             elif args.sample_rate == 8000:
                 self.encoder = SampleCNN8000(args)
+            
+            if args.new_encoder:
+                strides = [5, 3, 2, 2, 2, 2, 2]
+                filter_sizes = [10, 6, 4, 4, 4, 2, 2]
+                padding = [2, 2, 2, 2, 1, 1, 1]
+                genc_input = 1
+                genc_hidden = 512
+                self.encoder = CPCEncoder(genc_input, genc_hidden, strides, filter_sizes, padding)
+
             print(f"### {self.encoder.__class__.__name__} ###")
 
         elif args.domain == "scores":
