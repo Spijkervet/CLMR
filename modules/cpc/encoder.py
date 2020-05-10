@@ -23,5 +23,15 @@ class Encoder(nn.Module):
             self.seq.add_module("layer-{}".format(idx), block)
             input_dim = hidden_dim
 
+        self.avgpool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Linear(hidden_dim, 50)
+        
+
     def forward(self, x):
-        return self.seq(x)
+        out = self.seq(x)
+
+
+        # CLMR!!!
+        # out = self.avgpool(out)
+        # out = out.reshape(x.shape[0], out.size(1) * out.size(2))
+        return out
