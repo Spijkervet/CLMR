@@ -24,7 +24,6 @@ def cpc_model(args):
 
 
 def load_model(args, reload_model=False, name="clmr"):
-
     if name == "clmr":
         model = SimCLR(args)
     elif name == "cpc":
@@ -45,7 +44,7 @@ def load_model(args, reload_model=False, name="clmr"):
         print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {epoch_num} ###")
 
         model_fp = os.path.join(
-            model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
+            model_path, "{}_checkpoint_{}_{}.tar".format(name, args.train_stage, epoch_num)
         )
         
         strict=True
@@ -61,6 +60,12 @@ def load_model(args, reload_model=False, name="clmr"):
         optimizer = torch.optim.Adam(
             model.parameters(), lr=args.learning_rate
         )
+    elif args.optimizer == "SGD":
+        print("### Using SGD optimizer ###")
+        optimizer = torch.optim.SGD(
+            model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=True
+        )
+        
     elif args.optimizer == "LARS":
         print("### Using LARS optimizer ###")
         # optimized using LARS with linear learning rate scaling
@@ -82,7 +87,7 @@ def load_model(args, reload_model=False, name="clmr"):
 
     if reload_model and not args.transfer:
         optim_fp = os.path.join(
-            model_path, "{}_checkpoint_{}_optim.tar".format(name, epoch_num)
+            model_path, "{}_checkpoint_{}_{}_optim.tar".format(name, args.train_stage, epoch_num)
         )
         if os.path.exists(optim_fp):
             print(f"### RELOADING {name.upper()} OPTIMIZER FROM CHECKPOINT {epoch_num} ###")
@@ -95,11 +100,11 @@ def load_model(args, reload_model=False, name="clmr"):
 def save_model(args, model, optimizer, name="clmr"):
     if args.out_dir is not None:
         out = os.path.join(
-            args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
+            args.out_dir, "{}_checkpoint_{}_{}.tar".format(name, args.train_stage, args.current_epoch)
         )
 
         optim_out = os.path.join(
-            args.out_dir, "{}_checkpoint_{}_optim.tar".format(name, args.current_epoch)
+            args.out_dir, "{}_checkpoint_{}_{}_optim.tar".format(name, args.train_stage, args.current_epoch)
         )
 
         # To save a DataParallel model generically, save the model.module.state_dict().
