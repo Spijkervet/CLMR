@@ -51,7 +51,7 @@ def pons_indexer(args, path, id2audio, id2gt):
     index_num = 0
     for idx, (clip_id, label) in enumerate(id2gt.items()):
         fn = Path(id2audio[clip_id].split(".")[0])
-        if args.lin_eval or args.model_name == "supervised":
+        if args.lin_eval or args.supervised:
             fp = os.path.join(path, str(fn) + ".wav")
             index_name = "-".join(fn.stem.split("-")[:-2])  # get all tracks together
         else:
@@ -126,7 +126,7 @@ class MTTDataset(Dataset):
         self.audio_length = args.audio_length
         self.model_name = args.model_name
 
-        if args.model_name == "supervised" or args.lin_eval:
+        if args.lin_eval or args.supervised:
             version = "segments"
         else:
             version = "concat"
@@ -190,6 +190,8 @@ class MTTDataset(Dataset):
         name = "Train" if train else "Test"
         if args.pretrain_dataset == "billboard":
             version = "unlabeled"
+        if args.pretrain_dataset == "fma":
+            version = "medium"
             
         stats_path = os.path.join(args.data_input_dir, args.pretrain_dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
         print(stats_path)
