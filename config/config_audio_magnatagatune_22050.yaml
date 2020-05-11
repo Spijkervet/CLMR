@@ -1,12 +1,15 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "fma" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
 pretrain_dataset: "magnatagatune"
-model_name: "clmr" # [clmr]
+model_name: "cpc" # [clmr]
 train_stage: 0
 transfer: 0 # when transfer learning
+
+## fma
+fma_version: "medium"
 
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
