@@ -1,7 +1,7 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "billboard" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
 pretrain_dataset: "magnatagatune"
 model_name: "clmr" # [clmr]
