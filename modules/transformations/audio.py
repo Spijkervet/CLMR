@@ -161,7 +161,6 @@ class AudioTransforms:
         sr = args.sample_rate
 
         self.train_transform = [
-            # Ashley: store mean/std/cov of the whole dataset
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
             InvertSignal(p=args.transforms_phase, sr=sr),
             Noise(p=args.transforms_noise, sr=sr),
@@ -174,7 +173,6 @@ class AudioTransforms:
             ),
             # PitchShift(p=0.1, sr=sr)
             # Reverse(p=0.5, sr=sr),
-            # pseudo-standardise w.r.t. original statistics
         ]
 
         self.test_transform = []

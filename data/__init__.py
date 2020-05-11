@@ -8,6 +8,8 @@ from data.vision import get_universal_dataloader
 from datasets.utils.prepare_dataset import prepare_dataset
 
 def get_dataset(args):
+    val_loader = None
+    val_dataset = None
     if args.domain == "audio":
         if args.dataset == "billboard":
             # prepare_dataset(args)
@@ -15,7 +17,7 @@ def get_dataset(args):
         elif args.dataset == "fma":
             (train_loader, train_dataset, test_loader, test_dataset) = get_fma_loaders(args)
         elif args.dataset == "magnatagatune":
-            (train_loader, train_dataset, test_loader, test_dataset) = get_mtt_loaders(args)
+            (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_mtt_loaders(args)
         elif args.dataset == "gtzan":
             (train_loader, train_dataset, test_loader, test_dataset) = get_gtzan_loaders(args)
         else:
@@ -27,4 +29,4 @@ def get_dataset(args):
             (train_loader, train_dataset, test_loader, test_dataset) = get_universal_dataloader(args)
         else:
             raise NotImplementedError
-    return train_loader, train_dataset, test_loader, test_dataset
+    return train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset
