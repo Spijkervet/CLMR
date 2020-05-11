@@ -60,19 +60,9 @@ def main(_run, _log):
     # write a few audio files to TensorBoard for comparison
     write_audio_tb(args, train_loader, test_loader, writer)
 
-    if args.model_name == "supervised":
-        supervised = Supervised(args, model)
-        supervised.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
-        auc, ap = eval_all(
-            args, test_loader, None, supervised.model, writer, n_tracks=None
-        )
-        print(f"Final: AUC: {auc}, AP: {ap}")
-        writer.add_hparams(
-            args_hparams(args), {"hparam/test_auc": auc, "hparam/test_ap": ap}
-        )
-    elif args.model_name == "clmr":
+    if args.model_name == "clmr":
         clmr = CLMR(args, model, optimizer, scheduler, writer)
-        # clmr.solve(args, train_loader, val_loader, test_loader, args.start_epoch, args.epochs)
+        clmr.solve(args, train_loader, val_loader, test_loader, args.start_epoch, args.epochs)
 
         if args.supervised:
             test_loss_epoch, auc, ap = clmr.test_avg(args, test_loader)
