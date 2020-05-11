@@ -54,19 +54,25 @@ class CLMR:
                 self.writer.add_scalar("Misc/learning_rate", learning_rate, epoch)
                 print(f"Epoch [{epoch}/{epochs}]\t Loss: {loss_epoch}\t lr: {round(learning_rate, 5)}")
 
-                # validate
-                if epoch % validate_idx == 0:
-                    validate_loss_epoch = self.validate(args, val_loader)
-                    self.writer.add_scalar("Loss/validation", validate_loss_epoch, epoch)
 
                 # test
                 if args.dataset != "billboard":
+                    # validate
+                    if epoch % validate_idx == 0:
+                        validate_loss_epoch = self.validate(args, val_loader)
+                        self.writer.add_scalar("Loss/validation", validate_loss_epoch, epoch)
+
                     if epoch % avg_test_idx == 0:
                         print("Testing average scores")
-                        test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
+
+                        if args.supervised:
+                            test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
+                            self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
+                            self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
+                        else:
+                            test_loss_epoch = self.validate(args, test_loader)
+
                         self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
-                        self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
-                        self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
 
                 if self.scheduler:
                     self.scheduler.step()
@@ -74,10 +80,11 @@ class CLMR:
                 if epoch % 10 == 0:
                     save_model(args, self.model, self.optimizer, name="clmr")
 
-                self.early_stopping(validate_loss_epoch, self.model, self.optimizer)
-                if self.early_stopping.early_stop:
-                    print("Early stopping")
-                    break
+                if args.supervised:
+                    self.early_stopping(validate_loss_epoch, self.model, self.optimizer)
+                    if self.early_stopping.early_stop:
+                        print("Early stopping")
+                        break
                 
                 args.current_epoch += 1
             
@@ -98,6 +105,9 @@ class CLMR:
                 h_i, z_i = self.model(x_i)
                 h_j, z_j = self.model(x_j)
                 loss = self.criterion(z_i, z_j)
+                
+                if step % 20 == 0:
+                    print(f"Step [{step}/{len(train_loader)}]\t Loss: {loss.item()}")
             else:
                 x_i = x_i.to(self.device) # x_i and x_j are identital in supervised case (dataloader)
                 y = y.to(self.device)
@@ -108,16 +118,19 @@ class CLMR:
                 auc, ap = get_metrics(args.domain, y, h_i)
                 auc_epoch += auc
                 ap_epoch += ap
+                
+                if step % 20 == 0:
+                    print(f"Step [{step}/{len(train_loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}")
 
             loss.backward()
             self.optimizer.step()
 
-            if step % 20 == 0:
-                print(f"Step [{step}/{len(train_loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}")
-
             self.writer.add_scalar("Loss/train_epoch", loss.item(), args.global_step)
-            self.writer.add_scalar("AUC/train_step", auc, args.global_step)
-            self.writer.add_scalar("AP/train_step", ap, args.global_step)
+
+            if args.supervised:
+                self.writer.add_scalar("AUC/train_step", auc, args.global_step)
+                self.writer.add_scalar("AP/train_step", ap, args.global_step)
+
             loss_epoch += loss.item()
             args.global_step += 1
 
@@ -145,7 +158,7 @@ class CLMR:
 
 
                 if step % 10 == 0:
-                    print(f"Step [{step}/{len(loader)}]\t Validation Loss: {loss.item()}")
+                    print(f"Step [{step}/{len(loader)}]\t Validation/Test Loss: {loss.item()}")
 
                 loss_epoch += loss.item()
 
