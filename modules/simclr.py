@@ -59,14 +59,22 @@ class SimCLR(Model):
             raise NotImplementedError
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer
-        self.encoder.fc = Identity()  # remove fully-connected layer after pooling layer
 
         # We use a MLP with one hidden layer to obtain z_i = g(h_i) = W(2)σ(W(1)h_i) where σ is a ReLU non-linearity.
-        self.projector = nn.Sequential(
-            nn.Linear(self.n_features, self.n_features, bias=False),
-            nn.ReLU(),
-            nn.Linear(self.n_features, args.projection_dim, bias=False),
-        )
+        if not args.supervised:
+            self.encoder.fc = Identity()  # remove fully-connected layer after pooling layer for contrastive learning
+
+            if args.projector_layers == 0:
+                self.projector = Identity()
+            elif args.projector_layers == 1:
+                self.projector = nn.Linear(self.n_features, args.projection_dim, bias=False)
+            else:
+                # We use a MLP with one hidden layer to obtain z_i = g(h_i) = W(2)σ(W(1)h_i) where σ is a ReLU non-linearity.
+                self.projector = nn.Sequential(
+                    nn.Linear(self.n_features, self.n_features, bias=False),
+                    nn.ReLU(),
+                    nn.Linear(self.n_features, args.projection_dim, bias=False),
+                )
 
     def get_resnet(self, name):
         resnets = {
@@ -84,10 +92,14 @@ class SimCLR(Model):
 
     def get_latent_representations(self, x):
         h = self.encoder(x)
-        z = self.projector(h)
 
-        if self.args.normalize:
-            z = nn.functional.normalize(z, dim=1)
+        if not self.args.supervised:
+            z = self.projector(h)
+
+            if self.args.normalize:
+                z = nn.functional.normalize(z, dim=1)
+        else:
+            z = None
 
         return h, z
 
