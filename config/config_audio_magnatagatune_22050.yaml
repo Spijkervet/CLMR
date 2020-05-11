@@ -51,7 +51,7 @@ transforms_gain: 0.0
 transforms_filters: 0.4
 transforms_highpass_freq: 800
 transforms_lowpass_freq: 3500
-
+new_encoder: False
 
 
 ## reload options
