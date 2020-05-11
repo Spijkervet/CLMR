@@ -60,15 +60,21 @@ class SimCLR(Model):
 
         self.n_features = self.encoder.fc.in_features  # get dimensions of fc layer
 
+        # We use a MLP with one hidden layer to obtain z_i = g(h_i) = W(2)σ(W(1)h_i) where σ is a ReLU non-linearity.
         if not args.supervised:
             self.encoder.fc = Identity()  # remove fully-connected layer after pooling layer for contrastive learning
 
-            # We use a MLP with one hidden layer to obtain z_i = g(h_i) = W(2)σ(W(1)h_i) where σ is a ReLU non-linearity.
-            self.projector = nn.Sequential(
-                nn.Linear(self.n_features, self.n_features, bias=False),
-                nn.ReLU(),
-                nn.Linear(self.n_features, args.projection_dim, bias=False),
-            )
+            if args.projector_layers == 0:
+                self.projector = Identity()
+            elif args.projector_layers == 1:
+                self.projector = nn.Linear(self.n_features, args.projection_dim, bias=False)
+            else:
+                # We use a MLP with one hidden layer to obtain z_i = g(h_i) = W(2)σ(W(1)h_i) where σ is a ReLU non-linearity.
+                self.projector = nn.Sequential(
+                    nn.Linear(self.n_features, self.n_features, bias=False),
+                    nn.ReLU(),
+                    nn.Linear(self.n_features, args.projection_dim, bias=False),
+                )
 
     def get_resnet(self, name):
         resnets = {
