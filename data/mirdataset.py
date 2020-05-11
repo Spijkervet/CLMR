@@ -272,7 +272,3 @@ class MIRDataset(Dataset):
         norm_audio = (audio - self.mean) / self.std
 
         return norm_audio, audio, track_id, sample_id
-
-    def unnorm(self, norm_audio):
-        audio = (norm_audio * self.std) + self.mean
-        return audio

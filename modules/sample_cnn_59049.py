@@ -9,6 +9,8 @@ class SampleCNN59049(Model):
 
     def __init__(self, args):
         super(SampleCNN59049, self).__init__()
+
+        self.supervised = args.supervised
         self.conv1 = nn.Sequential(
             nn.Conv1d(1, 64, kernel_size=3, stride=3, padding=0),
             nn.BatchNorm1d(64),
@@ -87,7 +89,8 @@ class SampleCNN59049(Model):
         # 1 x 512
 
         # self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.fc = nn.Linear(256, 50)
+        self.dropout = nn.Dropout(args.dropout)
+        self.fc = nn.Linear(256, args.n_classes)
 
     def forward(self, x):
         # input x : B x 59049 x 1
@@ -105,7 +108,9 @@ class SampleCNN59049(Model):
         out = self.conv11(out)
 
         # out = self.avgpool(out)
-        out = out.reshape(x.shape[0], out.size(1) * out.size(2))
+        if self.supervised:
+            out = self.dropout(out)
 
+        out = out.reshape(x.shape[0], out.size(1) * out.size(2))
         logit = self.fc(out)
         return logit

@@ -6,7 +6,7 @@ import os
 hostname = platform.node()
 experiment_log = open(f"experiments/{hostname}.log", "a")
 
-df = pd.read_csv("./experiments/ws3.csv")
+df = pd.read_csv("./experiments/ws.csv")
 for idx, row in df.iterrows():
     # run experiments on hostname
     if hostname.lower() == row["host"]:
