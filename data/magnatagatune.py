@@ -51,7 +51,7 @@ def pons_indexer(args, path, id2audio, id2gt):
     index_num = 0
     for idx, (clip_id, label) in enumerate(id2gt.items()):
         fn = Path(id2audio[clip_id].split(".")[0])
-        if args.lin_eval or args.model_name == "supervised":
+        if args.lin_eval or args.supervised:
             fp = os.path.join(path, str(fn) + ".wav")
             index_name = "-".join(fn.stem.split("-")[:-2])  # get all tracks together
         else:
@@ -68,7 +68,7 @@ def pons_indexer(args, path, id2audio, id2gt):
             label = torch.FloatTensor(label)
 
             # if supervised/eval
-            if args.model_name == "supervised" or args.lin_eval:
+            if args.supervised or args.lin_eval:
                 # n segments so it sees all data
                 num_segments = 10
                 for n in range(num_segments):
@@ -90,6 +90,7 @@ def pons_indexer(args, path, id2audio, id2gt):
 def default_loader(path):
     # with audio normalisation
     audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
+    # audio, sr = torchaudio.load(path, normalization=True)
 
     # is a bit slower with multiprocessing loading into the dataloader (num_workers > 1)
     # rate, sig = wavfile.read(path)
@@ -115,8 +116,9 @@ def get_dataset_stats(loader, tracks_list):
 
 class MTTDataset(Dataset):
     def __init__(
-        self, args, train, loader=default_loader, transform=None,
+        self, args, train, validation=False, loader=default_loader, transform=None,
     ):
+        self.supervised = args.supervised
         self.num_tags = args.num_tags
         self.lin_eval = args.lin_eval
         self.indexer = pons_indexer
@@ -126,7 +128,7 @@ class MTTDataset(Dataset):
         self.audio_length = args.audio_length
         self.model_name = args.model_name
 
-        if args.model_name == "supervised" or args.lin_eval:
+        if args.lin_eval or args.supervised:
             version = "segments"
         else:
             version = "concat"
@@ -145,6 +147,8 @@ class MTTDataset(Dataset):
 
         if train:
             self.annotations_file = Path(mtt_processed_annot) / f"train_gt_mtt{at_least_one_pos}.tsv"
+        elif validation:
+            self.annotations_file = Path(mtt_processed_annot) / f"val_gt_mtt{at_least_one_pos}.tsv"
         else:
             self.annotations_file = Path(mtt_processed_annot) / f"test_gt_mtt{at_least_one_pos}.tsv"
 
@@ -188,8 +192,12 @@ class MTTDataset(Dataset):
 
         ## get dataset statistics
         name = "Train" if train else "Test"
+        if validation:
+            name = "Validation"
         if args.pretrain_dataset == "billboard":
             version = "unlabeled"
+        if args.pretrain_dataset == "fma":
+            version = "medium"
             
         stats_path = os.path.join(args.data_input_dir, args.pretrain_dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
         print(stats_path)
@@ -216,9 +224,16 @@ class MTTDataset(Dataset):
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
         max_samples = audio.shape[1]
-        assert (
-            max_samples - self.audio_length
-        ) > 0, "max samples exceeds number of samples in crop"
+
+        if sr != self.sample_rate:
+            raise Exception("Sample rate is not consistent throughout the dataset")
+
+        if max_samples - self.audio_length <= 0:
+            raise Exception("Max samples exceeds number of samples in crop")
+
+        if torch.isnan(audio).any():
+            raise Exception("Audio contains NaN values")
+
         return audio
 
     def get_full_size_audio(self, track_id, fp):
@@ -248,13 +263,20 @@ class MTTDataset(Dataset):
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, index):
         track_id, fp, label, segment = self.tracks_list[index]
-        audio = self.get_audio(fp)
+
+        try:
+            audio = self.get_audio(fp)
+        except:
+            pass
+            print(f"Skipped {track_id, fp}, could not load audio")
+            return self.__getitem__(index+1)
 
         # only transform if unsupervised training
-        if self.lin_eval or self.model_name == "supervised":
-            start_idx = random.randint(0, audio.size(1) - self.audio_length) # segment * self.audio_length
+        if self.lin_eval or self.supervised:
+            start_idx = random.randint(0, segment * self.audio_length) # audio.size(1) - self.audio_length) # 
             audio = audio[:, start_idx : start_idx + self.audio_length]
             audio = self.normalise_audio(audio)
+            audio = (audio, audio)
         elif self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
         elif self.model_name == "cpc":

@@ -6,7 +6,7 @@ import essentia.standard
 import librosa
 import numpy as np
 
-from torchaudio.transforms import Vol
+# from torchaudio.transforms import Vol
 
 
 class RandomResizedCrop:
@@ -108,8 +108,9 @@ class Gain:
     def __call__(self, audio, prev_transform=None):
         gain = random.randint(-6, 0)  # input was normalized to max(x)
         if random.random() < self.p:
-            vol = Vol(gain, gain_type="db")
-            audio = vol(audio)
+            pass
+            # vol = Vol(gain, gain_type="db")
+            # audio = vol(audio)
         return audio, None
 
 
@@ -161,7 +162,6 @@ class AudioTransforms:
         sr = args.sample_rate
 
         self.train_transform = [
-            # Ashley: store mean/std/cov of the whole dataset
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
             InvertSignal(p=args.transforms_phase, sr=sr),
             Noise(p=args.transforms_noise, sr=sr),
@@ -174,7 +174,6 @@ class AudioTransforms:
             ),
             # PitchShift(p=0.1, sr=sr)
             # Reverse(p=0.5, sr=sr),
-            # pseudo-standardise w.r.t. original statistics
         ]
 
         self.test_transform = []
