@@ -27,7 +27,7 @@ def main(_run, _log):
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
+    (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_dataset(args)
 
     model, optimizer, scheduler = load_model(
         args, reload_model=args.reload, name=args.model_name
@@ -51,6 +51,7 @@ def main(_run, _log):
 
     if not args.reload:
         args.current_epoch = "random"
+        args.train_stage = 0
         save_model(args, model, optimizer, args.model_name)
 
     args.global_step = 0
@@ -71,14 +72,20 @@ def main(_run, _log):
         )
     elif args.model_name == "clmr":
         clmr = CLMR(args, model, optimizer, scheduler, writer)
-        clmr.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
-        test_loss_epoch = clmr.test(args, test_loader)
-        writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch})
+        # clmr.solve(args, train_loader, val_loader, test_loader, args.start_epoch, args.epochs)
+
+        if args.supervised:
+            test_loss_epoch, auc, ap = clmr.test_avg(args, test_loader)
+            print(f"[Test]: ROC-AUC: {auc}, PR-AUC: {ap}")
+            writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch, "hparam/test_auc": auc, "hparam/test_ap": ap}) 
     elif args.model_name == "cpc":
         cpc = CPC(args, model, optimizer, scheduler, writer)
         cpc.solve(args, train_loader, test_loader, args.start_epoch, args.epochs)
-        test_loss_epoch = cpc.test(args, test_loader)
-        writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch}) 
+
+        if args.supervised:
+            test_loss_epoch, auc, ap = cpc.test_avg(args, test_loader)
+            print(f"[Test]: ROC-AUC: {auc}, PR-AUC: {ap}")
+            writer.add_hparams(args_hparams(args), {"hparam/test_loss": test_loss_epoch, "hparam/test_auc": auc, "hparam/test_ap": ap}) 
     else:
         raise NotImplementedError()
 

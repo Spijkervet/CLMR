@@ -4,3 +4,6 @@ new record:
 
 ran on mtt long, should be eval still
 now running gtzan
+
+Rl8 ran unnorm., very long time
+run logreg on clmr/5/5660.tar!
