@@ -12,77 +12,77 @@ class SampleCNN59049(Model):
 
         self.supervised = args.supervised
         self.conv1 = nn.Sequential(
-            nn.Conv1d(1, 64, kernel_size=3, stride=3, padding=0),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(1, 128, kernel_size=3, stride=3, padding=0),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
         )
         # 19683 x 128
         self.conv2 = nn.Sequential(
-            nn.Conv1d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(3, stride=3),
         )
         # 6561 x 128
         self.conv3 = nn.Sequential(
-            nn.Conv1d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(3, stride=3),
         )
         # 2187 x 128
         self.conv4 = nn.Sequential(
-            nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(3, stride=3),
-        )
-        # 729 x 256
-        self.conv5 = nn.Sequential(
-            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(3, stride=3),
-        )
-        # 243 x 256
-        self.conv6 = nn.Sequential(
-            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(3, stride=3),
-        )
-        # 81 x 256
-        self.conv7 = nn.Sequential(
-            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(3, stride=3),
-        )
-        # 27 x 256
-        self.conv8 = nn.Sequential(
-            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(3, stride=3),
-        )
-        # 9 x 256
-        self.conv9 = nn.Sequential(
-            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(3, stride=3),
-        )
-        # 3 x 256
-        self.conv10 = nn.Sequential(
             nn.Conv1d(128, 256, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.MaxPool1d(3, stride=3),
         )
-        # 1 x 512
-        self.conv11 = nn.Sequential(
+        # 729 x 256
+        self.conv5 = nn.Sequential(
             nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(3, stride=3),
+        )
+        # 243 x 256
+        self.conv6 = nn.Sequential(
+            nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(3, stride=3),
+        )
+        # 81 x 256
+        self.conv7 = nn.Sequential(
+            nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(3, stride=3),
+        )
+        # 27 x 256
+        self.conv8 = nn.Sequential(
+            nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(3, stride=3),
+        )
+        # 9 x 256
+        self.conv9 = nn.Sequential(
+            nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(3, stride=3),
+        )
+        # 3 x 256
+        self.conv10 = nn.Sequential(
+            nn.Conv1d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.MaxPool1d(3, stride=3),
+        )
+        # 1 x 512
+        self.conv11 = nn.Sequential(
+            nn.Conv1d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
             # nn.Dropout(args.dropout)
         )
@@ -90,7 +90,7 @@ class SampleCNN59049(Model):
 
         # self.avgpool = nn.AdaptiveAvgPool1d(1)
         self.dropout = nn.Dropout(args.dropout)
-        self.fc = nn.Linear(256, args.n_classes)
+        self.fc = nn.Linear(512, args.n_classes)
 
     def forward(self, x):
         # input x : B x 59049 x 1
