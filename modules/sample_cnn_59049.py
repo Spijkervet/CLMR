@@ -11,7 +11,6 @@ class SampleCNN59049(Model):
         super(SampleCNN59049, self).__init__()
 
         self.supervised = args.supervised
-
         self.conv1 = nn.Sequential(
             nn.Conv1d(1, 128, kernel_size=3, stride=3, padding=0),
             nn.BatchNorm1d(128),
