@@ -6,7 +6,7 @@ import essentia.standard
 import librosa
 import numpy as np
 
-from torchaudio.transforms import Vol
+# from torchaudio.transforms import Vol
 
 
 class RandomResizedCrop:
@@ -108,8 +108,9 @@ class Gain:
     def __call__(self, audio, prev_transform=None):
         gain = random.randint(-6, 0)  # input was normalized to max(x)
         if random.random() < self.p:
-            vol = Vol(gain, gain_type="db")
-            audio = vol(audio)
+            pass
+            # vol = Vol(gain, gain_type="db")
+            # audio = vol(audio)
         return audio, None
 
 
