@@ -66,12 +66,19 @@ class CPC:
                     auc_epoch += auc
                     ap_epoch += ap
 
-            if step % 1 == 0:
-                print(f"Step [{step}/{len(train_loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}")
+                if step % 1 == 0:
+                    print(f"Step [{step}/{len(train_loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}")
+            else:
+                if step % 1 == 0:
+                    print(f"Step [{step}/{len(train_loader)}]\t Loss: {loss.item()}")
+
 
             self.writer.add_scalar("Loss/train_epoch", loss.item(), args.global_step)
-            self.writer.add_scalar("AUC/train_step", auc, args.global_step)
-            self.writer.add_scalar("AP/train_step", ap, args.global_step)
+
+            if args.supervised:
+                self.writer.add_scalar("AUC/train_step", auc, args.global_step)
+                self.writer.add_scalar("AP/train_step", ap, args.global_step)
+                
             loss_epoch += loss.item()
             args.global_step += 1
 

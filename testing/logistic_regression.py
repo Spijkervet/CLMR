@@ -32,6 +32,8 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import StandardScaler
 
+from modules.pytorchtools import EarlyStopping
+from utils.optimizer import set_learning_rate
 
 def normalize_dataset(X_train, X_test):
     scaler = StandardScaler()
@@ -53,7 +55,7 @@ def sample_weight_decay():
 def inference(loader, context_model, model_name, n_features, device):
     feature_vector = []
     labels_vector = []
-    for step, (x, y, _) in enumerate(loader):
+    for step, ((x, _), y, _) in enumerate(loader):
         # for xb in x:
         #     import torchaudio
         #     torchaudio.save("audio.wav", xb, sample_rate=22050)
@@ -87,13 +89,14 @@ def inference(loader, context_model, model_name, n_features, device):
     return feature_vector, labels_vector
 
 
-def get_features(context_model, train_loader, test_loader, model_name, n_features, device):
+def get_features(context_model, train_loader, val_loader, test_loader, model_name, n_features, device):
     train_X, train_y = inference(train_loader, context_model, model_name, n_features, device)
+    val_X, val_y = inference(val_loader, context_model, model_name, n_features, device)
     test_X, test_y = inference(test_loader, context_model, model_name, n_features, device)
-    return train_X, train_y, test_X, test_y
+    return train_X, train_y, val_X, val_y, test_X, test_y
 
 
-def create_data_loaders_from_arrays(X_train, y_train, X_test, y_test, batch_size):
+def create_data_loaders_from_arrays(X_train, y_train, X_val, y_val, X_test, y_test, batch_size):
     # X_train, X_test = normalize_dataset(X_train, X_test)
 
     train = torch.utils.data.TensorDataset(
@@ -102,6 +105,13 @@ def create_data_loaders_from_arrays(X_train, y_train, X_test, y_test, batch_size
     train_loader = torch.utils.data.DataLoader(
         train, batch_size=batch_size, shuffle=False
     )
+    
+    val = torch.utils.data.TensorDataset(
+        torch.from_numpy(X_val), torch.from_numpy(y_val).type(torch.float)
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val, batch_size=batch_size, shuffle=False
+    )
 
     test = torch.utils.data.TensorDataset(
         torch.from_numpy(X_test), torch.from_numpy(y_test).type(torch.float)
@@ -109,7 +119,7 @@ def create_data_loaders_from_arrays(X_train, y_train, X_test, y_test, batch_size
     test_loader = torch.utils.data.DataLoader(
         test, batch_size=batch_size, shuffle=False
     )
-    return train_loader, test_loader
+    return train_loader, val_loader, test_loader
 
 
 def get_predicted_classes(output, predicted_classes):
@@ -216,40 +226,60 @@ def test(args, loader, model, criterion, optimizer, writer):
     return loss_epoch, auc_epoch, accuracy_epoch
 
 
-def solve(args, train_loader, test_loader, model, criterion, optimizer, writer):
-
+def solve(args, train_loader, val_loader, test_loader, model, criterion, optimizer, writer):
     validate_epoch = 1
-    for epoch in range(args.logistic_epochs):
-        loss_epoch, auc_epoch, accuracy_epoch = train(
-            args, train_loader, model, criterion, optimizer, writer
-        )
-        print(
-            f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {loss_epoch / len(train_loader)}\t AUC: {auc_epoch / len(train_loader)}\t AP: {accuracy_epoch / len(train_loader)}"
-        )
+    max_train_stages = 20
+    patience = 3
+    early_stopping = EarlyStopping(patience=patience, verbose=True)
 
-        writer.add_scalar("AUC/train", auc_epoch / len(train_loader), epoch)
-        writer.add_scalar("AP/train", accuracy_epoch / len(train_loader), epoch)
-        writer.add_scalar("Loss/train", loss_epoch / len(train_loader), epoch)
+    for i in range(args.train_stage, max_train_stages):
 
-        save_model(args, model, optimizer, name="supervised")
-        args.current_epoch += 1
+        decay = args.global_lr_decay ** i
+        learning_rate = args.learning_rate * decay
 
-        ## testing
-        if epoch % validate_epoch == 0:
-            loss_epoch, auc_epoch, accuracy_epoch = test(
-                args, test_loader, model, criterion, optimizer, writer
+        print(f"[Stage {i}] Learning rate: {learning_rate}, decayed by {decay}")
+        optimizer = set_learning_rate(optimizer, learning_rate)
+        
+        # reload the best val. checkpoint of previous stage
+        if os.path.exists("checkpoint.pt"):
+            early_stopping.load_checkpoint(model, optimizer, args.device)
+
+        for epoch in range(args.logistic_epochs):
+            loss_epoch, auc_epoch, accuracy_epoch = train(
+                args, train_loader, model, criterion, optimizer, writer
             )
             print(
-                f"[Test]\t Loss: {loss_epoch / len(test_loader)}\t AUC: {auc_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
+                f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {loss_epoch / len(train_loader)}\t AUC: {auc_epoch / len(train_loader)}\t AP: {accuracy_epoch / len(train_loader)}"
             )
-            writer.add_scalar("AUC/test", auc_epoch / len(test_loader), epoch)
-            writer.add_scalar("AP/test", accuracy_epoch / len(test_loader), epoch)
-            writer.add_scalar("Loss/test", loss_epoch / len(test_loader), epoch)
 
-    print(
-        f"[FINAL]\t Loss: {loss_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
-    )
+            writer.add_scalar("AUC/train", auc_epoch / len(train_loader), epoch)
+            writer.add_scalar("AP/train", accuracy_epoch / len(train_loader), epoch)
+            writer.add_scalar("Loss/train", loss_epoch / len(train_loader), epoch)
 
+            save_model(args, model, optimizer, name="supervised")
+            args.current_epoch += 1
+
+            ## testing
+            if epoch % validate_epoch == 0:
+                val_loss_epoch, auc_epoch, accuracy_epoch = test(
+                    args, val_loader, model, criterion, optimizer, writer
+                )
+                print(
+                    f"[Validation]\t Loss: {val_loss_epoch / len(test_loader)}\t AUC: {auc_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
+                )
+                writer.add_scalar("AUC/validation", auc_epoch / len(test_loader), epoch)
+                writer.add_scalar("AP/validation", accuracy_epoch / len(test_loader), epoch)
+                writer.add_scalar("Loss/validation", val_loss_epoch / len(test_loader), epoch)
+            
+            early_stopping(val_loss_epoch, model, optimizer)
+            if early_stopping.early_stop:
+                print("Early stopping")
+                break
+
+        print(
+            f"[FINAL]\t Loss: {loss_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
+        )
+        args.train_stage += 1
 
 @ex.automain
 def main(_run, _log):
@@ -269,7 +299,7 @@ def main(_run, _log):
         args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         args.batch_size = args.logistic_batch_size
 
-        (train_loader, train_dataset, test_loader, test_dataset) = get_dataset(args)
+        (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_dataset(args)
 
         context_model, _, _ = load_model(args, reload_model=True, name=args.model_name)
         context_model.eval()
@@ -307,15 +337,15 @@ def main(_run, _log):
         # create features from pre-trained model
         if not os.path.exists("features.p"):
             print("### Creating features from pre-trained context model ###")
-            (train_X, train_y, test_X, test_y) = get_features(
-                context_model, train_loader, test_loader, args.model_name, args.n_features, args.device
+            (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
+                context_model, train_loader, val_loader, test_loader, args.model_name, args.n_features, args.device
             )
             pickle.dump(
-                (train_X, train_y, test_X, test_y), open("features.p", "wb"), protocol=4
+                (train_X, train_y, val_X, val_y, test_X, test_y), open("features.p", "wb"), protocol=4
             )
         else:
             print("### Loading features ###")
-            (train_X, train_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
+            (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
         if args.perc_train_data < 1.0:
             print("Train dataset size:", len(train_X))
@@ -323,8 +353,8 @@ def main(_run, _log):
             print("Undersampled train dataset size:", len(train_X))
 
 
-        arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
-            train_X, train_y, test_X, test_y, len(test_loader.dataset)
+        arr_train_loader, arr_val_loader, arr_test_loader = create_data_loaders_from_arrays(
+            train_X, train_y, val_X, val_y, test_X, test_y, len(test_loader.dataset)
         )
 
         # run training
@@ -332,6 +362,7 @@ def main(_run, _log):
             solve(
                 args,
                 arr_train_loader,
+                arr_val_loader,
                 arr_test_loader,
                 model,
                 criterion,
