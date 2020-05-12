@@ -8,6 +8,9 @@ model_name: "clmr" # [clmr]
 train_stage: 0
 transfer: 0 # when transfer learning
 
+## fma
+fma_version: "medium"
+
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 48 # for audio, 256 for images
