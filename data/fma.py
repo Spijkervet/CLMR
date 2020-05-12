@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 from collections import defaultdict
 from pathlib import Path
 from tqdm import tqdm
+import random
 
 import sklearn.preprocessing
 
@@ -62,6 +63,7 @@ class FmaDataset(Dataset):
         loader=default_loader,
         transform=None,
     ):
+        self.model_name = args.model_name
         self.root_dir = os.path.join(args.data_input_dir, "fma", f"processed_segments_{args.fma_version}_{args.sample_rate}_wav")
         self.sample_rate = args.sample_rate
         self.audio_length = audio_length
@@ -82,7 +84,7 @@ class FmaDataset(Dataset):
         test_df = tracks["set", "split"] == "test"
 
         # subset
-        subset = tracks["set", "subset"] <= "medium"
+        subset = tracks["set", "subset"] <= args.fma_version
 
         train_df = tracks.loc[subset & train_df | val_df] # we do not use the val. set.
         # train_df = tracks.loc[subset & train_df | val_df]
@@ -175,8 +177,14 @@ class FmaDataset(Dataset):
             print(f"Skipped {track_id, fp}, could not load audio: {e}")
             return self.__getitem__(index+1)
 
-        if self.transform:
+        if self.transform and self.model_name == "clmr":
             audio = self.transform(audio, self.mean, self.std)
+        elif self.model_name == "cpc":
+            max_samples = audio.size(1)
+            start_idx = random.randint(0, max_samples - self.audio_length)
+            audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = self.normalise_audio(audio)
+            audio = (audio, audio)
 
         return audio, label, track_id
 
