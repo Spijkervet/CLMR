@@ -96,7 +96,7 @@ def get_dataset_stats(loader, tracks_list, stats_path):
 
 class GTZANDataset(Dataset):
     def __init__(
-        self, args, train, loader=default_loader, indexer=default_indexer, transform=None,
+        self, args, train, unlabeled, loader=default_loader, indexer=default_indexer, transform=None,
     ):
         self.lin_eval = args.lin_eval
         self.indexer = indexer
@@ -107,16 +107,22 @@ class GTZANDataset(Dataset):
         self.model_name = args.model_name
         self.num_tags = 10
 
-        version = "segments" # GTZAN are not full songs
-        self.audio_dir = os.path.join(args.data_input_dir, "gtzan", f"processed_{version}_{self.sample_rate}_wav")
+        if unlabeled:
+            version = "unlabeled" # TODO
+            split_name = "unlabeled"
+        elif train:
+            version = "segments"
+            split_name = "train"
+        else:
+            version = "segments"
+            split_name = "test"
+
+        self.audio_dir = os.path.join(args.data_input_dir, "gtzan", f"processed_segments_{self.sample_rate}_wav")
 
         annotations_dir = Path(
             args.data_input_dir, "gtzan", "annotations"
         )
-        if train:
-            self.annotations_file = Path(annotations_dir) / "train_filtered.txt"
-        else:
-            self.annotations_file = Path(annotations_dir) / "test_filtered.txt"
+        self.annotations_file = Path(annotations_dir) / f"{split_name}_filtered.txt"
 
         self.tracks_list_all, self.tracks_dict = self.indexer(
             args, self.audio_dir, self.annotations_file
@@ -154,7 +160,7 @@ class GTZANDataset(Dataset):
 
         ## get dataset statistics
         name = "Train" if train else "Test"
-        stats_path = os.path.join(args.data_input_dir, args.dataset, "statistics.csv")
+        stats_path = os.path.join(args.data_input_dir, args.dataset, f"statistics_{version}.csv")
         if not os.path.exists(stats_path):
             print(f"[{name} dataset]: Fetching dataset statistics (mean/std)")
             if train:
