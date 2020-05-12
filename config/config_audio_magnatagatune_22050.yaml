@@ -1,9 +1,9 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "billboard" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-pretrain_dataset: "magnatagatune"
+pretrain_dataset: "billboard" # magnatagatune
 model_name: "clmr" # [clmr]
 train_stage: 0
 transfer: 0 # when transfer learning
