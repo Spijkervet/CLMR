@@ -1,10 +1,10 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "fma" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
+dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
 data_input_dir: "datasets/audio" # [audio: [datasets/audio] vision: [datasets/vision]
-pretrain_dataset: "magnatagatune"
-model_name: "cpc" # [clmr]
+pretrain_dataset: "magnatagatune" # magnatagatune
+model_name: "clmr" # [clmr]
 train_stage: 0
 transfer: 0 # when transfer learning
 
@@ -33,6 +33,7 @@ supervised_lr: 0.01
 ## model options
 normalize: True
 projection_dim: 128
+projector_layers: 2
 dropout: 0.5
 
 ## audio
