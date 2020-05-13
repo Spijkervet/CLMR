@@ -28,8 +28,6 @@ def load_model(args, reload_model=False, name="clmr"):
         model = SimCLR(args)
     elif name == "cpc":
         model = cpc_model(args)
-    elif name == "supervised":
-        model = SampleCNN(args)
     elif name == "eval":
         if args.mlp:
             model = MLP(args.n_features, args.n_classes)
@@ -46,8 +44,8 @@ def load_model(args, reload_model=False, name="clmr"):
         model_fp = os.path.join(
             model_path, "{}_checkpoint_{}_{}.tar".format(name, args.train_stage, epoch_num)
         )
-        
-        strict=True
+
+        strict = True
         if args.transfer:
             strict = False
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=strict)
@@ -65,7 +63,6 @@ def load_model(args, reload_model=False, name="clmr"):
         optimizer = torch.optim.SGD(
             model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=True
         )
-        
     elif args.optimizer == "LARS":
         print("### Using LARS optimizer ###")
         # optimized using LARS with linear learning rate scaling
@@ -84,6 +81,9 @@ def load_model(args, reload_model=False, name="clmr"):
         )
     else:
         raise NotImplementedError
+
+    if args.supervised:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.global_lr_decay, patience=2, verbose=True)
 
     if reload_model and not args.transfer:
         optim_fp = os.path.join(
