@@ -55,6 +55,7 @@ def load_context_config(args):
     mlp = args.mlp
     perc_train_data = args.perc_train_data
     logistic_lr = args.logistic_lr
+    train_stage = args.train_stage
 
     json_config = os.path.join(context_model_path, "config.json")
     context_args = json.load(open(json_config, "r"))
@@ -67,4 +68,5 @@ def load_context_config(args):
     new_args.mlp = mlp
     new_args.perc_train_data = perc_train_data
     new_args.logistic_lr = logistic_lr
+    new_args.train_stage = train_stage
     return new_args
