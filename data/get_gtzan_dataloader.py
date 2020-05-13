@@ -9,11 +9,11 @@ from .gtzan import GTZANDataset
 def get_gtzan_loaders(args, diff_train_dataset=None):
 
     train_dataset = GTZANDataset(
-        args, train=True, transform=AudioTransforms(args)
+        args, train=True, unlabeled=True, transform=AudioTransforms(args)
     )
 
     test_dataset = GTZANDataset(
-        args, train=False, transform=AudioTransforms(args) 
+        args, train=False, unlabeled=False, transform=AudioTransforms(args) 
     )
 
     train_loader = torch.utils.data.DataLoader(

@@ -8,6 +8,8 @@ from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
 from datasets.utils.utils import write_statistics
+from utils import random_undersample_balanced
+
 import random
 
 # much faster loading
@@ -89,8 +91,8 @@ def pons_indexer(args, path, id2audio, id2gt):
 
 def default_loader(path):
     # with audio normalisation
-    audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
-    # audio, sr = torchaudio.load(path, normalization=True)
+    # audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
+    audio, sr = torchaudio.load(path, normalization=True)
 
     # is a bit slower with multiprocessing loading into the dataloader (num_workers > 1)
     # rate, sig = wavfile.read(path)
@@ -187,6 +189,22 @@ class MTTDataset(Dataset):
             ):  # remove segment, since we will evaluate with get_full_size_audio()
                 self.tracks_list_test.append([track_id, fp, label, -1])
 
+        # reduce dataset to n%
+
+        if args.perc_train_data < 1.0 and train and not validation: # only on train set
+            print("Train dataset size:", len(self.tracks_list))
+            train_X_indices = np.array([idx for idx in range(len(self.tracks_list))]).reshape(-1, 1)
+            train_y = np.array([label.numpy() for _, _, label, _ in self.tracks_list])
+            train_X_indices, _ = random_undersample_balanced(train_X_indices, train_y, args.perc_train_data)
+
+            new_tracks_list = []
+            for idx, (track_id, fp, label, segment) in enumerate(self.tracks_list):
+                if idx in train_X_indices:
+                    new_tracks_list.append([track_id, fp, label, segment])
+                
+            self.tracks_list = new_tracks_list
+            print("Undersampled train dataset size:", len(self.tracks_list))
+
         print(f"Num segments: {len(self.tracks_list)}")
         print(f"Num tracks: {len(self.tracks_list_test)}")
 
@@ -242,7 +260,7 @@ class MTTDataset(Dataset):
         audio = self.get_audio(fp)
 
         # normalise audio
-        audio = self.normalise_audio(audio)
+        # audio = self.normalise_audio(audio)
 
         # split into equally sized tensors of self.audio_length
         batch = torch.split(audio, self.audio_length, dim=1)
@@ -273,9 +291,10 @@ class MTTDataset(Dataset):
 
         # only transform if unsupervised training
         if self.lin_eval or self.supervised:
-            start_idx = random.randint(0, segment * self.audio_length) # audio.size(1) - self.audio_length) # 
+            # start_idx = random.randint(0, segment * self.audio_length)
+            start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
-            audio = self.normalise_audio(audio)
+            # audio = self.normalise_audio(audio)
             audio = (audio, audio)
         elif self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
@@ -283,7 +302,7 @@ class MTTDataset(Dataset):
             max_samples = audio.size(1)
             start_idx = random.randint(0, max_samples - self.audio_length)
             audio = audio[:, start_idx : start_idx + self.audio_length]
-            audio = self.normalise_audio(audio)
+            # audio = self.normalise_audio(audio)
             audio = (audio, audio)
         else:
             raise Exception("Transformation unknown")
