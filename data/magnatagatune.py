@@ -273,7 +273,8 @@ class MTTDataset(Dataset):
 
         # only transform if unsupervised training
         if self.lin_eval or self.supervised:
-            start_idx = random.randint(0, segment * self.audio_length) # audio.size(1) - self.audio_length) # 
+            # start_idx = random.randint(0, segment * self.audio_length)
+            start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
             audio = self.normalise_audio(audio)
             audio = (audio, audio)
