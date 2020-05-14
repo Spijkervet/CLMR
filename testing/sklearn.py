@@ -335,30 +335,42 @@ def main(_run, _log):
             print("Undersampled train dataset size:", len(train_X))
 
 
-        arr_train_loader, arr_val_loader, arr_test_loader = create_data_loaders_from_arrays(
-            train_X, train_y, val_X, val_y, test_X, test_y, len(test_loader.dataset)
-        )
+        from sklearn.neural_network import MLPClassifier
+        from sklearn.multiclass import OneVsRestClassifier
+        from sklearn.svm import SVC
+        # model = SVC(kernel='linear', verbose=True, max_iter=10)
+        model = MLPClassifier(hidden_layer_sizes=(512), verbose=10, 
+            solver='sgd', learning_rate='constant', learning_rate_init=0.003)
 
-        # run training
-        try:
-            solve(
-                args,
-                arr_train_loader,
-                arr_val_loader,
-                arr_test_loader,
-                model,
-                criterion,
-                optimizer,
-                writer,
-            )
-        except KeyboardInterrupt:
-            print("\n\nTerminated training, starting evaluation\n")
+        print('Fitting model..')
+        model.fit(train_X, train_y)
+        print('Evaluating model..')
 
-        # eval all
-        metrics = eval_all(
-            args, test_loader, context_model, model, writer, n_tracks=None,
-        )
-        for k, v in metrics.items():
-            print("[Test]:", k, v)
+        print('Predict labels on evaluation data')
 
-        writer.add_hparams(args_hparams(args), metrics)
+
+        pred_array = model.predict(test_X)
+        score = model.score(test_X, test_y)
+
+        # agreggating same ID: majority voting
+        y_true = []
+        y_pred = []
+        id_array = np.array([track_id for track_id, _, _, _ in test_loader.dataset.tracks_list])
+        id_array = id_array[:len(pred_array)] # drop last
+        for track_id, _, label, _ in test_loader.dataset.tracks_list[:len(pred_array)]:
+            avg = np.mean(pred_array[np.where(id_array == track_id)], axis=0)
+            y_pred.append(avg)
+            y_true.append(label.numpy())
+
+        from sklearn.metrics import roc_auc_score, log_loss
+
+        print('raw score', score)
+        # conf_matrix = confusion_matrix(y_true, y_pred)
+        # print(conf_matrix)
+        # acc = accuracy_score(y_true, y_pred)
+        # print(acc)
+
+        roc_auc = roc_auc_score(y_true, y_pred, average="macro")
+        pr_auc = average_precision_score(y_true, y_pred, average="macro")
+        print(roc_auc, pr_auc)
+        exit(0)
