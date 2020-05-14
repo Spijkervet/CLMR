@@ -61,8 +61,10 @@ def average_precision(y_targets, y_preds):
     return np.array(ap)
 
 
-def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
-    model.eval()
+def eval_all(args, loader, context_model, model, writer, n_tracks=None):
+    if model:
+        model.eval()
+
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     pred_array = []
     id_array = []
@@ -86,16 +88,16 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
             x = x.to(args.device)
 
             # get encoding
-            if simclr_model:
+            if context_model:
                 with torch.no_grad():
                     if args.model_name == "cpc":
-                        z, c = simclr_model.model.get_latent_representations(x) # cpc
+                        z, c = context_model.model.get_latent_representations(x) # cpc
                         c = c.permute(0, 2, 1)
                         pooled = torch.nn.functional.adaptive_avg_pool1d(c, 1) # one label
                         pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
                         x = pooled
                     else:
-                        h, z = simclr_model(x) # clmr
+                        h, z = context_model(x) # clmr
                         x = h # clmr
 
             if not args.supervised:
@@ -154,7 +156,9 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
     writer.add_figure(
         "Class_distribution/test_all", figure, global_step=args.current_epoch
     )
-    model.train()
+
+    if model:
+        model.train()
     return metrics
 
 
