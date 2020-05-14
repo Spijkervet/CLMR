@@ -45,6 +45,7 @@ def load_model(args, reload_model=False, name="clmr"):
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
 
+<<<<<<< HEAD
         if not os.path.exists(model_fp):
             model_fp = os.path.join(
                 model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
@@ -53,6 +54,10 @@ def load_model(args, reload_model=False, name="clmr"):
         
         strict = True
         if args.transfer or name == "cpc":
+=======
+        strict = True
+        if args.transfer:
+>>>>>>> e998801a2c38fc3e304326734657aa4a03a31a9a
             strict = False
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=strict)
 
@@ -69,7 +74,6 @@ def load_model(args, reload_model=False, name="clmr"):
         optimizer = torch.optim.SGD(
             model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=True
         )
-        
     elif args.optimizer == "LARS":
         print("### Using LARS optimizer ###")
         # optimized using LARS with linear learning rate scaling
@@ -88,6 +92,9 @@ def load_model(args, reload_model=False, name="clmr"):
         )
     else:
         raise NotImplementedError
+
+    if args.supervised:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.global_lr_decay, patience=2, verbose=True)
 
     if reload_model and not args.transfer:
         optim_fp = os.path.join(
