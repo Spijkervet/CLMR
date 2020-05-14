@@ -152,6 +152,11 @@ class MTTDataset(Dataset):
         else:
             self.annotations_file = Path(mtt_processed_annot) / f"test_gt_mtt{at_least_one_pos}.tsv"
 
+        # int to label
+        with open(Path(mtt_processed_annot) / f"output_labels_mtt.txt", "r") as f:
+            lines = f.readlines()
+            self.tags = eval(lines[1][lines[1].find("["):])
+
         [audio_repr_paths, id2audio_repr_path] = load_id2path(
             Path(mtt_processed_annot) / "index_mtt.tsv"
         )

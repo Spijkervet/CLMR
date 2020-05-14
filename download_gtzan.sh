@@ -10,6 +10,6 @@ cd annotations
 wget -nc https://raw.githubusercontent.com/jordipons/sklearn-audio-transfer-learning/master/data/index/GTZAN/train_filtered.txt
 wget -nc https://raw.githubusercontent.com/jordipons/sklearn-audio-transfer-learning/master/data/index/GTZAN/valid_filtered.txt
 wget -nc https://raw.githubusercontent.com/jordipons/sklearn-audio-transfer-learning/master/data/index/GTZAN/test_filtered.txt
-
+cat train_filtered.txt valid_filtered.txt test_filtered.txt > unlabeled_filtered.txt
 
 python -m datasets.utils.process_magnatag --dataset gtzan --sample_rate 22050

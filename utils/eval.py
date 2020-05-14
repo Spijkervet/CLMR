@@ -98,8 +98,11 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
                         h, z = simclr_model(x) # clmr
                         x = h # clmr
 
-                    
-            output = model(x)
+            if not args.supervised:
+                output = model(x)
+            else:
+                output = x
+                
             predictions = output.argmax(1).detach()
             classes, counts = torch.unique(predictions, return_counts=True)
             predicted_classes[classes] += counts.float()
@@ -138,10 +141,10 @@ def eval_all(args, loader, simclr_model, model, writer, n_tracks=None):
     metrics = {}
     if args.dataset in ["magnatagatune"]:
         auc, ap = tagwise_auc_ap(y_true, y_pred)
-        auc = auc.mean()
-        ap = ap.mean()
-        metrics["hparams/test_auc"] = auc
-        metrics["hparams/test_ap"] = ap
+        metrics["hparams/test_auc"] = auc.mean()
+        metrics["hparams/test_ap"] = ap.mean()
+        metrics["all/auc"] = auc
+        metrics["all/ap"] = ap
     else:
         acc = accuracy_score(y_true, y_pred.argmax(1))
         metrics["hparams/test_accuracy"] = acc
