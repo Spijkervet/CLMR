@@ -32,6 +32,8 @@ def main(_run, _log):
     args = argparse.Namespace(**_run.config)
     args.lin_eval = False
     args = post_config_hook(args, _run)
+    
+    args.n_classes = 50
 
     # set start time
     args.time = time.ctime()

@@ -56,23 +56,23 @@ class CLMR:
 
 
                 # test
-                if args.dataset != "billboard":
+                if args.dataset == "magnatagatune":
                     # validate
                     if epoch % validate_idx == 0:
                         validate_loss_epoch = self.validate(args, val_loader)
                         self.writer.add_scalar("Loss/validation", validate_loss_epoch, epoch)
 
-                    if epoch % avg_test_idx == 0:
-                        print("Testing average scores")
+                if epoch % avg_test_idx == 0:
+                    print("Testing average scores")
 
-                        if args.supervised:
-                            test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
-                            self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
-                            self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
-                        else:
-                            test_loss_epoch = self.validate(args, test_loader)
+                    if args.supervised:
+                        test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
+                        self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
+                        self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
+                    else:
+                        test_loss_epoch = self.validate(args, test_loader)
 
-                        self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
+                    self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
 
                 if self.scheduler:
                     self.scheduler.step()

@@ -23,11 +23,12 @@ wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/dat
 wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/train_gt_mtt.tsv
 wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/val_gt_mtt.tsv
 wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/test_gt_mtt.tsv
+wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/output_labels_mtt.txt
 
 cd $CWD
 ## process to desired samplerate
 python -m datasets.utils.process_magnatag --dataset magnatagatune --sample_rate 22050
 ## concat samples
-# python -m datasets.utils.concat_magnatag --dataset magnatagatune
+python -m datasets.utils.concat_magnatag --dataset magnatagatune
 ## process concat samples to desired samplerate
-# python -m datasets.utils.process_magnatag --dataset magnatagatune --sample_rate 22050 --from_concat
+python -m datasets.utils.process_magnatag --dataset magnatagatune --sample_rate 22050 --from_concat

@@ -184,9 +184,16 @@ class GTZANDataset(Dataset):
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
         max_samples = audio.shape[1]
-        assert (
-            max_samples - self.audio_length
-        ) > 0, "max samples exceeds number of samples in crop"
+
+        if sr != self.sample_rate:
+            raise Exception("Sample rate is not consistent throughout the dataset")
+
+        if max_samples - self.audio_length <= 0:
+            raise Exception("Max samples exceeds number of samples in crop")
+
+        if torch.isnan(audio).any():
+            raise Exception("Audio contains NaN values")
+
         return audio
 
     def get_full_size_audio(self, track_id, fp):
@@ -216,14 +223,20 @@ class GTZANDataset(Dataset):
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, index):
         track_id, fp, label, segment = self.tracks_list[index]
-        audio = self.get_audio(fp)
+
+        try:
+            audio = self.get_audio(fp)
+        except:
+            pass
+            print(f"Skipped {track_id, fp}, could not load audio")
+            return self.__getitem__(index+1)
 
         # only transform if unsupervised training
         if self.lin_eval or self.model_name == "supervised":
             start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
             audio = self.normalise_audio(audio)
-
+            audio = (audio, audio)
         elif self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
         elif self.model_name == "cpc":
