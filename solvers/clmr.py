@@ -16,10 +16,6 @@ class CLMR:
         self.writer = writer
         self.device = args.device
 
-        self.patience = 3
-
-        self.early_stopping = EarlyStopping(patience=self.patience, verbose=True)
-
         if args.supervised:
             self.criterion = torch.nn.BCEWithLogitsLoss()
             self.max_train_stages = 5
@@ -32,63 +28,54 @@ class CLMR:
         latent_idx = 5
         avg_test_idx = 5
 
-        for i in range(args.train_stage, self.max_train_stages):
-            decay = args.global_lr_decay ** i
-            learning_rate = args.learning_rate * decay
+        self.optimizer = set_learning_rate(self.optimizer, args.learning_rate)
+        
+        for epoch in range(start_epoch, epochs):
+            if epoch % latent_idx == 0:
+                self.visualise_latent_space(args, train_loader, test_loader)
 
-            print(f"[Stage {i}] Learning rate: {learning_rate}, decayed by {decay}")
-            self.optimizer = set_learning_rate(self.optimizer, learning_rate)
-            
-            # reload the best val. checkpoint of previous stage
-            if os.path.exists("checkpoint.pt"):
-                self.early_stopping.load_checkpoint(self.model, self.optimizer, args.device)
+            learning_rate = self.optimizer.param_groups[0]['lr']
+            print("Learning rate : {}".format(learning_rate))
 
-            for epoch in range(start_epoch, epochs):
-                if epoch % latent_idx == 0:
-                    self.visualise_latent_space(args, train_loader, test_loader)
-
-                loss_epoch, auc_epoch, ap_epoch = self.train(args, train_loader)
-                self.writer.add_scalar("Loss/train", loss_epoch, epoch)
-                self.writer.add_scalar("AUC/train", auc_epoch, epoch)
-                self.writer.add_scalar("AP/train", ap_epoch, epoch)
-                self.writer.add_scalar("Misc/learning_rate", learning_rate, epoch)
-                print(f"Epoch [{epoch}/{epochs}]\t Loss: {loss_epoch}\t lr: {round(learning_rate, 5)}")
+            loss_epoch, auc_epoch, ap_epoch = self.train(args, train_loader)
+            self.writer.add_scalar("Loss/train", loss_epoch, epoch)
+            self.writer.add_scalar("AUC/train", auc_epoch, epoch)
+            self.writer.add_scalar("AP/train", ap_epoch, epoch)
+            self.writer.add_scalar("Misc/learning_rate", learning_rate, epoch)
+            print(f"Epoch [{epoch}/{epochs}]\t Loss: {loss_epoch}\t lr: {round(learning_rate, 5)}")
 
 
-                # test
-                if args.dataset == "magnatagatune":
-                    # validate
-                    if epoch % validate_idx == 0:
-                        validate_loss_epoch = self.validate(args, val_loader)
-                        self.writer.add_scalar("Loss/validation", validate_loss_epoch, epoch)
+            # test
+            if args.dataset == "magnatagatune":
+                # validate
+                if epoch % validate_idx == 0:
+                    validate_loss_epoch = self.validate(args, val_loader)
+                    self.writer.add_scalar("Loss/validation", validate_loss_epoch, epoch)
 
-                if epoch % avg_test_idx == 0:
-                    print("Testing average scores")
-
-                    if args.supervised:
-                        test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
-                        self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
-                        self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
-                    else:
-                        test_loss_epoch = self.validate(args, test_loader)
-
-                    self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
-
-                if self.scheduler:
-                    self.scheduler.step()
-
-                if epoch % 10 == 0:
-                    save_model(args, self.model, self.optimizer, name="clmr")
+            if epoch % avg_test_idx == 0:
+                print("Testing average scores")
 
                 if args.supervised:
-                    self.early_stopping(validate_loss_epoch, self.model, self.optimizer)
-                    if self.early_stopping.early_stop:
+                    test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
+                    self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
+                    self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
+                else:
+                    test_loss_epoch = self.validate(args, test_loader)
+
+                self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
+
+            if args.supervised:
+                if self.scheduler:
+                    self.scheduler.step(validate_loss_epoch)
+                    curr_lr = self.optimizer.param_groups[0]['lr']
+                    print("Adjusted learning rate : {}".format(curr_lr))
+                    if curr_lr < 1e-6:
                         print("Early stopping")
                         break
-                
-                args.current_epoch += 1
-            
-            args.train_stage += 1
+
+            args.current_epoch += 1
+        
+        args.train_stage += 1
 
     def train(self, args, train_loader):
         loss_epoch = 0
