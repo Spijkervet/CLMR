@@ -91,8 +91,8 @@ def pons_indexer(args, path, id2audio, id2gt):
 
 def default_loader(path):
     # with audio normalisation
-    audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
-    # audio, sr = torchaudio.load(path, normalization=True)
+    # audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
+    audio, sr = torchaudio.load(path, normalization=True)
 
     # is a bit slower with multiprocessing loading into the dataloader (num_workers > 1)
     # rate, sig = wavfile.read(path)
@@ -265,7 +265,7 @@ class MTTDataset(Dataset):
         audio = self.get_audio(fp)
 
         # normalise audio
-        audio = self.normalise_audio(audio)
+        # audio = self.normalise_audio(audio)
 
         # split into equally sized tensors of self.audio_length
         batch = torch.split(audio, self.audio_length, dim=1)
@@ -299,7 +299,7 @@ class MTTDataset(Dataset):
             # start_idx = random.randint(0, segment * self.audio_length)
             start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
-            audio = self.normalise_audio(audio)
+            # audio = self.normalise_audio(audio)
             audio = (audio, audio)
         elif self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
@@ -307,7 +307,7 @@ class MTTDataset(Dataset):
             max_samples = audio.size(1)
             start_idx = random.randint(0, max_samples - self.audio_length)
             audio = audio[:, start_idx : start_idx + self.audio_length]
-            audio = self.normalise_audio(audio)
+            # audio = self.normalise_audio(audio)
             audio = (audio, audio)
         else:
             raise Exception("Transformation unknown")

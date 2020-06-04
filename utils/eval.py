@@ -145,8 +145,8 @@ def eval_all(args, loader, context_model, model, writer, n_tracks=None):
         auc, ap = tagwise_auc_ap(y_true, y_pred)
         metrics["hparams/test_auc"] = auc.mean()
         metrics["hparams/test_ap"] = ap.mean()
-        metrics["all/auc"] = auc
-        metrics["all/ap"] = ap
+        # metrics["all/auc"] = auc
+        # metrics["all/ap"] = ap
     else:
         acc = accuracy_score(y_true, y_pred.argmax(1))
         metrics["hparams/test_accuracy"] = acc
