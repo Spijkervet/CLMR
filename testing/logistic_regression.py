@@ -227,7 +227,7 @@ def test(args, loader, model, criterion, optimizer, writer):
 
 
 def solve(args, train_loader, val_loader, test_loader, model, criterion, optimizer, writer):
-    validate_epoch = 1
+    validate_epoch = 50
     max_train_stages = 1
 
     for epoch in range(args.logistic_epochs):
@@ -256,7 +256,6 @@ def solve(args, train_loader, val_loader, test_loader, model, criterion, optimiz
             writer.add_scalar("AUC/validation", auc_epoch / len(test_loader), epoch)
             writer.add_scalar("AP/validation", accuracy_epoch / len(test_loader), epoch)
             writer.add_scalar("Loss/validation", val_loss_epoch / len(test_loader), epoch)
-        
 
     print(
         f"[FINAL]\t Loss: {loss_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
@@ -267,98 +266,107 @@ def solve(args, train_loader, val_loader, test_loader, model, criterion, optimiz
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
 
-    for i in range(args.epoch_num, args.epoch_num+1, 1):
+    lrs = [0.0005] # , 0.001, 0.003, 0.004]
+    epochs = [50] # , 150, 300, 500]
+    for lr in lrs:
+        for e in epochs:
+            # load from epoch num
+            print(f"LR: {lr}, Logreg_epochs: {e}")
 
-        # load from epoch num
 
-        args = load_context_config(args)
-        args.lin_eval = True
-        args.at_least_one_pos = False
-        
-        args = post_config_hook(args, _run)
-        args.epoch_num = i
+            args = load_context_config(args)
+            args.lin_eval = True
+            args.at_least_one_pos = False
+            
+            args = post_config_hook(args, _run)
 
-        args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        args.batch_size = args.logistic_batch_size
+            args.logistic_lr = lr
+            args.logistic_epochs = e
 
-        (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_dataset(args)
+            args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            args.batch_size = args.logistic_batch_size
 
-        context_model, _, _ = load_model(args, reload_model=True, name=args.model_name)
-        context_model.eval()
+            (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_dataset(args)
 
-        args.n_features = context_model.n_features
+            context_model, _, _ = load_model(args, reload_model=True, name=args.model_name)
+            context_model.eval()
 
-        model, _, _ = load_model(args, reload_model=False, name="eval")
-        model = model.to(args.device)
+            args.n_features = context_model.n_features
 
-        print(model.summary())
+            model, _, _ = load_model(args, reload_model=False, name="eval")
+            model = model.to(args.device)
 
-        if not args.mlp:
-            weight_decay = args.weight_decay  # sample_weight_decay()
-        else:
-            weight_decay = args.weight_decay  # TODO
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
-        )
+            print(model.summary())
 
-        # set criterion, e.g. gtzan has one label per segment, MTT has multiple
-        if args.dataset in ["gtzan"]:
-            criterion = torch.nn.CrossEntropyLoss()
-        else:
-            criterion = torch.nn.BCEWithLogitsLoss()  # for tags
-
-        # initialize TensorBoard
-        writer = SummaryWriter(log_dir=args.tb_dir + "-" + str(i))
-
-        args.global_step = 0
-        args.current_epoch = 0
-
-        print(context_model)
-        print(model)
-
-        # create features from pre-trained model
-        if not os.path.exists("features.p"):
-            print("### Creating features from pre-trained context model ###")
-            (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
-                context_model, train_loader, val_loader, test_loader, args.model_name, args.n_features, args.device
+            if not args.mlp:
+                weight_decay = args.weight_decay  # sample_weight_decay()
+            else:
+                weight_decay = args.weight_decay  # TODO
+            optimizer = torch.optim.Adam(
+                model.parameters(), lr=args.logistic_lr, weight_decay=weight_decay
             )
-            pickle.dump(
-                (train_X, train_y, val_X, val_y, test_X, test_y), open("features.p", "wb"), protocol=4
+
+            # set criterion, e.g. gtzan has one label per segment, MTT has multiple
+            if args.dataset in ["gtzan"]:
+                criterion = torch.nn.CrossEntropyLoss()
+            else:
+                criterion = torch.nn.BCEWithLogitsLoss()  # for tags
+
+            # initialize TensorBoard
+            writer = SummaryWriter(log_dir=args.tb_dir + f"-{lr}-{e}")
+
+            args.global_step = 0
+            args.current_epoch = 0
+
+            print(context_model)
+            print(model)
+
+            # create features from pre-trained model
+            if not os.path.exists("features.p"):
+                print("### Creating features from pre-trained context model ###")
+                (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
+                    context_model, train_loader, val_loader, test_loader, args.model_name, args.n_features, args.device
+                )
+                pickle.dump(
+                    (train_X, train_y, val_X, val_y, test_X, test_y), open("features.p", "wb"), protocol=4
+                )
+            else:
+                print("### Loading features ###")
+                (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
+
+            if args.perc_train_data < 1.0:
+                print("Train dataset size:", len(train_X))
+                train_X, train_y = random_undersample_balanced(train_X, train_y, args.perc_train_data)
+                print("Undersampled train dataset size:", len(train_X))
+
+
+            arr_train_loader, arr_val_loader, arr_test_loader = create_data_loaders_from_arrays(
+                train_X, train_y, val_X, val_y, test_X, test_y, 2048 # len(test_loader.dataset)
             )
-        else:
-            print("### Loading features ###")
-            (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
 
-        if args.perc_train_data < 1.0:
-            print("Train dataset size:", len(train_X))
-            train_X, train_y = random_undersample_balanced(train_X, train_y, args.perc_train_data)
-            print("Undersampled train dataset size:", len(train_X))
+            # run training
+            try:
+                solve(
+                    args,
+                    arr_train_loader,
+                    arr_val_loader,
+                    arr_test_loader,
+                    model,
+                    criterion,
+                    optimizer,
+                    writer,
+                )
+            except KeyboardInterrupt:
+                print("\n\nTerminated training, starting evaluation\n")
 
-
-        arr_train_loader, arr_val_loader, arr_test_loader = create_data_loaders_from_arrays(
-            train_X, train_y, val_X, val_y, test_X, test_y, len(test_loader.dataset)
-        )
-
-        # run training
-        try:
-            solve(
-                args,
-                arr_train_loader,
-                arr_val_loader,
-                arr_test_loader,
-                model,
-                criterion,
-                optimizer,
-                writer,
+            # eval all
+            metrics = eval_all(
+                args, test_loader, context_model, model, writer, n_tracks=None,
             )
-        except KeyboardInterrupt:
-            print("\n\nTerminated training, starting evaluation\n")
+            for k, v in metrics.items():
+                print("[Test]:", k, v)
 
-        # eval all
-        metrics = eval_all(
-            args, test_loader, context_model, model, writer, n_tracks=None,
-        )
-        for k, v in metrics.items():
-            print("[Test]:", k, v)
-
-        writer.add_hparams(args_hparams(args), metrics)
+            try:
+                writer.add_hparams(args_hparams(args), metrics)
+            except:
+                pass
