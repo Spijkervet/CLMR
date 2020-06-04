@@ -45,19 +45,8 @@ def load_model(args, reload_model=False, name="clmr"):
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
 
-<<<<<<< HEAD
-        if not os.path.exists(model_fp):
-            model_fp = os.path.join(
-                model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
-            )
-
-        
-        strict = True
-        if args.transfer or name == "cpc":
-=======
-        strict = True
+        strict = False
         if args.transfer:
->>>>>>> e998801a2c38fc3e304326734657aa4a03a31a9a
             strict = False
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=strict)
 
