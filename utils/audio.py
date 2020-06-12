@@ -9,8 +9,10 @@ def write_audio_tb(args, train_loader, test_loader, writer, num_audio=5):
     idx = np.random.choice(len(train_loader.dataset), num_audio)
     for idx, r_idx in enumerate(idx):
         ((x_i, x_j), y, track_id) = train_loader.dataset[r_idx]
-        x_i = train_loader.dataset.denormalise_audio(x_i)
-        x_j = train_loader.dataset.denormalise_audio(x_j)
+
+        if train_loader.dataset.mean is not None:
+            x_i = train_loader.dataset.denormalise_audio(x_i)
+            x_j = train_loader.dataset.denormalise_audio(x_j)
         writer.add_audio(
             f"audio/train-{idx}-{track_id}-xi",
             x_i,
@@ -29,8 +31,10 @@ def write_audio_tb(args, train_loader, test_loader, writer, num_audio=5):
     idx = np.random.choice(len(test_loader.dataset), num_audio)
     for idx, r_idx in enumerate(idx):
         ((x_i, x_j), y, track_id) = test_loader.dataset[r_idx]
-        x_i = train_loader.dataset.denormalise_audio(x_i)
-        x_j = train_loader.dataset.denormalise_audio(x_j)
+        if train_loader.dataset.mean is not None:
+            x_i = train_loader.dataset.denormalise_audio(x_i)
+            x_j = train_loader.dataset.denormalise_audio(x_j)
+            
         writer.add_audio(
             f"audio/test-{idx}-{track_id}-xi",
             x_i,

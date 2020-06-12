@@ -228,7 +228,6 @@ def test(args, loader, model, criterion, optimizer, writer):
 
 def solve(args, train_loader, val_loader, test_loader, model, criterion, optimizer, writer):
     validate_epoch = 50
-    max_train_stages = 1
 
     for epoch in range(args.logistic_epochs):
         loss_epoch, auc_epoch, accuracy_epoch = train(
@@ -260,7 +259,6 @@ def solve(args, train_loader, val_loader, test_loader, model, criterion, optimiz
     print(
         f"[FINAL]\t Loss: {loss_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
     )
-    args.train_stage += 1
 
 @ex.automain
 def main(_run, _log):

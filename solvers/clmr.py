@@ -18,10 +18,8 @@ class CLMR:
 
         if args.supervised:
             self.criterion = torch.nn.BCEWithLogitsLoss()
-            self.max_train_stages = 5
         else:
             self.criterion = NT_Xent(args.batch_size, args.temperature, args.device)
-            self.max_train_stages = 1
 
     def solve(self, args, train_loader, val_loader, test_loader, start_epoch, epochs):
         validate_idx = 1
@@ -31,8 +29,8 @@ class CLMR:
         self.optimizer = set_learning_rate(self.optimizer, args.learning_rate)
         
         for epoch in range(start_epoch, epochs):
-            if epoch % latent_idx == 0:
-                self.visualise_latent_space(args, train_loader, test_loader)
+            # if epoch % latent_idx == 0:
+            #     self.visualise_latent_space(args, train_loader, test_loader)
 
             learning_rate = self.optimizer.param_groups[0]['lr']
             print("Learning rate : {}".format(learning_rate))
@@ -75,7 +73,6 @@ class CLMR:
 
             args.current_epoch += 1
         
-        args.train_stage += 1
 
     def train(self, args, train_loader):
         loss_epoch = 0

@@ -18,7 +18,7 @@ ex = Experiment("CLMR")
 
 @ex.config
 def my_config():
-    config_file = "./config/config_audio_magnatagatune_22050.yaml"
+    config_file = "./config/config.yaml"
 
     ex.add_config(config_file)
 
