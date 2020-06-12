@@ -1,68 +1,86 @@
-# train options
+## task / dataset options
+domain: "audio" # [audio,scores]
+task: "tags" # [tags,chords,symbol]
+dataset: "msd" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
+pretrain_dataset: "msd" # [magnatagatune,billboard,fma,msd]
+data_input_dir: "/storage/jspijkervet" # [audio: [datasets/audio] vision: [datasets/vision]
+model_name: "clmr" # [clmr, cpc]
+transfer: 0 # when transfer learning
+
+## fma
+fma_version: "medium"
+
+## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 256 # 256 # 64 for audio, 256 for images
-num_workers: 16
+batch_size: 48 # for audio, 256 for images
+num_workers: 8
 start_epoch: 0
-epochs: 1000
+epochs: 100
 
-# task / dataset options
-domain: "scores" # [audio,scores]
-task: "symbol" # [tags,chords,symbol]
-dataset: "deepscores" # [audio: [billboard,fma,magnatagatune] vision: [deepscores,universal]]
-data_input_dir: "datasets/vision" # [audio: [datasets/audio] vision: [datasets/vision]
-reload: False
+## loss options
+optimizer: "Adam" # [Adam, LARS]
+learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
+weight_decay: 1.0e-6
+global_lr_decay: 0.2
+temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
+momentum: 0.9 # SGD
 
-# audio
-audio_length: 42848 # 59049 
-sample_rate: 16000 # 22050
+## supervised params
+supervised: False # to attach a FC layer
+supervised_lr: 0.01
 
+## model options
 normalize: True
 projection_dim: 128
+projector_layers: 2
 dropout: 0.5
 
-# transformations
+## audio
+audio_length: 59049
+sample_rate: 22050
+
+## CPC
+prediction_step: 20 # Time steps k to predict into future
+negative_samples: 15 # Number of negative samples to be used for training
+subsample: True # Boolean to decide whether to subsample from the total sequence lengh within intermediate layers
+
+
+## CLMR
+### transformations
 transforms_phase: 0.8
-transforms_gain: 0.5
-transforms_filters: 0.3
-
-# model options
-resnet: "resnet50"
-
-# loss options
-optimizer: "LARS" # [Adam, LARS]
-weight_decay: 1.0e-6
-temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
-
-# reload options
-model_path: "logs/0" # set to the directory containing `checkpoint_##.tar` 
-epoch_num: 100 # set to checkpoint number
-
-# mixed-precision training
-fp16: False 
-fp16_opt_level: "O2"
+transforms_noise: 0.0
+transforms_gain: 0.1
+transforms_filters: 0.4
+transforms_highpass_freq: 800
+transforms_lowpass_freq: 3500
 
 
-# magnatagatune
-# use FULL dataset for pre-training, since segmented version are COROLLATED
-# use normal dataset for lin. eval.
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_concat_16000"
-# mtt_processed_audio: "./datasets/audio/magnatagatune/processed_16000"
-# mtt_processed_annot: "./datasets/audio/magnatagatune/processed_annotations"
-# list_of_tags: "./datasets/audio/magnatagatune/50_tags.txt"
-# num_tags: 50
+## reload options
+reload: False
+model_path: "" # set to the directory containing `checkpoint_##.tar` 
+epoch_num: 0 # set to checkpoint number
 
-# logistic regression options
+
+## linear evaluation options
+mlp: True 
 logistic_batch_size: 64
 logistic_epochs: 100
+logistic_lr: 0.003 # clmr: 0.0004, cpc: 0.003
 reload_logreg: False
-logreg_model_path: "logs/0"
-logreg_epoch_num: 100
+perc_train_data: 1.0
+logreg_model_path: ""
+logreg_epoch_num: ""
+num_tags: 50
+at_least_one_pos: False
 
-## vision
-input_shape: [96, 96, 3]
-image_height: 220
-image_width: 120
-image_channels: 1
+### vision
+## model options
+# resnet: "resnet50"
+
+## dataset options
+# image_height: 220
+# image_width: 120
+# image_channels: 1
 
 
 # universal_symbol_processed: "./datasets/vision/universal_symbol"

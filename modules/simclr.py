@@ -40,14 +40,6 @@ class SimCLR(Model):
             elif args.sample_rate == 8000:
                 self.encoder = SampleCNN8000(args)
             
-            if args.new_encoder:
-                strides = [5, 3, 2, 2, 2, 2, 2]
-                filter_sizes = [10, 6, 4, 4, 4, 2, 2]
-                padding = [2, 2, 2, 2, 1, 1, 1]
-                genc_input = 1
-                genc_hidden = 512
-                self.encoder = CPCEncoder(genc_input, genc_hidden, strides, filter_sizes, padding)
-
             print(f"### {self.encoder.__class__.__name__} ###")
 
         elif args.domain == "scores":

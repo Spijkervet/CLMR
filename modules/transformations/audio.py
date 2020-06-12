@@ -188,8 +188,9 @@ class AudioTransforms:
         x1 = torch.clamp(x1, min=-1, max=1)
 
         # pseudo-standardise
-        x0 = self.normalise(x0, mean, std)
-        x1 = self.normalise(x1, mean, std)
+        if mean is not None and std is not None:
+            x0 = self.normalise(x0, mean, std)
+            x1 = self.normalise(x1, mean, std)
         return x0, x1
 
     def normalise(self, audio, mean, std):
