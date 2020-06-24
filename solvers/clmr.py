@@ -25,12 +25,13 @@ class CLMR:
         validate_idx = 1
         latent_idx = 5
         avg_test_idx = 5
+        save_idx = 1
 
         self.optimizer = set_learning_rate(self.optimizer, args.learning_rate)
         
         for epoch in range(start_epoch, epochs):
-            # if epoch % latent_idx == 0:
-            #     self.visualise_latent_space(args, train_loader, test_loader)
+            if epoch % latent_idx == 0:
+                self.visualise_latent_space(args, train_loader, test_loader)
 
             learning_rate = self.optimizer.param_groups[0]['lr']
             print("Learning rate : {}".format(learning_rate))
@@ -71,7 +72,11 @@ class CLMR:
                         print("Early stopping")
                         break
 
+            if epoch % save_idx == 0:
+                save_model(args, self.model, self.optimizer, name=args.model_name)
+
             args.current_epoch += 1
+
         
 
     def train(self, args, train_loader):
@@ -109,7 +114,7 @@ class CLMR:
             loss.backward()
             self.optimizer.step()
 
-            self.writer.add_scalar("Loss/train_epoch", loss.item(), args.global_step)
+            self.writer.add_scalar("Loss/train_step", loss.item(), args.global_step)
 
             if args.supervised:
                 self.writer.add_scalar("AUC/train_step", auc, args.global_step)
@@ -117,6 +122,7 @@ class CLMR:
 
             loss_epoch += loss.item()
             args.global_step += 1
+            break
 
         return loss_epoch / len(train_loader), auc_epoch / len(train_loader), ap_epoch / len(train_loader)
 
@@ -145,6 +151,7 @@ class CLMR:
                     print(f"Step [{step}/{len(loader)}]\t Validation/Test Loss: {loss.item()}")
 
                 loss_epoch += loss.item()
+                break
 
         self.model.train()
         return loss_epoch / len(loader)
