@@ -29,9 +29,6 @@ def main(_run, _log):
 
     (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_dataset(args)
 
-
-
-
     model, optimizer, scheduler = load_model(
         args, reload_model=args.reload, name=args.model_name
     )

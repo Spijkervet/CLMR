@@ -17,6 +17,7 @@ def converter(path, conv_path, id2audio, sample_rate, max_length):
     index_num = 0
     for idx, (clip_id, audio_path) in tqdm(enumerate(id2audio.items()), total=len(id2audio)):
         orig_fp = os.path.join(path, audio_path)
+        orig_fp = os.path.splitext(orig_fp)[0] + ".mp3"
         target_fp = os.path.join(conv_path, os.path.splitext(audio_path)[0] + ".wav") 
 
         if os.path.exists(target_fp):
@@ -24,6 +25,11 @@ def converter(path, conv_path, id2audio, sample_rate, max_length):
 
         if os.path.exists(orig_fp) and os.path.getsize(orig_fp) > 0:
             audio, sr = default_loader(orig_fp)
+            if sr != sample_rate:
+                tmp_fp = "/tmp/tmp.wav"
+                convert_samplerate(orig_fp, tmp_fp, sample_rate)
+                audio, sr_conv = default_loader(tmp_fp)
+        
             audio = audio.mean(axis=0) # to mono
             audio = audio.reshape(1, -1) # [channels, samples]
 
@@ -31,9 +37,6 @@ def converter(path, conv_path, id2audio, sample_rate, max_length):
             if not os.path.exists(dp):
                 os.makedirs(dp)
 
-            if sr != sample_rate:
-                convert_samplerate(orig_fp, target_fp, sample_rate)
-                
             # trim audio
             if audio.size(1) > max_length:
                 audio = audio[:, 0:max_length]
@@ -41,7 +44,7 @@ def converter(path, conv_path, id2audio, sample_rate, max_length):
             torchaudio.save(target_fp, audio, sample_rate)
 
         else:
-            print("File not found or corrupted: {}".format(fp))
+            print("File not found or corrupted: {}".format(orig_fp))
     return items, tracks_dict
 
 
