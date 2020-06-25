@@ -70,7 +70,6 @@ class CLMR:
                     print("Adjusted learning rate : {}".format(curr_lr))
                     if curr_lr < 1e-6:
                         print("Early stopping")
-                        break
 
             if epoch % save_idx == 0:
                 save_model(args, self.model, self.optimizer, name=args.model_name)
@@ -122,7 +121,6 @@ class CLMR:
 
             loss_epoch += loss.item()
             args.global_step += 1
-            break
 
         return loss_epoch / len(train_loader), auc_epoch / len(train_loader), ap_epoch / len(train_loader)
 
@@ -151,7 +149,6 @@ class CLMR:
                     print(f"Step [{step}/{len(loader)}]\t Validation/Test Loss: {loss.item()}")
 
                 loss_epoch += loss.item()
-                break
 
         self.model.train()
         return loss_epoch / len(loader)
