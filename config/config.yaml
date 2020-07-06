@@ -1,19 +1,15 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "msd" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
-pretrain_dataset: "msd" # [magnatagatune,billboard,fma,msd]
+dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
+pretrain_dataset: "magnatagatune" # [magnatagatune,billboard,fma,msd]
 data_input_dir: "/storage/jspijkervet" # [audio: [datasets/audio] vision: [datasets/vision]
 model_name: "clmr" # [clmr, cpc]
-transfer: 0 # when transfer learning
-
-## fma
-fma_version: "medium"
 
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 48 # for audio, 256 for images
-num_workers: 8
+num_workers: 12
 start_epoch: 0
 epochs: 100
 
@@ -68,22 +64,6 @@ logistic_epochs: 100
 logistic_lr: 0.003 # clmr: 0.0004, cpc: 0.003
 reload_logreg: False
 perc_train_data: 1.0
-logreg_model_path: ""
-logreg_epoch_num: ""
+finetune_model_path: ""
+finetune_epoch_num: ""
 num_tags: 50
-at_least_one_pos: False
-
-### vision
-## model options
-# resnet: "resnet50"
-
-## dataset options
-# image_height: 220
-# image_width: 120
-# image_channels: 1
-
-
-# universal_symbol_processed: "./datasets/vision/universal_symbol"
-# image_height: 96
-# image_width: 96
-# image_channels: 3

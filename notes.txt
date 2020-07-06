@@ -1,9 +1,0 @@
-new record:
-[Test]: ROC-AUC 0.867740143738259
-[Test]: PR-AUC 0.318668385454047
-
-ran on mtt long, should be eval still
-now running gtzan
-
-Rl8 ran unnorm., very long time
-run logreg on clmr/5/5660.tar!

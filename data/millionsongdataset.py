@@ -187,7 +187,7 @@ class MSDDataset(Dataset):
         print(f"Num segments: {len(self.tracks_list)}")
         print(f"Num tracks: {len(self.tracks_list_test)}")
         
-        print(f"[{split} dataset ({args.pretrain_dataset}_{self.sample_rate})]") 
+        print(f"[{split} dataset ({args.dataset}_{self.sample_rate})]") 
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)

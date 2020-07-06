@@ -3,7 +3,6 @@ import torch
 
 from .mirdataset import MIRDataset
 from modules.transformations import AudioTransforms
-from utils.chords import chords
 
 def get_mir_loaders(args, num_workers=16, diff_train_dataset=None):
     
@@ -44,10 +43,5 @@ def get_mir_loaders(args, num_workers=16, diff_train_dataset=None):
         drop_last=True,
         num_workers=num_workers,
     )
-
-    if args.task == "chords":
-        args.n_classes = len(chords)
-    else:
-        args.n_classes = 0
 
     return train_loader, train_dataset, test_loader, test_dataset

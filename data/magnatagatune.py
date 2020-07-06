@@ -143,16 +143,12 @@ class MTTDataset(Dataset):
             args.data_input_dir, "magnatagatune", "processed_annotations"
         )
 
-        at_least_one_pos = ""
-        if args.at_least_one_pos:
-            at_least_one_pos = "_onepos"
-
         if train:
-            self.annotations_file = Path(mtt_processed_annot) / f"train_gt_mtt{at_least_one_pos}.tsv"
+            self.annotations_file = Path(mtt_processed_annot) / "train_gt_mtt.tsv"
         elif validation:
-            self.annotations_file = Path(mtt_processed_annot) / f"val_gt_mtt{at_least_one_pos}.tsv"
+            self.annotations_file = Path(mtt_processed_annot) / "val_gt_mtt.tsv"
         else:
-            self.annotations_file = Path(mtt_processed_annot) / f"test_gt_mtt{at_least_one_pos}.tsv"
+            self.annotations_file = Path(mtt_processed_annot) / "test_gt_mtt.tsv"
 
         # int to label
         with open(Path(mtt_processed_annot) / f"output_labels_mtt.txt", "r") as f:
@@ -217,15 +213,14 @@ class MTTDataset(Dataset):
         name = "Train" if train else "Test"
         if validation:
             name = "Validation"
-        if args.pretrain_dataset == "billboard":
-            version = "unlabeled"
-        if args.pretrain_dataset == "fma":
-            version = "medium"
+
+        self.mean = None
+        self.std = None
             
-        stats_path = os.path.join(args.data_input_dir, args.pretrain_dataset, f"statistics_{version}_{self.sample_rate}{at_least_one_pos}.csv")
+        stats_path = os.path.join(args.data_input_dir, "magnatagatune", f"statistics_{version}_{self.sample_rate}.csv")
         print(stats_path)
         if not os.path.exists(stats_path):
-            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) from pre-trained {args.pretrain_dataset} for {version}_{self.sample_rate}{at_least_one_pos} version")
+            print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate} version")
             if train:
                 self.mean, self.std = get_dataset_stats(
                     self.loader, self.tracks_list
@@ -242,7 +237,7 @@ class MTTDataset(Dataset):
                 self.mean = float(stats[0])
                 self.std = float(stats[1])
         
-        print(f"[{name} dataset ({args.pretrain_dataset}_{version}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}")
+        print(f"[{name} dataset ({args.dataset}_{version}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}")
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
@@ -265,7 +260,7 @@ class MTTDataset(Dataset):
         audio = self.get_audio(fp)
 
         # normalise audio
-        # audio = self.normalise_audio(audio)
+        audio = self.normalise_audio(audio)
 
         # split into equally sized tensors of self.audio_length
         batch = torch.split(audio, self.audio_length, dim=1)
@@ -299,7 +294,7 @@ class MTTDataset(Dataset):
             # start_idx = random.randint(0, segment * self.audio_length)
             start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
-            # audio = self.normalise_audio(audio)
+            audio = self.normalise_audio(audio)
             audio = (audio, audio)
         elif self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
@@ -307,7 +302,7 @@ class MTTDataset(Dataset):
             max_samples = audio.size(1)
             start_idx = random.randint(0, max_samples - self.audio_length)
             audio = audio[:, start_idx : start_idx + self.audio_length]
-            # audio = self.normalise_audio(audio)
+            audio = self.normalise_audio(audio)
             audio = (audio, audio)
         else:
             raise Exception("Transformation unknown")
