@@ -7,7 +7,6 @@ from tqdm import tqdm
 from collections import defaultdict
 
 from datasets.utils.utils import add_tracks, train_test
-from utils.chords import chords, keys
 
 
 def prepare_dataset(args):

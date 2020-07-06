@@ -28,7 +28,7 @@ def load_model(args, reload_model=False, name="clmr"):
         model = SimCLR(args)
     elif name == "cpc":
         model = cpc_model(args)
-    elif name == "eval":
+    elif name == "supervised":
         if args.mlp:
             model = MLP(args.n_features, args.n_classes)
         else:
@@ -37,18 +37,15 @@ def load_model(args, reload_model=False, name="clmr"):
         raise Exception("Cannot infer model from configuration")
     
     if reload_model:
-        model_path = args.model_path if name != "eval" else args.logreg_model_path
-        epoch_num = args.epoch_num if name != "eval" else args.logreg_epoch_num
+        model_path = args.model_path if name != "supervised" else args.finetune_model_path
+        epoch_num = args.epoch_num if name != "supervised" else args.finetune_epoch_num
         print(f"### RELOADING {name.upper()} MODEL FROM CHECKPOINT {epoch_num} ###")
 
         model_fp = os.path.join(
             model_path, "{}_checkpoint_{}.tar".format(name, epoch_num)
         )
 
-        strict = False
-        if args.transfer:
-            strict = False
-        model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=strict)
+        model.load_state_dict(torch.load(model_fp, map_location=args.device.type), strict=True)
 
     model = model.to(args.device)
 
@@ -85,7 +82,7 @@ def load_model(args, reload_model=False, name="clmr"):
     if args.supervised:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.global_lr_decay, patience=2, verbose=True)
 
-    if reload_model and not args.transfer:
+    if reload_model:
         optim_fp = os.path.join(
             model_path, "{}_checkpoint_{}_optim.tar".format(name, epoch_num)
         )
