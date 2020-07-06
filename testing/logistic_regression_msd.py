@@ -88,46 +88,11 @@ def inference(loader, context_model, model_name, n_features, device):
     return feature_vector, labels_vector
 
 
-def get_features(context_model, train_loader, val_loader, test_loader, model_name, n_features, device):
-    train_X, train_y = inference(train_loader, context_model, model_name, n_features, device)
-    val_X, val_y = inference(val_loader, context_model, model_name, n_features, device)
-    test_X, test_y = inference(test_loader, context_model, model_name, n_features, device)
-    return train_X, train_y, val_X, val_y, test_X, test_y
-
-
-def create_data_loaders_from_arrays(X_train, y_train, X_val, y_val, X_test, y_test, batch_size):
-    # X_train, X_test = normalize_dataset(X_train, X_test)
-
-    train = torch.utils.data.TensorDataset(
-        torch.from_numpy(X_train), torch.from_numpy(y_train).type(torch.float)
-    )
-    train_loader = torch.utils.data.DataLoader(
-        train, batch_size=batch_size, shuffle=False
-    )
-    
-    val = torch.utils.data.TensorDataset(
-        torch.from_numpy(X_val), torch.from_numpy(y_val).type(torch.float)
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val, batch_size=batch_size, shuffle=False
-    )
-
-    test = torch.utils.data.TensorDataset(
-        torch.from_numpy(X_test), torch.from_numpy(y_test).type(torch.float)
-    )
-    test_loader = torch.utils.data.DataLoader(
-        test, batch_size=batch_size, shuffle=False
-    )
-    return train_loader, val_loader, test_loader
-
-
 def get_predicted_classes(output, predicted_classes):
     predictions = output.argmax(1).detach()
     classes, counts = torch.unique(predictions, return_counts=True)
     predicted_classes[classes] += counts.float()
     return predicted_classes
-
-
 
 def plot_predicted_classes(predicted_classes, epoch, writer, train):
     train_test = "train" if train else "test"
@@ -136,19 +101,39 @@ def plot_predicted_classes(predicted_classes, epoch, writer, train):
     writer.add_figure(f"Class_distribution/{train_test}", figure, global_step=epoch)
 
 
-def eval_chords(y, output):
-    auc, acc = itemwise_auc_ap(y.detach().cpu().numpy(), output.detach().cpu().numpy())
-    return auc.mean(), acc.mean()
+def create_batch(loader, context_model, device):
+    track_ids = []
+    xs = []
+    ys = []
+    for track_id, fp, y, segment in loader.dataset.tracks_list_test:
+        if track_id > 0 and len(ys) >= 5000:
+            x = torch.FloatTensor(xs)
+            y = torch.FloatTensor(ys)
+            print(len(ys))
+            ts = track_ids
+            track_ids = []
+            xs = []
+            ys = []
+            yield (x, y, ts)
+        else:
+            x = loader.dataset.get_full_size_audio(track_id, fp)
+            x = x.to(device)
 
+            h, z = context_model(x)
+            
+            xs.extend(h.cpu().detach().numpy())
+            y = np.tile(y, (x.shape[0], 1))
+            ys.extend(y)
+            track_ids.append(track_id)
 
-def train(args, loader, model, criterion, optimizer, writer):
+def train(args, loader, context_model, model, criterion, optimizer, writer):
     loss_epoch = 0
-    auc_epoch = 0
-    accuracy_epoch = 0
+    auc_epoch = []
+    acc_epoch = []
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
-    for step, (x, y) in enumerate(loader):
+    outputs = []
+    for step, (x, y, track_ids) in enumerate(create_batch(loader, context_model, args.device)):
         optimizer.zero_grad()
-
         x = x.to(args.device)
         y = y.to(args.device)
 
@@ -161,33 +146,36 @@ def train(args, loader, model, criterion, optimizer, writer):
         predicted_classes = get_predicted_classes(output, predicted_classes)
 
         if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
-            auc, acc = get_metrics(args.domain, y, output)
-        elif args.task == "chords":
-            auc, acc = eval_chords(y, output)
+            auc, acc = get_metrics(args.domain, y.detach().cpu(), output.detach().cpu())
         else:
             predictions = output.argmax(1).detach()
             auc = 0
             acc = (predictions == y).sum().item() / y.shape[0]
+            
 
-        auc_epoch += auc
-        accuracy_epoch += acc
         loss_epoch += loss.item()
 
-        # if step % 100 == 0:
-        #     print(
-        #         f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
-        #     )
+        if step % 1 == 0:
+            print(
+                f"Step [{step}/{len(loader.dataset.tracks_list_test)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {acc}"
+            )
 
-        writer.add_scalar("AUC/train_step", auc, args.global_step)
-        writer.add_scalar("AP/train_step", acc, args.global_step)
-        writer.add_scalar("Loss/train_step", loss, args.global_step)
+            writer.add_scalar("AUC/train_step", auc, args.global_step)
+            writer.add_scalar("AP/train_step", acc, args.global_step)
+            writer.add_scalar("Loss/train_step", loss, args.global_step)
+            auc_epoch.append(auc)
+            acc_epoch.append(acc)
+
         args.global_step += 1
+    
+    auc_epoch = np.array(auc_epoch).mean()
+    acc_epoch = np.array(acc_epoch).mean()
 
     plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
-    return loss_epoch, auc_epoch, accuracy_epoch
+    return loss_epoch, auc_epoch, acc_epoch
 
 
-def test(args, loader, model, criterion, optimizer, writer):
+def test(args, loader, context_model, model, criterion, optimizer, writer):
     model.eval()
     loss_epoch = 0
     auc_epoch = 0
@@ -225,15 +213,15 @@ def test(args, loader, model, criterion, optimizer, writer):
     return loss_epoch, auc_epoch, accuracy_epoch
 
 
-def solve(args, train_loader, val_loader, test_loader, model, criterion, optimizer, writer):
+def solve(args, train_loader, val_loader, test_loader, context_model, model, criterion, optimizer, writer):
     validate_epoch = 50
 
     for epoch in range(args.logistic_epochs):
         loss_epoch, auc_epoch, accuracy_epoch = train(
-            args, train_loader, model, criterion, optimizer, writer
+            args, train_loader, context_model, model, criterion, optimizer, writer
         )
         print(
-            f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {loss_epoch / len(train_loader)}\t AUC: {auc_epoch / len(train_loader)}\t AP: {accuracy_epoch / len(train_loader)}"
+            f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {loss_epoch / len(train_loader)}\t AUC: {auc_epoch}\t AP: {accuracy_epoch}"
         )
 
         writer.add_scalar("AUC/train", auc_epoch / len(train_loader), epoch)
@@ -241,12 +229,11 @@ def solve(args, train_loader, val_loader, test_loader, model, criterion, optimiz
         writer.add_scalar("Loss/train", loss_epoch / len(train_loader), epoch)
 
         save_model(args, model, optimizer, name="supervised")
-        args.current_epoch += 1
 
         ## testing
-        if epoch % validate_epoch == 0:
+        if epoch > 0 and epoch % validate_epoch == 0:
             val_loss_epoch, auc_epoch, accuracy_epoch = test(
-                args, val_loader, model, criterion, optimizer, writer
+                args, val_loader, context_model, model, criterion, optimizer, writer
             )
             print(
                 f"[Validation]\t Loss: {val_loss_epoch / len(test_loader)}\t AUC: {auc_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
@@ -254,6 +241,8 @@ def solve(args, train_loader, val_loader, test_loader, model, criterion, optimiz
             writer.add_scalar("AUC/validation", auc_epoch / len(test_loader), epoch)
             writer.add_scalar("AP/validation", accuracy_epoch / len(test_loader), epoch)
             writer.add_scalar("Loss/validation", val_loss_epoch / len(test_loader), epoch)
+        
+        args.current_epoch += 1
 
     print(
         f"[FINAL]\t Loss: {loss_epoch / len(test_loader)}\t AP: {accuracy_epoch / len(test_loader)}"
@@ -263,7 +252,7 @@ def solve(args, train_loader, val_loader, test_loader, model, criterion, optimiz
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
 
-    lrs = [0.0005] # , 0.001, 0.003, 0.004]
+    lrs = [0.001] # , 0.001, 0.003, 0.004]
     epochs = [50] # , 150, 300, 500]
     for lr in lrs:
         for e in epochs:
@@ -317,37 +306,15 @@ def main(_run, _log):
 
             print(context_model)
             print(model)
-
-            # create features from pre-trained model
-            if not os.path.exists("features.p"):
-                print("### Creating features from pre-trained context model ###")
-                (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
-                    context_model, train_loader, val_loader, test_loader, args.model_name, args.n_features, args.device
-                )
-                pickle.dump(
-                    (train_X, train_y, val_X, val_y, test_X, test_y), open("features.p", "wb"), protocol=4
-                )
-            else:
-                print("### Loading features ###")
-                (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(open("features.p", "rb"))
-
-            if args.perc_train_data < 1.0:
-                print("Train dataset size:", len(train_X))
-                train_X, train_y = random_undersample_balanced(train_X, train_y, args.perc_train_data)
-                print("Undersampled train dataset size:", len(train_X))
-
-
-            arr_train_loader, arr_val_loader, arr_test_loader = create_data_loaders_from_arrays(
-                train_X, train_y, val_X, val_y, test_X, test_y, 2048 # len(test_loader.dataset)
-            )
-
+            
             # run training
             try:
                 solve(
                     args,
-                    arr_train_loader,
-                    arr_val_loader,
-                    arr_test_loader,
+                    train_loader,
+                    val_loader,
+                    test_loader,
+                    context_model,
                     model,
                     criterion,
                     optimizer,
@@ -367,3 +334,5 @@ def main(_run, _log):
                 writer.add_hparams(args_hparams(args), metrics)
             except:
                 pass
+        
+        save_model(args, model, optimizer, name="supervised")

@@ -10,15 +10,6 @@ import matplotlib.pyplot as plt
 import pickle
 
 from datasets.utils.resample import convert_samplerate
-from utils.chords import (
-    chords,
-    keys,
-    get_chord_at_interval,
-    chord_to_label,
-    key_to_label,
-    estimate_mode,
-    mode_to_label,
-)
 
 
 def resample_tracks(args, tracks):
