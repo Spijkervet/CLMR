@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
-from datasets.utils.utils import write_statistics
+from scripts.datasets.utils import write_statistics
 from utils import random_undersample_balanced
 from tqdm import tqdm
 
@@ -47,14 +47,15 @@ def load_id2path(index_file, msd_7d):
     return paths, id2path
 
 
-def pons_indexer(args, path, id2audio, id2gt):
+def default_indexer(args, path, id2audio, id2gt):
     items = []
     tracks_dict = defaultdict(list)
-    # index = 0
-    prev_index = None
     index = {}
     index_num = 0
     for idx, (clip_id, label) in tqdm(enumerate(id2gt.items())):
+        if idx > 100:
+            break
+
         fp = os.path.join(path, id2audio[clip_id])
         if os.path.exists(fp) and os.path.getsize(fp) > 0:
             index_name = Path(id2audio[clip_id].split(".")[0]).stem # 7 digital ID
@@ -63,49 +64,24 @@ def pons_indexer(args, path, id2audio, id2gt):
                 index_num += 1
 
             label = torch.FloatTensor(label)
-
-            # if supervised/eval
-            if args.supervised or args.lin_eval:
-                # n segments so it sees all data
-                num_segments = 10
-                for n in range(num_segments):
-                    items.append((index[index_name], fp, label, n))
-            else:
-                items.append(
-                    (index[index_name], fp, label, 0)
-                )  # only one segment, since full track
+            items.append(
+                (index[index_name], fp, label)
+            )
             tracks_dict[index[index_name]].append(idx)
         else:
             print("File not found: {}".format(fp))
     return items, tracks_dict
 
 
-"""
-"""
-
-
 def default_loader(path):
-    # with audio normalisation
-    # audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())
     audio, sr = torchaudio.load(path, normalization=True)
-
-    # is a bit slower with multiprocessing loading into the dataloader (num_workers > 1)
-    # rate, sig = wavfile.read(path)
-    # sig = sig.astype('float32') / 32767 # normalise 16 bit PCM between -1 and 1
-    # audio = torch.FloatTensor(sig).reshape(1, -1)
-
-    # soundfile, also fast
-    # audio, sr = sf.read(path)
-    # audio = torch.Tensor(audio).mean(0).reshape(1, -1)
-    # audio = audio / (1 << 16) # normalise
-    # audio = torch.from_numpy(audio).float().reshape(1, -1)
     return audio, sr
 
 
 def get_dataset_stats(loader, tracks_list):
     means = []
     stds = []
-    for track_id, fp, label, _ in tqdm(tracks_list):
+    for track_id, fp, label in tqdm(tracks_list):
         audio, sr = loader(fp)
         means.append(audio.mean())
         stds.append(audio.std())
@@ -114,12 +90,10 @@ def get_dataset_stats(loader, tracks_list):
 
 class MSDDataset(Dataset):
     def __init__(
-        self, args, train, validation=False, loader=default_loader, transform=None,
+        self, args, train, validation=False, loader=default_loader, transform=None, indexer=default_indexer
     ):
         self.supervised = args.supervised
-        self.num_tags = args.num_tags
-        self.lin_eval = args.lin_eval
-        self.indexer = pons_indexer
+        self.indexer = indexer
         self.loader = loader
         self.transform = transform
         self.sample_rate = args.sample_rate
@@ -152,7 +126,8 @@ class MSDDataset(Dataset):
         with open(Path(msd_processed_annot) / f"output_labels_msd.txt", "r") as f:
             lines = f.readlines()
             self.tags = eval(lines[1][lines[1].find("["):])
-
+            self.num_tags = len(self.tags)
+            
         [audio_repr_paths, id2audio_repr_path] = load_id2path(
             Path(msd_processed_annot) / "index_msd.tsv", self.msd_to_7d
         )
@@ -161,33 +136,8 @@ class MSDDataset(Dataset):
             args, self.audio_dir, id2audio_repr_path, id2gt
         )
 
-
-        ## test code
-        # for idx, (track_id, fp, label, segment) in enumerate(self.tracks_list):
-        #     if segment != 0:
-        #         continue
-        #     audio = self.get_audio(fp)
-        #     torchaudio.save(f"{track_id}.mp3", audio, sample_rate=args.sample_rate)
-        #     print(track_id)
-        #     for lidx, l in enumerate(label):
-        #         if l == 1:
-        #             print(self.tags[lidx])
-        #     print()
-        #     print()
-        #     if track_id >= 5:
-        #         break
-        # exit(0)
-
-        self.tracks_list_test = []
-        for track_id, fp, label, segment in self.tracks_list:
-            if (
-                segment == 0
-            ):  # remove segment, since we will evaluate with get_full_size_audio()
-                self.tracks_list_test.append([track_id, fp, label, -1])
-        
         # reduce dataset to n%
         if args.perc_train_data < 1.0 and (train or validation): # only on train set
-            self.tracks_list = self.tracks_list_test # For MSD
             print("Train dataset size:", len(self.tracks_list))
             train_X_indices = np.array([idx for idx in range(len(self.tracks_list))]).reshape(-1, 1)
             train_y = np.array([label.numpy() for _, _, label, _ in self.tracks_list])
@@ -199,13 +149,37 @@ class MSDDataset(Dataset):
                     new_tracks_list.append([track_id, fp, label, segment])
                 
             self.tracks_list = new_tracks_list
-            self.tracks_list_test = new_tracks_list
             print("Undersampled train dataset size:", len(self.tracks_list))
 
-        print(f"Num segments: {len(self.tracks_list)}")
-        print(f"Num tracks: {len(self.tracks_list_test)}")
+        print(f"Num tracks: {len(self.tracks_list)}")
         
         print(f"[{split} dataset ({args.dataset}_{self.sample_rate})]")
+
+    # get one segment (==59049 samples) and its 50-d label
+    def __getitem__(self, index):
+        track_id, fp, label = self.tracks_list[index]
+
+        try:
+            audio = self.get_audio(fp)
+        except Exception as e:
+            print(f"Skipped {track_id, fp}, could not load audio: {e}")
+            return self.__getitem__(index+1)
+
+        # only transform if unsupervised training
+        if self.model_name == "clmr" and self.transform:
+            audio = self.transform(audio, self.mean, self.std)
+        elif self.model_name == "cpc":
+            max_samples = audio.size(1)
+            start_idx = random.randint(0, max_samples - self.audio_length)
+            audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = (audio, audio)
+        else:
+            raise Exception("Transformation unknown")
+
+        return audio, label, track_id
+
+    def __len__(self):
+        return len(self.tracks_list)
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
@@ -245,40 +219,6 @@ class MSDDataset(Dataset):
         batch = batch.reshape(batch.shape[0], 1, -1)
         return batch
 
-    # get one segment (==59049 samples) and its 50-d label
-    def __getitem__(self, index):
-        track_id, fp, label, segment = self.tracks_list[index]
-
-        try:
-            audio = self.get_audio(fp)
-        except Exception as e:
-            print(f"Skipped {track_id, fp}, could not load audio: {e}")
-            return self.__getitem__(index+1)
-
-        # only transform if unsupervised training
-        # if self.lin_eval or self.supervised:
-        #     # start_idx = random.randint(0, segment * self.audio_length)
-        #     start_idx = segment * self.audio_length
-        #     audio = audio[:, start_idx : start_idx + self.audio_length]
-        #     if self.mean:
-        #         audio = self.normalise_audio(audio)
-
-        #     audio = (audio, audio)
-        if self.model_name == "clmr" and self.transform:
-            audio = self.transform(audio, None, None)
-        elif self.model_name == "cpc":
-            max_samples = audio.size(1)
-            start_idx = random.randint(0, max_samples - self.audio_length)
-            audio = audio[:, start_idx : start_idx + self.audio_length]
-            audio = (audio, audio)
-        else:
-            raise Exception("Transformation unknown")
-
-        return audio, label, track_id
-
-    def __len__(self):
-        return len(self.tracks_list)
-
     def sample_audio_by_track_id(self, track_id, batch_size=20):
         """
         Get audio samples based on the track_id (batch_size = num_samples)
@@ -287,7 +227,7 @@ class MSDDataset(Dataset):
         batch = torch.zeros(batch_size, 1, self.audio_length)
         for idx in range(batch_size):
             index = self.tracks_dict[track_id][0]
-            _, fp, label, _ = self.tracks_list[index]  # from non-dup!!
+            _, fp, label = self.tracks_list[index]  # from non-dup!!
 
             audio = self.get_audio(fp)
 

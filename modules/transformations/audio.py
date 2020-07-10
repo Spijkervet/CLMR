@@ -14,7 +14,7 @@ class RandomResizedCrop:
         self.sr = sr
         self.n_samples = n_samples
 
-    def __call__(self, audio, prev_transform=None):
+    def __call__(self, audio):
         max_samples = audio.size(1)
 
         assert (
@@ -22,11 +22,6 @@ class RandomResizedCrop:
         ) >= 0, "max samples exceeds number of samples in crop"
 
         start_idx = random.randint(0, max_samples - self.n_samples)  # * 2))
-
-        # if x0 is cropped, crop x1 within a frame of 5 seconds (do not get "too" global) # TODO variable
-        # if prev_transform and abs(start_idx - prev_transform) > (3 * self.sr):
-        #     start_idx = random.randint(self.n_samples, prev_transform)
-
         audio = audio[:, start_idx : start_idx + self.n_samples]
         return audio, start_idx
 
@@ -36,7 +31,7 @@ class InvertSignal:
         self.sr = sr
         self.p = p
 
-    def __call__(self, audio, prev_transform=None):
+    def __call__(self, audio):
         if random.random() < self.p:
             audio = audio.squeeze()
             audio = audio * -1
@@ -49,7 +44,7 @@ class Noise:
         self.sr = sr
         self.p = p
 
-    def __call__(self, audio, prev_transform=None):
+    def __call__(self, audio):
         if random.random() < self.p:
             audio = audio.squeeze()
             audio = audio + (torch.FloatTensor(*audio.shape).normal_(0, 1) * 0.001)
@@ -64,7 +59,7 @@ class HighLowBandPass:
         self.highpass_freq = highpass_freq
         self.lowpass_freq = lowpass_freq
 
-    def __call__(self, audio, prev_transform=None):
+    def __call__(self, audio):
         highlowband = random.randint(0, 1)
         if random.random() < self.p:
             if highlowband == 0:
@@ -90,7 +85,7 @@ class Gain:
         self.sr = sr
         self.p = p
 
-    def __call__(self, audio, prev_transform=None):
+    def __call__(self, audio):
         gain = random.randint(-6, 0)  # input was normalized to max(x)
         if random.random() < self.p:
             pass
@@ -104,7 +99,7 @@ class PitchShift:
         self.sr = sr
         self.p = p
 
-    def __call__(self, audio, prev_transform=None):
+    def __call__(self, audio):
         if random.random() < self.p:
             audio = audio.squeeze()
 
@@ -127,7 +122,7 @@ class Reverse:
         self.sr = sr
         self.p = p
 
-    def __call__(self, audio, prev_transform=None):
+    def __call__(self, audio):
         if random.random() < self.p:
             audio = torch.flip(audio, dims=[0, 1])
 
@@ -143,7 +138,6 @@ class AudioTransforms:
 
     def __init__(self, args):
         self.args = args
-        self.lin_eval = args.lin_eval
         sr = args.sample_rate
 
         self.train_transform = [
@@ -183,13 +177,7 @@ class AudioTransforms:
 
     def transform(self, x, prev_transforms=None):
         transformations = {}
-        if self.lin_eval:
-            x, transformation = self.train_transform[0](x)  # only crop in eval
-        else:
-            for t in self.train_transform:
-                prev_transform = None
-                # if prev_transforms:
-                #     prev_transform = prev_transforms[t.__class__.__name__]
-                x, transformation = t(x, prev_transform=prev_transform)
-                transformations[t.__class__.__name__] = transformation
+        for t in self.train_transform:
+            x, transformation = t(x)
+            transformations[t.__class__.__name__] = transformation
         return x, transformations

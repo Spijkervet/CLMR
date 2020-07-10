@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
-from datasets.utils.utils import write_statistics
+from scripts.datasets.utils import write_statistics
 import random
 
 # much faster loading
