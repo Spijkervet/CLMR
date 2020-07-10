@@ -1,6 +1,7 @@
 import torch
 import argparse
 import os
+import numpy as np
 
 # TensorBoard
 from torch.utils.tensorboard import SummaryWriter
@@ -9,14 +10,16 @@ from data import get_dataset
 from experiment import ex
 from model import load_model
 
-from utils import post_config_hook, load_context_config
-from utils.eval import tagwise_auc_ap, eval_all, average_precision
+from utils import post_config_hook
+from utils.eval import eval_all
+from utils.youtube import download_yt
+from datasets.utils.resample import convert_samplerate
 
+import matplotlib.pyplot as plt
 
 @ex.automain
 def main(_run, _log):
     args = argparse.Namespace(**_run.config)
-    args = load_context_config(args)
     args.lin_eval = True
 
     args = post_config_hook(args, _run)
@@ -31,18 +34,15 @@ def main(_run, _log):
 
     args.n_features = context_model.n_features
 
-    model = None
-    optimizer = None
-    if not args.supervised:
-        model, optimizer, _ = load_model(args, reload_model=True, name="clmr")
-        model = model.to(args.device)
+    model, _, _ = load_model(args, reload_model=True, name="supervised")
+    model = model.to(args.device)
 
-    criterion = torch.nn.BCEWithLogitsLoss()  # for tags
+    print(context_model)
+    print(model)
 
     # initialize TensorBoard
     writer = SummaryWriter(log_dir=args.tb_dir)
 
-    args.global_step = 0
     args.current_epoch = 0
 
     # eval all

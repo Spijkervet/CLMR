@@ -108,9 +108,6 @@ def main(_run, _log):
     plt.imshow(taggram.T, interpolation=None, aspect="auto")
     plt.savefig("inference.png")
 
-    os.remove(args.input_file)
-    os.remove(conv_fn)
-
 
     # mean of taggram
     fig, ax = plt.subplots()
@@ -136,9 +133,13 @@ def main(_run, _log):
     ax.bar(pos, tags_likelihood_mean)
     plt.savefig("inference_likelihood.png")
 
+    N = 3
     tags_likelihoods = [(t, l) for t, l in zip(tags, tags_likelihood_mean)]
-    top_3 = sorted(tags_likelihoods, key=lambda x: x[1], reverse=True)[:3]
-    print(top_3)
+    top_N = sorted(tags_likelihoods, key=lambda x: x[1], reverse=True)[:N]
+    print(top_N)
+
+    os.remove(args.input_file)
+    os.remove(conv_fn)
 
     
     # # eval all

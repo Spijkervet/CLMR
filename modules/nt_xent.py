@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from utils import mask_correlated_samples
 
 class NT_Xent(nn.Module):
 
@@ -8,7 +7,7 @@ class NT_Xent(nn.Module):
         super(NT_Xent, self).__init__()
         self.batch_size = batch_size
         self.temperature = temperature
-        self.mask = mask_correlated_samples(batch_size)
+        self.mask = self.mask_correlated_samples()
         self.device = device
 
         self.criterion = nn.CrossEntropyLoss(reduction="sum")
@@ -34,3 +33,12 @@ class NT_Xent(nn.Module):
         loss = self.criterion(logits, labels)
         loss /= 2 * self.batch_size
         return loss
+
+    def mask_correlated_samples(self):
+        mask = torch.ones((self.batch_size * 2, self.batch_size * 2), dtype=bool)
+        mask = mask.fill_diagonal_(0)
+        for i in range(self.batch_size):
+            mask[i, self.batch_size + i] = 0
+            mask[self.batch_size + i, i] = 0
+        return mask
+        

@@ -83,7 +83,7 @@ def eval_all(args, loader, context_model, model, writer, n_tracks=None):
     with torch.no_grad():
         # run all audio through model and make prediction array
         for step, (track_id, fp, y, _) in enumerate(tracks):
-            x = loader.dataset.get_full_size_audio(track_id, fp)
+            x = loader.dataset.get_full_size_audio(fp)
             x = x.to(args.device)
 
             # get encoding
@@ -142,8 +142,11 @@ def eval_all(args, loader, context_model, model, writer, n_tracks=None):
     metrics = {}
     if args.dataset in ["magnatagatune", "msd"]:
         auc, ap = tagwise_auc_ap(y_true, y_pred)
-        metrics["hparams/test_auc"] = auc.mean()
-        metrics["hparams/test_ap"] = ap.mean()
+        clip_auc, clip_ap = itemwise_auc_ap(y_true, y_pred)
+        metrics["hparams/test_tag_auc"] = auc.mean()
+        metrics["hparams/test_tag_ap"] = ap.mean()
+        metrics["hparams/test_clip_auc"] = clip_auc.mean()
+        metrics["hparams/test_clip_ap"] = clip_ap.mean()
         # metrics["all/auc"] = auc
         # metrics["all/ap"] = ap
     else:
