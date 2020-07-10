@@ -11,7 +11,7 @@ from utils import tsne_to_json
 
 
 def plot_tsne(args, embedding, labels, epoch, step, num_labels):
-    fp = os.path.join(args.out_dir, "tsne", "{}-{}.png".format(epoch, step))
+    fp = os.path.join(args.model_path, "tsne", "{}-{}.png".format(epoch, step))
     if not os.path.exists(os.path.dirname(fp)):
         os.makedirs(os.path.dirname(fp))
 
@@ -50,7 +50,7 @@ def tsne(features):
 
 
 def audio_latent_representations(
-    args, dataset, model, epoch, step, global_step, writer, train, max_tracks=20, vis=False
+    args, dataset, model, epoch, global_step, writer, train, max_tracks=20, vis=False
 ):
 
     if max_tracks is None:
@@ -106,23 +106,10 @@ def audio_latent_representations(
     labels = labels.reshape(-1, 1).cpu().numpy()
 
     embedding = tsne(features)
-    figure = plot_tsne(args, embedding, labels, epoch, step, num_labels=max_tracks)
+    figure = plot_tsne(args, embedding, labels, epoch, global_step, num_labels=max_tracks)
 
     is_train = "train" if train else "test"
     writer.add_figure(f"TSNE_{is_train}", figure, global_step=global_step)
     writer.flush()
-
-    out_dir = os.path.join(args.out_dir, "tsne")
-
-    if epoch % 20 == 0 or vis:
-        writer.add_embedding(features, metadata=labels, global_step=global_step)
-        torch.save(
-            features, os.path.join(out_dir, "features-{}-{}.pt".format(epoch, step))
-        )
-        torch.save(labels, os.path.join(out_dir, "labels-{}-{}.pt".format(epoch, step)))
-        writer.flush()
-
-    if vis:
-        tsne_to_json(args.audio_length, dataset, embedding, labels)
 
     model.train()

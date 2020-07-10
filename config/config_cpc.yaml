@@ -39,6 +39,12 @@ dropout: 0.5
 audio_length: 59049
 sample_rate: 22050
 
+## CPC
+prediction_step: 20 # Time steps k to predict into future
+negative_samples: 15 # Number of negative samples to be used for training
+subsample: True # Boolean to decide whether to subsample from the total sequence lengh within intermediate layers
+
+
 ## CLMR
 ### transformations
 transforms_phase: 0.8
@@ -52,17 +58,16 @@ transforms_lowpass_freq: 3500
 ## reload options
 model_path: "save" # set to the directory containing `checkpoint_##.tar` 
 epoch_num: 0 # set to checkpoint number
-finetune_model_path: ""
-finetune_epoch_num: ""
 reload: False
 
 
 ## linear evaluation options
-mlp: False # use one extra hidden layer
+mlp: True 
 logistic_batch_size: 64
 logistic_epochs: 100
-logistic_lr: 0.003
+logistic_lr: 0.003 # clmr: 0.0004, cpc: 0.003
 reload_logreg: False
-
-## train with percentage of total train data 
 perc_train_data: 1.0
+finetune_model_path: ""
+finetune_epoch_num: ""
+num_tags: 50
