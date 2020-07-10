@@ -16,3 +16,4 @@ images/
 features.p
 .ipynb_checkpoints
 experiments
+*.png

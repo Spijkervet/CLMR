@@ -14,8 +14,5 @@ for idx, row in df.iterrows():
         cmd = ["python", "main.py", "with", *["{}={}".format(k,v) for k, v in config.items()]]
         with open("cmds.txt", "a") as f:
             f.write(" ".join(cmd) + "\n\n")
-        # subprocess.call(cmd)
-        # exit(0)
-        
 
 experiment_log.close()

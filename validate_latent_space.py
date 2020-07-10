@@ -42,14 +42,9 @@ def main(_run, _log):
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.current_epoch = args.start_epoch
 
-    # set random seeds
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-
     # load model
     model, _, _ = load_model(args, reload_model=True)
     
-
     # initialize TensorBoard
     writer = SummaryWriter(log_dir=args.tb_dir)
 

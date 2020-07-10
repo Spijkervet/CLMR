@@ -3,7 +3,6 @@ import torch
 import torchaudio
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
-from utils.chords import keys
 import seaborn as sns
 import pandas as pd
 import numpy as np

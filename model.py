@@ -1,6 +1,6 @@
 import os
 import torch
-from modules import SimCLR, LogisticRegression, LARS, MLP, SampleCNN
+from modules import CLMR, LogisticRegression, LARS, MLP 
 from modules.cpc import CPCModel
 
 def cpc_model(args):
@@ -25,7 +25,7 @@ def cpc_model(args):
 
 def load_model(args, reload_model=False, name="clmr"):
     if name == "clmr":
-        model = SimCLR(args)
+        model = CLMR(args)
     elif name == "cpc":
         model = cpc_model(args)
     elif name == "supervised":
@@ -79,8 +79,8 @@ def load_model(args, reload_model=False, name="clmr"):
     else:
         raise NotImplementedError
 
-    if args.supervised:
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.global_lr_decay, patience=2, verbose=True)
+    # if args.supervised:
+    #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.global_lr_decay, patience=2, verbose=True)
 
     if reload_model:
         optim_fp = os.path.join(

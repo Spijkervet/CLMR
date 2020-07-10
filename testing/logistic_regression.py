@@ -32,7 +32,6 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import StandardScaler
 
-from modules.pytorchtools import EarlyStopping
 from utils.optimizer import set_learning_rate
 
 def normalize_dataset(X_train, X_test):
@@ -57,7 +56,7 @@ def inference(loader, context_model, model_name, n_features, device):
     labels_vector = []
 
     for step, (track_id, fp, y, segment) in enumerate(loader.dataset.tracks_list_test):
-        x = loader.dataset.get_full_size_audio(track_id, fp)
+        x = loader.dataset.get_full_size_audio(fp)
         x = x.to(device)
         
         y = np.tile(y, (x.shape[0], 1))
@@ -79,7 +78,7 @@ def inference(loader, context_model, model_name, n_features, device):
         feature_vector.extend(h.cpu().detach().numpy())
         labels_vector.extend(y)
 
-        if step % 20 == 0:
+        if step % 1000 == 0:
             print(f"Step [{step}/{len(loader.dataset.tracks_list_test)}]\t Computing features...")
 
     feature_vector = np.array(feature_vector)
@@ -161,7 +160,7 @@ def train(args, loader, model, criterion, optimizer, writer):
         predicted_classes = get_predicted_classes(output, predicted_classes)
 
         if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
-            auc, acc = get_metrics(args.domain, y, output)
+            auc, acc = get_metrics(args.domain, y.detach().cpu().numpy(), output.detach().cpu().numpy())
         elif args.task == "chords":
             auc, acc = eval_chords(y, output)
         else:
@@ -204,7 +203,7 @@ def test(args, loader, model, criterion, optimizer, writer):
             predicted_classes = get_predicted_classes(output, predicted_classes)
 
             if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
-                auc, acc = get_metrics(args.domain, y, output)
+                auc, acc = get_metrics(args.domain, y.detach().cpu().numpy(), output.detach().cpu().numpy())
             elif args.task == "chords":
                 auc, acc = eval_chords(y, output)
             else:
@@ -264,7 +263,7 @@ def main(_run, _log):
     args = argparse.Namespace(**_run.config)
 
     lrs = [0.0005] # , 0.001, 0.003, 0.004]
-    epochs = [50] # , 150, 300, 500]
+    epochs = [300] # , 150, 300, 500]
     for lr in lrs:
         for e in epochs:
             # load from epoch num
@@ -290,7 +289,7 @@ def main(_run, _log):
 
             args.n_features = context_model.n_features
 
-            model, _, _ = load_model(args, reload_model=False, name="eval")
+            model, _, _ = load_model(args, reload_model=False, name="supervised")
             model = model.to(args.device)
 
             print(model.summary())

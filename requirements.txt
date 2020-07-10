@@ -4,3 +4,4 @@ tensorboard
 sacred
 PyYAML
 opencv-python
+youtube-dl
