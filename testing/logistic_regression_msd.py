@@ -279,7 +279,7 @@ def main(_run, _log):
 
             args.n_features = context_model.n_features
 
-            model, _, _ = load_model(args, reload_model=False, name="eval")
+            model, _, _ = load_model(args, reload_model=False, name="supervised")
             model = model.to(args.device)
 
             print(model.summary())

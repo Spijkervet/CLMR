@@ -54,19 +54,6 @@ class Noise:
             audio = audio.squeeze()
             audio = audio + (torch.FloatTensor(*audio.shape).normal_(0, 1) * 0.001)
             audio = audio.reshape(1, -1)
-            # target_snr_db = random.randint(2, 10)  # signal-to-noise ratio
-            # gen gauss. noise std 2.5 == rms
-            # x = audio[0]
-            # sig_avg_watts = abs(x.mean())
-            # sig_avg_db = 10 * np.log10(sig_avg_watts)
-            # noise_avg_db = sig_avg_db - target_snr_db
-            # noise_avg_watts = 10 ** (noise_avg_db / 10)
-            # noise_volts = torch.empty(len(x)).normal_(
-            #     mean=0, std=np.sqrt(noise_avg_watts)
-            # )
-            # audio = x + noise_volts
-            # audio = audio.reshape(1, -1)
-
         return audio, None
 
 
@@ -88,8 +75,6 @@ class HighLowBandPass:
                 filt = essentia.standard.LowPass(
                     cutoffFrequency=self.lowpass_freq, sampleRate=self.sr
                 )
-            # else:
-            #     filt = essentia.standard.BandPass(bandwidth=1000, cutoffFrequency=1500, sampleRate=self.sr)
 
             audio = audio.squeeze()  # reshape, since essentia takes (samples, channels)
             audio = filt(audio.numpy())
@@ -165,7 +150,7 @@ class AudioTransforms:
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
             InvertSignal(p=args.transforms_phase, sr=sr),
             Noise(p=args.transforms_noise, sr=sr),
-            Gain(p=args.transforms_gain, sr=sr),
+            # Gain(p=args.transforms_gain, sr=sr),
             HighLowBandPass(
                 p=args.transforms_filters,
                 highpass_freq=args.transforms_highpass_freq,

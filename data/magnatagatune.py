@@ -254,9 +254,7 @@ class MTTDataset(Dataset):
 
         return audio
 
-    def get_full_size_audio(self, track_id, fp):
-        # segments = self.tracks_dict[track_id]
-        # batch_size = len(segments)
+    def get_full_size_audio(self, fp):
         audio = self.get_audio(fp)
 
         # normalise audio
@@ -285,7 +283,6 @@ class MTTDataset(Dataset):
         try:
             audio = self.get_audio(fp)
         except:
-            pass
             print(f"Skipped {track_id, fp}, could not load audio")
             return self.__getitem__(index+1)
 

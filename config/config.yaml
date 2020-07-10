@@ -1,8 +1,8 @@
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
-pretrain_dataset: "magnatagatune" # [magnatagatune,billboard,fma,msd]
+dataset: "msd" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
+pretrain_dataset: "msd" # [magnatagatune,billboard,fma,msd]
 data_input_dir: "/storage/jspijkervet" # [audio: [datasets/audio] vision: [datasets/vision]
 model_name: "clmr" # [clmr, cpc]
 

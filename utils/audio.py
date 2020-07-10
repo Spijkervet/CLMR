@@ -13,6 +13,7 @@ def write_audio_tb(args, train_loader, test_loader, writer, num_audio=5):
         if train_loader.dataset.mean is not None:
             x_i = train_loader.dataset.denormalise_audio(x_i)
             x_j = train_loader.dataset.denormalise_audio(x_j)
+
         writer.add_audio(
             f"audio/train-{idx}-{track_id}-xi",
             x_i,

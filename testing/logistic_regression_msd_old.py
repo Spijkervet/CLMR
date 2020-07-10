@@ -32,7 +32,6 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import StandardScaler
 
-from modules.pytorchtools import EarlyStopping
 from utils.optimizer import set_learning_rate
 
 def normalize_dataset(X_train, X_test):
@@ -102,6 +101,7 @@ def plot_predicted_classes(predicted_classes, epoch, writer, train):
 
 
 def train(args, loader, context_model, model, criterion, optimizer, writer):
+    import torchaudio
     loss_epoch = 0
     auc_epoch = []
     acc_epoch = []
@@ -111,8 +111,19 @@ def train(args, loader, context_model, model, criterion, optimizer, writer):
     outputs = []
     for step, (track_id, fp, y, segment) in enumerate(loader.dataset.tracks_list_test):
         optimizer.zero_grad()
-        x = loader.dataset.get_full_size_audio(track_id, fp)
+        x = loader.dataset.get_full_size_audio(fp)
         y = torch.from_numpy(np.tile(y, (x.shape[0], 1)))
+
+        ## code check
+        # torchaudio.save(f"{track_id}.mp3", x[0], sample_rate=args.sample_rate)
+        # print(track_id)
+        # for lidx, l in enumerate(y[0]):
+        #     if l == 1:
+        #         print(loader.dataset.tags[lidx])
+
+        # if track_id > 5:
+        #     exit(0)
+            
 
         x = x.to(args.device)
         y = y.to(args.device)
@@ -135,8 +146,6 @@ def train(args, loader, context_model, model, criterion, optimizer, writer):
             ys.extend(y.cpu().detach().numpy())
             outputs.extend(output.cpu().detach().numpy())
             # auc, acc = get_metrics(args.domain, y, output)
-        elif args.task == "chords":
-            auc, acc = eval_chords(y, output)
         else:
             predictions = output.argmax(1).detach()
             auc = 0
@@ -156,6 +165,9 @@ def train(args, loader, context_model, model, criterion, optimizer, writer):
             writer.add_scalar("Loss/train_step", loss, args.global_step)
             auc_epoch.append(auc)
             acc_epoch.append(acc)
+
+            ys = []
+            outputs = []
 
         args.global_step += 1
     
@@ -270,7 +282,7 @@ def main(_run, _log):
 
             args.n_features = context_model.n_features
 
-            model, _, _ = load_model(args, reload_model=False, name="eval")
+            model, _, _ = load_model(args, reload_model=False, name="supervised")
             model = model.to(args.device)
 
             print(model.summary())

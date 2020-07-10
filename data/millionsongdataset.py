@@ -125,8 +125,8 @@ class MSDDataset(Dataset):
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
         self.model_name = args.model_name
-        self.mean = None
-        self.std = None
+        self.mean = None # -1.1771917e-05
+        self.std = None # 0.14238065
 
 
         dir_name = f"processed_{args.sample_rate}"
@@ -146,7 +146,6 @@ class MSDDataset(Dataset):
             self.annotations_file = Path(msd_processed_annot) / "test_gt_msd.tsv"
             split = "Test"
 
-        
         self.msd_to_7d = pickle.load(open(Path(msd_processed_annot) / "MSD_id_to_7D_id.pkl", "rb"))
 
         # int to label
@@ -162,15 +161,33 @@ class MSDDataset(Dataset):
             args, self.audio_dir, id2audio_repr_path, id2gt
         )
 
+
+        ## test code
+        # for idx, (track_id, fp, label, segment) in enumerate(self.tracks_list):
+        #     if segment != 0:
+        #         continue
+        #     audio = self.get_audio(fp)
+        #     torchaudio.save(f"{track_id}.mp3", audio, sample_rate=args.sample_rate)
+        #     print(track_id)
+        #     for lidx, l in enumerate(label):
+        #         if l == 1:
+        #             print(self.tags[lidx])
+        #     print()
+        #     print()
+        #     if track_id >= 5:
+        #         break
+        # exit(0)
+
         self.tracks_list_test = []
         for track_id, fp, label, segment in self.tracks_list:
             if (
                 segment == 0
             ):  # remove segment, since we will evaluate with get_full_size_audio()
                 self.tracks_list_test.append([track_id, fp, label, -1])
-
+        
         # reduce dataset to n%
-        if args.perc_train_data < 1.0 and train and not validation: # only on train set
+        if args.perc_train_data < 1.0 and (train or validation): # only on train set
+            self.tracks_list = self.tracks_list_test # For MSD
             print("Train dataset size:", len(self.tracks_list))
             train_X_indices = np.array([idx for idx in range(len(self.tracks_list))]).reshape(-1, 1)
             train_y = np.array([label.numpy() for _, _, label, _ in self.tracks_list])
@@ -182,12 +199,13 @@ class MSDDataset(Dataset):
                     new_tracks_list.append([track_id, fp, label, segment])
                 
             self.tracks_list = new_tracks_list
+            self.tracks_list_test = new_tracks_list
             print("Undersampled train dataset size:", len(self.tracks_list))
 
         print(f"Num segments: {len(self.tracks_list)}")
         print(f"Num tracks: {len(self.tracks_list_test)}")
         
-        print(f"[{split} dataset ({args.dataset}_{self.sample_rate})]") 
+        print(f"[{split} dataset ({args.dataset}_{self.sample_rate})]")
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
@@ -204,10 +222,18 @@ class MSDDataset(Dataset):
 
         return audio
 
-    def get_full_size_audio(self, track_id, fp):
-        # segments = self.tracks_dict[track_id]
-        # batch_size = len(segments)
+    def normalise_audio(self, audio):
+        return (audio - self.mean) / self.std
+
+    def denormalise_audio(self, norm_audio):
+        return (norm_audio * self.std) + self.mean
+
+    def get_full_size_audio(self, fp):
         audio = self.get_audio(fp)
+        
+        # normalise audio
+        if self.mean:
+            audio = self.normalise_audio(audio)
 
         # split into equally sized tensors of self.audio_length
         batch = torch.split(audio, self.audio_length, dim=1)
@@ -230,12 +256,15 @@ class MSDDataset(Dataset):
             return self.__getitem__(index+1)
 
         # only transform if unsupervised training
-        if self.lin_eval or self.supervised:
-            # start_idx = random.randint(0, segment * self.audio_length)
-            start_idx = segment * self.audio_length
-            audio = audio[:, start_idx : start_idx + self.audio_length]
-            audio = (audio, audio)
-        elif self.model_name == "clmr" and self.transform:
+        # if self.lin_eval or self.supervised:
+        #     # start_idx = random.randint(0, segment * self.audio_length)
+        #     start_idx = segment * self.audio_length
+        #     audio = audio[:, start_idx : start_idx + self.audio_length]
+        #     if self.mean:
+        #         audio = self.normalise_audio(audio)
+
+        #     audio = (audio, audio)
+        if self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, None, None)
         elif self.model_name == "cpc":
             max_samples = audio.size(1)

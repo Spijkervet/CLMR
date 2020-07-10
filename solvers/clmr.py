@@ -5,7 +5,6 @@ from model import save_model
 from modules import NT_Xent
 from validation.audio.latent_representations import audio_latent_representations
 from utils.eval import get_metrics, tagwise_auc_ap
-from modules.pytorchtools import EarlyStopping
 from utils.optimizer import set_learning_rate
 
 class CLMR:
@@ -45,23 +44,23 @@ class CLMR:
 
 
             # test
-            if args.dataset == "magnatagatune":
+            if args.dataset in ["magnatagatune", "msd"]:
                 # validate
                 if epoch % validate_idx == 0:
                     validate_loss_epoch = self.validate(args, val_loader)
                     self.writer.add_scalar("Loss/validation", validate_loss_epoch, epoch)
 
-            if epoch % avg_test_idx == 0:
-                print("Testing average scores")
+            # if epoch % avg_test_idx == 0:
+            #     print("Testing average scores")
 
-                if args.supervised:
-                    test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
-                    self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
-                    self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
-                else:
-                    test_loss_epoch = self.validate(args, test_loader)
+            #     if args.supervised:
+            #         test_loss_epoch, test_auc_epoch, test_ap_epoch = self.test_avg(args, test_loader)
+            #         self.writer.add_scalar("AUC/test", test_auc_epoch, epoch)
+            #         self.writer.add_scalar("AP/test", test_ap_epoch, epoch)
+            #     else:
+            #         test_loss_epoch = self.validate(args, test_loader)
 
-                self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
+            #     self.writer.add_scalar("Loss/test", test_loss_epoch, epoch)
 
             if args.supervised:
                 if self.scheduler:
@@ -103,7 +102,7 @@ class CLMR:
                 h_i, _ = self.model(x_i)
                 loss = self.criterion(h_i, y)
                 
-                auc, ap = get_metrics(args.domain, y, h_i)
+                auc, ap = get_metrics(args.domain, y.detach().cpu().numpy(), h_i.detach().cpu().numpy())
                 auc_epoch += auc
                 ap_epoch += ap
                 
@@ -170,7 +169,7 @@ class CLMR:
                     h_j, z_j = self.model(x_j)
                     loss = self.criterion(z_i, z_j)
                 else:
-                    x = loader.dataset.get_full_size_audio(track_id, fp)
+                    x = loader.dataset.get_full_size_audio(fp)
                     x = x.to(self.device)
                     y = y.to(self.device)
 
