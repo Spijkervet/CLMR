@@ -16,7 +16,7 @@ sys.path.append("../")
 from fma.utils import get_audio_path
 from fma.utils import load as load_fma
 
-from datasets.utils.utils import write_statistics
+from scripts.datasets.utils import write_statistics
 
 def default_loader(path):
     # with audio normalisation

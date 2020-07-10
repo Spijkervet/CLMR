@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 import random
 
-from datasets.utils.utils import write_statistics
+from scripts.datasets.utils import write_statistics
 
 def default_loader(path):
     audio, sr = torchaudio.load(path, normalization=lambda x: torch.abs(x).max())

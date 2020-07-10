@@ -1,4 +1,3 @@
-# a bit messy :)
 import os
 import argparse
 import json

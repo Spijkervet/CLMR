@@ -1,6 +1,6 @@
 import os
 import torch
-from modules import CLMR, LogisticRegression, LARS, MLP 
+from modules import LARS
 from modules.cpc import CPCModel
 
 def cpc_model(args):
@@ -21,6 +21,31 @@ def cpc_model(args):
     return model
 
 
+
+def load_optimizer(args, model):
+
+    scheduler = None
+    if args.optimizer == "Adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)  # TODO: LARS
+    elif args.optimizer == "LARS":
+        # optimized using LARS with linear learning rate scaling
+        # (i.e. LearningRate = 0.3 × BatchSize/256) and weight decay of 10−6.
+        learning_rate = 0.3 * args.batch_size / 256
+        optimizer = LARS(
+            model.parameters(),
+            lr=learning_rate,
+            weight_decay=args.weight_decay,
+            exclude_from_weight_decay=["batch_normalization", "bias"],
+        )
+
+        # "decay the learning rate with the cosine decay schedule without restarts"
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, args.epochs, eta_min=0, last_epoch=-1
+        )
+    else:
+        raise NotImplementedError
+
+    return optimizer, scheduler
 
 
 def load_model(args, reload_model=False, name="clmr"):
@@ -54,11 +79,6 @@ def load_model(args, reload_model=False, name="clmr"):
         print("### Using Adam optimizer ###")
         optimizer = torch.optim.Adam(
             model.parameters(), lr=args.learning_rate
-        )
-    elif args.optimizer == "SGD":
-        print("### Using SGD optimizer ###")
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=True
         )
     elif args.optimizer == "LARS":
         print("### Using LARS optimizer ###")
@@ -95,13 +115,13 @@ def load_model(args, reload_model=False, name="clmr"):
 
 
 def save_model(args, model, optimizer, name="clmr"):
-    if args.out_dir is not None:
+    if args.model_path is not None:
         out = os.path.join(
-            args.out_dir, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
+            args.model_path, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
         )
 
         optim_out = os.path.join(
-            args.out_dir, "{}_checkpoint_{}_optim.tar".format(name, args.current_epoch)
+            args.model_path, "{}_checkpoint_{}_optim.tar".format(name, args.current_epoch)
         )
 
         # To save a DataParallel model generically, save the model.module.state_dict().

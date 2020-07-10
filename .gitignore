@@ -1,6 +1,5 @@
 .vscode/
 __pycache__
-logs/
 datasets/audio
 datasets/stl10_binary
 datasets/cifar-10-batches-py
@@ -8,8 +7,6 @@ datasets/*.tar.gz
 
 datasets/vision
 .tmp/
-detection/
-images/
 
 *.mp3
 *.wav
@@ -17,3 +14,7 @@ features.p
 .ipynb_checkpoints
 experiments
 *.png
+
+logs/
+runs/
+save/

@@ -90,7 +90,7 @@ class SampleCNN59049(Model):
 
         # self.avgpool = nn.AdaptiveAvgPool1d(1)
         self.dropout = nn.Dropout(args.dropout)
-        self.fc = nn.Linear(512, args.n_classes)
+        self.fc = nn.Linear(512, 50)
 
     def forward(self, x):
         # input x : B x 59049 x 1
