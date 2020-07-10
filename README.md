@@ -84,6 +84,17 @@ This implementation features the Adam optimizer and the LARS optimizer, with the
   <img src="https://github.com/Spijkervet/SimCLR/blob/master/media/lr_cosine_decay_schedule.png?raw=true" width="400"/>
 </p>
 
+## Inference
+```
+python inference.py \
+    with \
+    audio_url="https://www.youtube.com/watch?v=ftjEcrrf7r0" \
+    model_path=/storage/jspijkervet/logs_backup_ws7/clmr/2/ \
+    epoch_num=1490 \
+    finetune_model_path=/storage/jspijkervet/logs_backup_ws7/clmr/4/ \
+    finetune_epoch_num=50
+```
+
 #### Dependencies
 ```
 torch
