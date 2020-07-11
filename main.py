@@ -9,7 +9,7 @@ from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
 
 from data import get_dataset
-from model import load_optimizer, save_model
+from model import load_encoder, load_optimizer, save_model
 from modules import SimCLR, SampleCNN59049, BYOL
 from solver import Solver
 from utils import eval_all, yaml_config_hook, write_audio_tb, args_hparams
@@ -41,40 +41,9 @@ def main(gpu, args):
         test_loader,
         test_dataset,
     ) = get_dataset(args, train_sampler, pretrain=True, download=args.download)
-
-    # encoder
-    if args.domain == "audio":
-        if args.sample_rate == 22050:
-            encoder = SampleCNN59049(args)
-        print(f"### {encoder.__class__.__name__} ###")
-    elif args.domain == "scores":
-        encoder = get_resnet(args.resnet, pretrained=False)  # resnet
-        encoder.conv1 = nn.Conv2d(
-            args.image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
-        )
-    else:
-        raise NotImplementedError
-
-    if args.reload:
-        # reload model
-        print(
-            f"### RELOADING {args.model_name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###"
-        )
-        model_fp = os.path.join(
-            model_path, "{}_checkpoint_{}.tar".format(args.model_name, args.epoch_num)
-        )
-        encoder.load_state_dict(
-            torch.load(model_fp, map_location=args.device.type), strict=True
-        )
-
-        optim_fp = os.path.join(
-            model_path,
-            "{}_checkpoint_{}_optim.tar".format(args.model_name, args.epoch_num),
-        )
-        print(
-            f"### RELOADING {args.model_name.upper()} OPTIMIZER FROM CHECKPOINT {args.epoch_num} ###"
-        )
-        optimizer.load_state_dict(torch.load(optim_fp, map_location=args.device.type))
+    
+    encoder = load_encoder(args)
+    exit(0)
     
     # context model
     n_features = encoder.fc.in_features  # get dimensions of fc layer
