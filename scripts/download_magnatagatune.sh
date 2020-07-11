@@ -33,10 +33,4 @@ wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/dat
 
 cd $CWD
 echo "Pre-processing raw audio to desired sample rate"
-# pre-processing
-# process to desired samplerate
-python -m scripts.datasets.resample_all --data_input_dir $ROOT_DIR --dataset magnatagatune --sample_rate $SAMPLE_RATE
-## concat samples
-python -m scripts.datasets.concat_all --data_input_dir $ROOT_DIR --dataset magnatagatune --sample_rate $SAMPLE_RATE
-## process concat samples to desired samplerate
-python -m scripts.datasets.resample_all --data_input_dir $ROOT_DIR --dataset magnatagatune --sample_rate $SAMPLE_RATE --from_concat
+python -m scripts.datasets.preprocess_dataset --data_input_dir $ROOT_DIR --dataset magnatagatune --sample_rate $SAMPLE_RATE --audio_length 59049

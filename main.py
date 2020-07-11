@@ -12,9 +12,9 @@ from data import get_dataset
 from model import load_encoder, load_optimizer, save_model
 from modules import SimCLR, SampleCNN59049, BYOL
 from solver import Solver
-from utils import eval_all, yaml_config_hook, write_audio_tb, args_hparams
+from utils import eval_all, write_audio_tb, args_hparams, parse_args
 from validation import audio_latent_representations, vision_latent_representations
-
+from utils import parse_args
 
 def main(gpu, args):
     rank = args.nr * args.gpus + gpu
@@ -43,12 +43,10 @@ def main(gpu, args):
     ) = get_dataset(args, train_sampler, pretrain=True, download=args.download)
     
     encoder = load_encoder(args)
-    exit(0)
     
     # context model
-    n_features = encoder.fc.in_features  # get dimensions of fc layer
     # model = BYOL(encoder, args.audio_length) # new!
-    model = SimCLR(args, encoder, n_features, args.projection_dim)
+    model = SimCLR(args, encoder, args.n_features, args.projection_dim)
     model = model.to(args.device)
     print(model.summary())
 
@@ -74,25 +72,25 @@ def main(gpu, args):
     solver = Solver(model, optimizer, writer)
     validate_idx = 10
     for epoch in range(args.start_epoch, args.epochs):
-        if epoch % validate_idx == 0:
-            audio_latent_representations(
-                args,
-                train_loader.dataset,
-                model,
-                args.current_epoch,
-                args.global_step,
-                writer,
-                train=True,
-            )
-            audio_latent_representations(
-                args,
-                test_loader.dataset,
-                model,
-                args.current_epoch,
-                args.global_step,
-                writer,
-                train=False,
-            )
+        # if epoch % validate_idx == 0:
+        #     audio_latent_representations(
+        #         args,
+        #         train_loader.dataset,
+        #         model,
+        #         args.current_epoch,
+        #         args.global_step,
+        #         writer,
+        #         train=True,
+        #     )
+        #     audio_latent_representations(
+        #         args,
+        #         test_loader.dataset,
+        #         model,
+        #         args.current_epoch,
+        #         args.global_step,
+        #         writer,
+        #         train=False,
+        #     )
 
         learning_rate = optimizer.param_groups[0]["lr"]
 
@@ -121,13 +119,7 @@ def main(gpu, args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="CLMR")
-    config = yaml_config_hook("./config/config.yaml")
-    for k, v in config.items():
-        parser.add_argument(f"--{k}", default=v, type=type(v))
-
-    args = parser.parse_args()
-
+    args = parse_args()
     # Master address for distributed data parallel
     os.environ["MASTER_ADDR"] = "127.0.0.1"
     os.environ["MASTER_PORT"] = "8000"
