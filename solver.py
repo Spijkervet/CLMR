@@ -2,10 +2,9 @@ import torch
 from collections import defaultdict
 
 class Solver:
-    def __init__(self, model, optimizer, criterion, writer):
+    def __init__(self, model, optimizer, writer):
         self.model = model
         self.optimizer = optimizer
-        self.criterion = criterion
         self.writer = writer
 
     def train(self, args, loader):
@@ -16,9 +15,8 @@ class Solver:
                 x_j = x_j.cuda(non_blocking=True)
 
                 # positive pair, with encoding
+                # loss = self.model(x_i, x_j)
                 loss = self.model(x_i, x_j)
-                # h_i, h_j, z_i, z_j = self.model(x_i, x_j)
-                # loss = self.criterion(z_i, z_j)
 
                 if step > 0 and step % 20 == 0:
                     print(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
@@ -28,8 +26,7 @@ class Solver:
                 )  # x_i and x_j are identital in supervised case (dataloader)
                 y = y.to(self.device)
 
-                h_i, _, _, _ = self.model(x_i, x_i)
-                loss = self.criterion(h_i, y)
+                loss = self.model(x_i, x_i)
 
                 auc, ap = get_metrics(
                     args.domain, y.detach().cpu().numpy(), h_i.detach().cpu().numpy()
@@ -69,17 +66,14 @@ class Solver:
                     x_j = x_j.to(args.device)
 
                     # positive pair, with encoding
-                    # _, _, z_i, z_j = self.model(x_i, x_j)
+                    # loss = self.model(x_i, x_j)
                     loss = self.model(x_i, x_j)
-                    # loss = self.criterion(z_i, z_j)
                 else:
                     x_i = x_i.to(
                         self.device
                     )  # x_i and x_j are identital in supervised case (dataloader)
                     y = y.to(self.device)
-                    h_i, _, _, _ = self.model(x_i, x_i)
-                    loss = self.criterion(h_i, y)
-
+                    loss = self.model(x_i, x_i)
                 if step > 0 and step % 10 == 0:
                     print(
                         f"Step [{step}/{len(loader)}]\t Validation/Test Loss: {loss.item()}"
