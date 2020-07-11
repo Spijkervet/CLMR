@@ -47,6 +47,7 @@ def main(gpu, args):
     # context model
     # model = BYOL(encoder, args.audio_length) # new!
     model = SimCLR(args, encoder, args.n_features, args.projection_dim)
+    model.apply(model.initialize)
     model = model.to(args.device)
     print(model.summary())
 
@@ -105,6 +106,9 @@ def main(gpu, args):
 
         if epoch > 0 and epoch % validate_idx == 0:
             metrics = solver.validate(args, test_loader)
+            for k, v in metrics.items():
+                writer.add_scalar(k, v, epoch)
+
             print(
                 f"[Test] Epoch [{epoch}/{args.epochs}]\t Test Loss: {metrics['Loss/test']}"
             )

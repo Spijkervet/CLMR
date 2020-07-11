@@ -98,6 +98,10 @@ def load_encoder(args, reload=False):
 
 def save_model(args, model, optimizer, name="clmr"):
     if args.model_path is not None:
+
+        if not os.path.exists(args.model_path):
+            os.makedirs(args.model_path)
+            
         out = os.path.join(
             args.model_path, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
         )

@@ -75,7 +75,7 @@ class HighLowBandPass:
             # else:
             #     filt = essentia.standard.BandPass(bandwidth=1000, cutoffFrequency=1500, sampleRate=self.sr)
 
-            audio = filt(audio)
+            # audio = filt(audio)
 
         return audio
 
@@ -139,12 +139,12 @@ class Delay:
 
             # calculate delay
             offset = self.calc_offset(ms)
-            beginning = [0.0] * offset
+            beginning = [0] * offset
             end = audio[:-offset]
             delayed_signal = np.hstack((beginning, end))
-            delayed_signal *= self.factor
+            delayed_signal = (delayed_signal * self.factor).astype(np.uint8)
             audio = (audio + delayed_signal) / 2
-            audio = audio.astype(np.float32)
+            # audio = audio.astype(np.float32)
 
         return audio
 
@@ -162,8 +162,8 @@ class AudioTransforms:
         self.train_transform = [
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
             InvertSignal(p=args.transforms_polarity, sr=sr),
-            Noise(p=args.transforms_noise, sr=sr),
-            Gain(p=args.transforms_gain, sr=sr),
+            # Noise(p=args.transforms_noise, sr=sr),
+            # Gain(p=args.transforms_gain, sr=sr),
             HighLowBandPass(
                 p=args.transforms_filters,
                 sr=sr
@@ -175,8 +175,8 @@ class AudioTransforms:
         self.test_transform = []
 
     def __call__(self, x, mean, std):
-        x0 = self.transform(x.squeeze().numpy())
-        x1 = self.transform(x.squeeze().numpy())
+        x0 = self.transform(x.squeeze())
+        x1 = self.transform(x.squeeze())
 
         x0 = x0.reshape(1, -1)
         x1 = x1.reshape(1, -1)
