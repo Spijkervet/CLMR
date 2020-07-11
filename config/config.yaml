@@ -30,13 +30,13 @@ sample_rate: 22050
 ## audio transformations
 transforms_polarity: 0.8
 transforms_noise: 0.0
-transforms_gain: 0.1
+transforms_gain: 0.0
 transforms_filters: 0.4
 transforms_delay: 0.3
 
 ## loss options
 optimizer: "Adam" # [Adam, LARS]
-learning_rate: 3.0e-3 # for Adam optimizer, LARS uses batch-specific LR
+learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
 weight_decay: 1.0e-6
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 

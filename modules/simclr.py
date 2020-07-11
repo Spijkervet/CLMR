@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torchvision
+from .nt_xent import NT_Xent
 from .model import Model
 from .sample_cnn_59049 import SampleCNN59049
-from .cpc.encoder import Encoder as CPCEncoder
 
 
 class Identity(nn.Module):
@@ -28,7 +28,10 @@ class SimCLR(Model):
         self.projection_dim = projection_dim
 
         # We use a MLP with one hidden layer to obtain z_i = g(h_i) = W(2)σ(W(1)h_i) where σ is a ReLU non-linearity.
+        # loss function
         if not args.supervised:
+            self.criterion = NT_Xent(args.batch_size, args.temperature, args.device)
+
             self.encoder.fc = (
                 Identity()
             )  # remove fully-connected layer after pooling layer for contrastive learning
@@ -46,9 +49,10 @@ class SimCLR(Model):
                 *self.projector,
                 nn.Linear(self.n_features, self.projection_dim, bias=False)
             )
+        else:
+            self.criterion = torch.nn.BCEWithLogitsLoss()
 
-    def get_latent_size(self, input_size):
-        x = torch.zeros(input_size).to(self.args.device)
+    def get_latent_size(self, x):
         h, z = self.get_latent_representations(x)
         return h.size(1)
 
@@ -68,4 +72,5 @@ class SimCLR(Model):
     def forward(self, x_i, x_j):
         h_i, z_i = self.get_latent_representations(x_i)
         h_j, z_j = self.get_latent_representations(x_j)
-        return h_i, h_j, z_i, z_j
+        loss = self.criterion(z_i, z_j)
+        return loss
