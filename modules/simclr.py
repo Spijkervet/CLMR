@@ -4,15 +4,7 @@ import torchvision
 from .nt_xent import NT_Xent
 from .model import Model
 from .sample_cnn_59049 import SampleCNN59049
-
-
-class Identity(nn.Module):
-    def __init__(self):
-        super(Identity, self).__init__()
-
-    def forward(self, x):
-        return x
-
+from .identity import Identity
 
 class SimCLR(Model):
     """
