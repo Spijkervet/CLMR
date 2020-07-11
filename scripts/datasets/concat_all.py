@@ -1,4 +1,5 @@
 import os
+import argparse
 import errno
 import numpy as np
 import torch
@@ -8,9 +9,6 @@ from glob import glob
 from tqdm import tqdm
 import subprocess
 
-sample_rate = 16000 # MTT default sample rate
-MTT_DIR = f"./datasets/audio/magnatagatune/raw"
-AUDIO_DIR = f"./datasets/audio/magnatagatune/concat_{sample_rate}"
 
 
 def process(raw_path, path, audio, output_dir):
@@ -25,7 +23,7 @@ def process(raw_path, path, audio, output_dir):
     all_mp3 = sorted(glob(search), key=lambda x: int(x.split("-")[-2]))
 
     try:
-        new_fp = str(Path(output_dir) / (path + "/" + index_name + "-0" + "-full.mp3"))
+        new_fp = str(Path(output_dir) / (path + "/" + index_name + "-full.mp3"))
         if not os.path.exists(new_fp):
             cmd = ["cat", *all_mp3, ">", new_fp]
             os.system(" ".join(cmd))
@@ -65,4 +63,14 @@ def process_all(rawfilepath, output_dir):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_input_dir", required=True)
+    parser.add_argument("--dataset", required=True)
+    parser.add_argument("--sample_rate", required=True)
+    args = parser.parse_args()
+
+    print(f"Concatenating {args.dataset}")
+    MTT_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/raw")
+    AUDIO_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/concat")
+
     process_all(MTT_DIR, AUDIO_DIR)

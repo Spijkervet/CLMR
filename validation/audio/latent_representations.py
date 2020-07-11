@@ -68,7 +68,8 @@ def audio_latent_representations(
         if args.model_name == "cpc":
             model = model.model # quick fix
 
-        latent_rep_size = model.get_latent_size(input_size)
+        x = torch.zeros(input_size).to(args.device)
+        latent_rep_size = model.get_latent_size(x)
         features = torch.zeros(max_tracks, batch_size, latent_rep_size).to(args.device)
 
         labels = torch.zeros(max_tracks, batch_size).to(args.device)

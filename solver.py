@@ -16,8 +16,9 @@ class Solver:
                 x_j = x_j.cuda(non_blocking=True)
 
                 # positive pair, with encoding
-                h_i, h_j, z_i, z_j = self.model(x_i, x_j)
-                loss = self.criterion(z_i, z_j)
+                loss = self.model(x_i, x_j)
+                # h_i, h_j, z_i, z_j = self.model(x_i, x_j)
+                # loss = self.criterion(z_i, z_j)
 
                 if step > 0 and step % 20 == 0:
                     print(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
@@ -68,8 +69,9 @@ class Solver:
                     x_j = x_j.to(args.device)
 
                     # positive pair, with encoding
-                    _, _, z_i, z_j = self.model(x_i, x_j)
-                    loss = self.criterion(z_i, z_j)
+                    # _, _, z_i, z_j = self.model(x_i, x_j)
+                    loss = self.model(x_i, x_j)
+                    # loss = self.criterion(z_i, z_j)
                 else:
                     x_i = x_i.to(
                         self.device

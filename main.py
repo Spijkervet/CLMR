@@ -10,8 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from data import get_dataset
 from model import load_optimizer, save_model
-from modules.sync_batchnorm import convert_model
-from modules import SimCLR, SampleCNN59049, NT_Xent
+from modules import SimCLR, SampleCNN59049, NT_Xent, BYOL
 from solver import Solver
 from utils import eval_all, yaml_config_hook, write_audio_tb, args_hparams
 from validation import audio_latent_representations, vision_latent_representations
@@ -20,6 +19,20 @@ from validation import audio_latent_representations, vision_latent_representatio
 
 
 def main(gpu, args):
+    rank = args.nr * args.gpus + gpu
+    if args.nodes > 1:
+        dist.init_process_group("nccl", rank=rank, world_size=args.world_size)
+
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    torch.cuda.set_device(gpu)
+
+    if args.nodes > 1:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True
+        )
+    else:
+        train_sampler = None
 
     # data loaders
     (
@@ -29,7 +42,7 @@ def main(gpu, args):
         val_dataset,
         test_loader,
         test_dataset,
-    ) = get_dataset(args)
+    ) = get_dataset(args, train_sampler, pretrain=True, download=args.download)
 
     # encoder
     if args.domain == "audio":
@@ -65,7 +78,8 @@ def main(gpu, args):
 
     # context model
     n_features = encoder.fc.in_features  # get dimensions of fc layer
-    model = SimCLR(args, encoder, n_features, args.projection_dim)
+    model = BYOL(encoder, args.audio_length) # new!
+    # model = SimCLR(args, encoder, n_features, args.projection_dim)
     model = model.to(args.device)
     print(model.summary())
 
@@ -88,17 +102,17 @@ def main(gpu, args):
     # save random init. model
     if not args.reload:
         args.current_epoch = "random"
-        args.train_stage = 0
         save_model(args, model, optimizer, args.model_name)
 
         # write a few audio files to TensorBoard for comparison
         write_audio_tb(args, train_loader, test_loader, writer)
 
     # start training
+    args.current_epoch = 0
     solver = Solver(model, optimizer, criterion, writer)
     validate_idx = 10
     for epoch in range(args.start_epoch, args.epochs):
-        if epoch % args.checkpoint_epochs == 0:
+        if epoch % validate_idx == 0:
             audio_latent_representations(args, train_loader.dataset, model, args.current_epoch, args.global_step, writer, train=True)
             audio_latent_representations(args, test_loader.dataset, model, args.current_epoch, args.global_step, writer, train=False)
 
@@ -118,6 +132,11 @@ def main(gpu, args):
             print(
                 f"[Test] Epoch [{epoch}/{args.epochs}]\t Test Loss: {metrics['Loss/test']}"
             )
+
+        if epoch > 0 and epoch % args.checkpoint_epochs == 0:
+            save_model(args, model, optimizer, name=args.model_name)
+
+        args.current_epoch += 1
 
     ## end training
     save_model(args, model, optimizer, name=args.model_name)
