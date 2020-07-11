@@ -2,27 +2,41 @@
 nodes: 1
 gpus: 1 # I recommend always assigning 1 GPU to 1 node
 nr: 0 # machine nr. in node (0 -- nodes - 1)
-workers: 8
+workers: 16
+
+## dataset options
+dataset: "msd" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
+data_input_dir: "/storage/jspijkervet" # [audio: [datasets/audio] vision: [datasets/vision]
+pretrain_dataset: "msd" # [magnatagatune,billboard,fma,msd]
+download: 0
+
 
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
-dataset: "msd" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
-data_input_dir: "/storage/jspijkervet" # [audio: [datasets/audio] vision: [datasets/vision]
-pretrain_dataset: "msd" # [magnatagatune,billboard,fma,msd]
 model_name: "clmr" # [clmr, cpc]
 
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 48 # for audio, 256 for images
-num_workers: 12
 start_epoch: 0
-epochs: 100
+epochs: 2000
 checkpoint_epochs: 10
+
+## audio
+audio_length: 59049
+sample_rate: 22050
+
+## audio transformations
+transforms_polarity: 0.8
+transforms_noise: 0.0
+transforms_gain: 0.1
+transforms_filters: 0.4
+transforms_delay: 0.3
 
 ## loss options
 optimizer: "Adam" # [Adam, LARS]
-learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
+learning_rate: 3.0e-3 # for Adam optimizer, LARS uses batch-specific LR
 weight_decay: 1.0e-6
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
@@ -35,18 +49,6 @@ projection_dim: 128
 projector_layers: 2
 dropout: 0.5
 
-## audio
-audio_length: 59049
-sample_rate: 22050
-
-## CLMR
-### transformations
-transforms_phase: 0.8
-transforms_noise: 0.0
-transforms_gain: 0.1
-transforms_filters: 0.4
-transforms_highpass_freq: 800
-transforms_lowpass_freq: 3500
 
 
 ## reload options

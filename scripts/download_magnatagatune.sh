@@ -1,24 +1,30 @@
+# Download script for MagnaTagATune
+# Executed in ./data/audio/magnatagatune.py
+
+ROOT_DIR=$1
+SAMPLE_RATE=$2
 CWD=$(pwd)
 
-mkdir -p datasets/audio/magnatagatune
-cd datasets/audio/magnatagatune
+mkdir -p $ROOT_DIR/magnatagatune
+cd $ROOT_DIR/magnatagatune
 
 wget -nc http://mi.soi.city.ac.uk/datasets/magnatagatune/mp3.zip.001
 wget -nc http://mi.soi.city.ac.uk/datasets/magnatagatune/mp3.zip.002
 wget -nc http://mi.soi.city.ac.uk/datasets/magnatagatune/mp3.zip.003
 wget -nc http://mi.soi.city.ac.uk/datasets/magnatagatune/annotations_final.csv
+rm -f mp3_all.zip
 cat mp3.zip.* > mp3_all.zip
-unzip mp3_all.zip
+unzip mp3_all.zip -n # do not overwrite existing file
 
 # put all unprocessed files in the ./raw folder
 mkdir raw
 mv 0 1 2 3 4 5 6 7 8 9 a b c d e f raw
 
 
+echo "Fetching annotations"
 cd $CWD
-
-mkdir -p datasets/audio/magnatagatune/processed_annotations
-cd datasets/audio/magnatagatune/processed_annotations
+mkdir -p $ROOT_DIR/magnatagatune/processed_annotations
+cd $ROOT_DIR/magnatagatune/processed_annotations
 wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/index_mtt.tsv
 wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/train_gt_mtt.tsv
 wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/val_gt_mtt.tsv
@@ -26,9 +32,11 @@ wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/dat
 wget -nc https://raw.githubusercontent.com/jordipons/musicnn-training/master/data/index/mtt/output_labels_mtt.txt
 
 cd $CWD
-## process to desired samplerate
-python -m datasets.utils.process_magnatag --dataset magnatagatune --sample_rate 22050
+echo "Pre-processing raw audio to desired sample rate"
+# pre-processing
+# process to desired samplerate
+python -m scripts.datasets.resample_all --data_input_dir $ROOT_DIR --dataset magnatagatune --sample_rate $SAMPLE_RATE
 ## concat samples
-python -m datasets.utils.concat_magnatag --dataset magnatagatune
+python -m scripts.datasets.concat_all --data_input_dir $ROOT_DIR --dataset magnatagatune --sample_rate $SAMPLE_RATE
 ## process concat samples to desired samplerate
-python -m datasets.utils.process_magnatag --dataset magnatagatune --sample_rate 22050 --from_concat
+python -m scripts.datasets.resample_all --data_input_dir $ROOT_DIR --dataset magnatagatune --sample_rate $SAMPLE_RATE --from_concat

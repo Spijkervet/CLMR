@@ -17,7 +17,13 @@ def process(raw_path, path, audio, npyfilepath):
     # search = os.path.join(raw_path, path, index_name + "*")
     # all_mp3 = glob(search)
 
-    audio = audio.replace("raw", Path(npyfilepath).stem)
+    if "/raw/" in audio:
+        audio = audio.replace("raw", Path(npyfilepath).stem)
+    elif "/concat/" in audio:
+        audio = audio.replace("concat", Path(npyfilepath).stem)
+    else:
+        return 0
+
     dp = Path(audio).parent
     if not os.path.exists(dp):
         os.makedirs(dp)
@@ -25,21 +31,23 @@ def process(raw_path, path, audio, npyfilepath):
     fn = os.path.splitext(audio)[0]
     try:
         new_fp = fn + "." + file_format
-        # resample
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "panic",
-            "-i",
-            fp,
-            "-ar",
-            str(sample_rate),
-            new_fp,
-        ]
-        # print(" ".join(cmd))
-        os.system(" ".join(cmd))
+        # print(new_fp)
+        if not os.path.exists(new_fp):
+            # resample
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "panic",
+                "-i",
+                fp,
+                "-ar",
+                str(sample_rate),
+                new_fp,
+            ]
+            # print(" ".join(cmd))
+            os.system(" ".join(cmd))
 
     except Exception as e:
         print("Cannot save audio {} {}".format(audio, e))
@@ -55,9 +63,11 @@ def process_all(rawfilepath, npyfilepath):
         None
     """
 
+
     # make directory if not existing
     if not os.path.exists(npyfilepath):
         os.makedirs(npyfilepath)
+    
 
     mydir = [path for path in os.listdir(rawfilepath)]
     for path in tqdm(mydir):
@@ -73,10 +83,10 @@ def process_all(rawfilepath, npyfilepath):
 
         p = multiprocessing.Pool()
         path = os.path.join(rawfilepath, path)
-        audios = glob(f"{path}/**/*.mp3")
+        audios = glob(f"{path}/*.mp3")
         for audio in tqdm(audios):
             p.apply_async(process, [rawfilepath, path, audio, npyfilepath])
-            process(rawfilepath, path, audio, npyfilepath)
+            # process(rawfilepath, path, audio, npyfilepath)
 
         p.close()
         p.join()
@@ -84,21 +94,23 @@ def process_all(rawfilepath, npyfilepath):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-input-dir", required=True)
+    parser.add_argument("--data_input_dir", required=True)
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--sample_rate", required=True)
     parser.add_argument("--file_format", default="wav")
     parser.add_argument("--from_concat", action="store_true")
     args = parser.parse_args()
+
+    print(f"Resampling {args.dataset} to {args.sample_rate} Hz in {args.file_format} format")
     
     sample_rate = args.sample_rate
     file_format = args.file_format
     if args.from_concat:
-        MTT_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/concat_16000") # concat default SR is 16000
-        AUDIO_DIR = os.path.join(args.data_iput_dir, f"{args.dataset}/processed_concat_{sample_rate}_{file_format}")
+        MTT_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/concat") # concat default SR is 16000
+        AUDIO_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/processed_full_{sample_rate}_{file_format}")
     else:
         MTT_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/raw")
-        AUDIO_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/processed_segments_{sample_rate}_{file_format}")
-    
+        AUDIO_DIR = os.path.join(args.data_input_dir, f"{args.dataset}/processed_{sample_rate}_{file_format}")
+
     # read audio signal and save to npy format
     process_all(MTT_DIR, AUDIO_DIR)
