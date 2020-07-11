@@ -52,7 +52,7 @@ class MTTDataset(Dataset):
     splits = ("train", "validation", "test")
 
     def __init__(
-        self, args, split, pretrain, download=False, transform=None, 
+        self, args, split, pretrain, download=False, transform=None,
     ):
 
         if download:
@@ -75,7 +75,9 @@ class MTTDataset(Dataset):
         self.num_segments = (30 * self.sample_rate) // self.audio_length - 1
 
         self.audio_dir = os.path.join(args.data_input_dir, self.base_dir, "raw")
-        self.audio_proc_dir = os.path.join(args.data_input_dir, self.base_dir, "processed")
+        self.audio_proc_dir = os.path.join(
+            args.data_input_dir, self.base_dir, "processed"
+        )
 
         mtt_processed_annot = Path(
             args.data_input_dir, self.base_dir, "processed_annotations"
@@ -103,7 +105,11 @@ class MTTDataset(Dataset):
         self.index, self.track_index = self.indexer(ids, id2audio_path, id2gt)
 
         if self.pretrain:
-            self.index = [[track_id, clip_id, segment, fp, label] for track_id, clip_id, segment, fp, label in self.index if segment == 0]
+            self.index = [
+                [track_id, clip_id, segment, fp, label]
+                for track_id, clip_id, segment, fp, label in self.index
+                if segment == 0
+            ]
 
         # reduce dataset to n%
         # if pretrain and args.perc_train_data < 1.0 and train and not validation:  # only on train set
@@ -153,16 +159,23 @@ class MTTDataset(Dataset):
             f"[{split} dataset ({args.dataset}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}"
         )
 
-        super(MTTDataset, self).__init__(self.sample_rate, self.audio_length, self.index, self.num_segments, self.mean, self.std)
+        super(MTTDataset, self).__init__(
+            self.split,
+            self.sample_rate,
+            self.audio_length,
+            self.index,
+            self.num_segments,
+            self.audio_proc_dir,
+            self.mean,
+            self.std,
+        )
 
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
 
         if self.pretrain:
-            segment = random.randint(0, self.num_segments) # pick a random segment
-
-        fp = os.path.join(self.audio_proc_dir, self.split, fp)
+            segment = random.randint(0, self.num_segments)  # pick a random segment
 
         try:
             audio = self.get_audio(fp)
@@ -183,6 +196,6 @@ class MTTDataset(Dataset):
             start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
             audio = (audio, audio)
-        
+
         return audio, label, track_id
 

@@ -11,7 +11,9 @@ import soundfile as sf
 # inherits Dataset from PyTorch
 class Dataset(TorchDataset):
 
-    def __init__(self, sample_rate, audio_length, tracks_list, num_segments, mean, std):
+    def __init__(self, split, sample_rate, audio_length, tracks_list, num_segments, audio_proc_dir, mean, std):
+        self.split = split
+        self.audio_proc_dir
         self.sample_rate = sample_rate
         self.audio_length = audio_length
         self.tracks_list = tracks_list
@@ -21,20 +23,23 @@ class Dataset(TorchDataset):
 
     def indexer(self, ids, id2audio_path, id2gt):
         index = []
+        tmp = []
         track_index = defaultdict(list)
         track_id = 0
         for clip_id in ids:
             fp = id2audio_path[clip_id]
             label = id2gt[clip_id]
+            label = torch.FloatTensor(label)
             full_track = "".join(Path(fp).stem.split("-")[:-2])
-            if full_track not in track_index:
-                track_index[full_track] = track_id
+            if full_track not in tmp:
+                tmp.append(full_track)
                 track_id += 1
 
-            target_fn = f"{track_id}-{clip_id}-{self.sample_rate}.wav"
+            fp = f"{track_id}-{clip_id}-{self.sample_rate}.wav"
+            fp = os.path.join(self.audio_proc_dir, self.split, fp)
             for s in range(self.num_segments): 
-                index.append([track_id, clip_id, s, target_fn, label])
-                track_index[track_id].append([clip_id, s, target_fn, label])
+                index.append([track_id, clip_id, s, fp, label])
+                track_index[track_id].append([clip_id, s, fp, label])
         return index, track_index
 
     def loader(self, path):
@@ -89,8 +94,7 @@ class Dataset(TorchDataset):
         """
         batch = torch.zeros(batch_size, 1, self.audio_length)
         for idx in range(batch_size):
-            track_id, clip_id, segment, label, fp = self.track_index[track_id][0]
-            # track_id, fp, label, _ = self.index[track_index]  # from non-dup!!
+            _, _, fp, _ = self.track_index[track_id][0]
 
             audio = self.get_audio(fp)
 

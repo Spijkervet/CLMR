@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import argparse
+import torch
 import multiprocessing
 import torchaudio
 from pathlib import Path
@@ -8,24 +9,40 @@ from tqdm import tqdm
 from .resample import resample
 
 
+def chunk(lst, n):
+    return list(zip(*[iter(lst)] * n))
+
+
+def process(split, data_input_dir, sample_rate, track_id, clip_id, segment):
+    fp = train_dataset.id2audio_path[clip_id]
+    src_path = os.path.join(audio_dir, fp)
+    target_dir = os.path.join(data_input_dir, base_dir, "processed", split)
+
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
+    target_fn = f"{track_id}-{clip_id}-{sample_rate}.wav"
+    target_path = os.path.join(target_dir, target_fn)
+
+    # resample to target sample rate
+    if not os.path.exists(target_path):
+        resample(src_path, target_path, sample_rate)
+
+
 def process_dataset(split, dataset, data_input_dir, sample_rate):
     # get all tracks and convert them to |audio_length| segments
-    for track_id, clip_id, segment in tqdm(dataset.index):
-        if int(segment) != 0:
-            continue
-        
-        fp = train_dataset.id2audio_path[clip_id]
-        src_path = os.path.join(audio_dir, fp)
-        target_dir = os.path.join(data_input_dir, base_dir, "processed", split)
 
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir)
+    print("Processing all tracks (this may take a while)")
+    p = multiprocessing.Pool()
+    for track_id, clip_id, segment, _, _ in dataset.index:
+        if segment == 0:
+            p.apply_async(
+                process,
+                args=[split, data_input_dir, sample_rate, track_id, clip_id, segment],
+            )
 
-        target_fn = f"{track_id}-{clip_id}-{sample_rate}.wav"
-        target_path = os.path.join(target_dir, target_fn)
-        
-        # resample to target sample rate
-        resample(src_path, target_path, sample_rate)
+    p.close()
+    p.join()
 
 
 if __name__ == "__main__":
@@ -39,8 +56,10 @@ if __name__ == "__main__":
 
     args.domain = "audio"
     args.batch_size = 64
-    args.workers = 16 # number of threads in CPU
+    args.workers = 0  # number of threads in CPU
+
     from data import get_dataset
+
     # data loaders
     (
         train_loader,
