@@ -15,7 +15,6 @@ class Solver:
                 x_j = x_j.cuda(non_blocking=True)
 
                 # positive pair, with encoding
-                # loss = self.model(x_i, x_j)
                 loss = self.model(x_i, x_j)
 
                 if step > 0 and step % 20 == 0:
@@ -32,8 +31,8 @@ class Solver:
                     args.domain, y.detach().cpu().numpy(), h_i.detach().cpu().numpy()
                 )
 
-                metrics["Tag_auc/train"] += auc
-                metrics["Tag_ap/train"] += ap
+                metrics["AUC_tag/train"] += auc
+                metrics["AP_tag/train"] += ap
 
                 if step > 0 and step % 20 == 0:
                     print(
@@ -46,8 +45,8 @@ class Solver:
 
             self.writer.add_scalar("Loss/train_step", loss.item(), args.global_step)
             if args.supervised:
-                self.writer.add_scalar("AUC/train_step", auc, args.global_step)
-                self.writer.add_scalar("AP/train_step", ap, args.global_step)
+                self.writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
+                self.writer.add_scalar("AP_tag/train_step", ap, args.global_step)
 
             metrics["Loss/train"] += loss.item()
             args.global_step += 1

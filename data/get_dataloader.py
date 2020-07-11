@@ -11,11 +11,16 @@ def get_audio_dataloader(args, train_sampler, pretrain=True, download=False):
 
     Dataset = datasets[args.dataset]
 
-    train_dataset = Dataset(args, split="train", pretrain=pretrain, download=download, transform=AudioTransforms(args))
+    if pretrain:
+        transforms = AudioTransforms(args)
+    else:
+        transforms = None
 
-    val_dataset = Dataset(args, split="validation", pretrain=pretrain, transform=AudioTransforms(args))
+    train_dataset = Dataset(args, split="train", pretrain=pretrain, download=download, transform=transforms)
 
-    test_dataset = Dataset(args, split="test", pretrain=pretrain, transform=AudioTransforms(args))
+    val_dataset = Dataset(args, split="validation", pretrain=pretrain, transform=transforms)
+
+    test_dataset = Dataset(args, split="test", pretrain=pretrain, transform=transforms)
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,

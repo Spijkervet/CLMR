@@ -13,9 +13,10 @@ from torch.utils.tensorboard import SummaryWriter
 from data import get_dataset
 from model import load_encoder, save_model
 
-from utils import yaml_config_hook, args_hparams, random_undersample_balanced
+from utils import parse_args, args_hparams, random_undersample_balanced
 from utils.eval import get_metrics, eval_all
 from features import get_features, create_data_loaders_from_arrays
+
 
 def get_predicted_classes(output, predicted_classes):
     predictions = output.argmax(1).detach()
@@ -70,12 +71,7 @@ def train(args, loader, model, criterion, optimizer):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="CLMR")
-    config = yaml_config_hook("./config/config.yaml")
-    for k, v in config.items():
-        parser.add_argument(f"--{k}", default=v, type=type(v))
-
-    args = parser.parse_args()
+    args = parse_args()
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.batch_size = args.logistic_batch_size
@@ -90,10 +86,12 @@ if __name__ == "__main__":
         test_dataset,
     ) = get_dataset(args, train_sampler=None, pretrain=False)
 
+    # load pre-trained encoder
     encoder = load_encoder(args, reload=True)
     encoder.eval()
     encoder = encoder.to(args.device)
 
+    # linear eval. model
     model = torch.nn.Sequential(torch.nn.Linear(args.n_features, args.n_classes))
     model = model.to(args.device)
 
@@ -110,9 +108,6 @@ if __name__ == "__main__":
     # initialize TensorBoard
     writer = SummaryWriter()
 
-    args.global_step = 0
-    args.current_epoch = 0
-
     (train_X, train_y, test_X, test_y) = get_features(
         encoder, train_loader, test_loader, args.device
     )
@@ -121,6 +116,9 @@ if __name__ == "__main__":
         train_X, train_y, test_X, test_y, args.logistic_batch_size
     )
 
+    # start linear evaluation
+    args.global_step = 0
+    args.current_epoch = 0
     for epoch in range(args.logistic_epochs):
         metrics = train(args, arr_train_loader, model, criterion, optimizer)
         for k, v in metrics.items():
@@ -136,4 +134,3 @@ if __name__ == "__main__":
     metrics = eval_all(args, test_loader, encoder, model, writer, n_tracks=None,)
     for k, v in metrics.items():
         print("[Test]:", k, v)
-

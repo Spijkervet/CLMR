@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
+import time
 
 from .dataset import Dataset
 from scripts.datasets.utils import write_statistics
@@ -35,37 +36,6 @@ def load_id2path(index_file):
     return paths, id2path
 
 
-def default_indexer(args, path, id2audio, id2gt):
-    items = []
-    tracks_dict = defaultdict(list)
-    index = {}
-    index_num = 0
-    for idx, (clip_id, label) in enumerate(id2gt.items()):
-        fn = Path(id2audio[clip_id].split(".")[0])
-        d = fn.parent.stem
-        fn = fn.stem
-        index_name = "-".join(fn.split("-")[:-2])
-
-        # fp = os.path.join(path, d, index_name + "-full.wav")
-        fp = os.path.join(path, d, fn + ".wav")
-
-        if os.path.exists(fp) and os.path.getsize(fp) > 0:
-            if index_name not in index.keys():
-                index[index_name] = index_num
-                index_num += 1
-
-            label = torch.FloatTensor(label)
-
-            # if supervised/eval
-            items.append(
-                (index[index_name], fp, label, 0)
-            )  # only one segment, since full track
-            tracks_dict[index[index_name]].append(idx)
-        else:
-            print("File not found: {}".format(fp))
-    return items, tracks_dict
-
-
 def get_dataset_stats(loader, tracks_list):
     means = []
     stds = []
@@ -78,11 +48,11 @@ def get_dataset_stats(loader, tracks_list):
 
 class MTTDataset(Dataset):
 
-    base_folder = "magnatagatune"
+    base_dir = "magnatagatune"
     splits = ("train", "validation", "test")
 
     def __init__(
-        self, args, split, pretrain, download=False, transform=None, indexer=default_indexer, 
+        self, args, split, pretrain, download=False, transform=None, 
     ):
 
         if download:
@@ -95,23 +65,20 @@ class MTTDataset(Dataset):
                 ]
             )
 
-        self.supervised = args.supervised
+        self.split = split
         self.pretrain = pretrain
-        self.indexer = indexer
         self.transform = transform
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
-        self.model_name = args.model_name
 
-        if pretrain:
-            dir_name = f"processed_full_{self.sample_rate}_wav"
-        else:
-            dir_name = f"processed_{self.sample_rate}_wav"
+        # MagnaTagATune has clips of 30s, of which the last is not a full |audio_length|
+        self.num_segments = (30 * self.sample_rate) // self.audio_length - 1
 
-        self.audio_dir = os.path.join(args.data_input_dir, "magnatagatune", dir_name)
+        self.audio_dir = os.path.join(args.data_input_dir, self.base_dir, "raw")
+        self.audio_proc_dir = os.path.join(args.data_input_dir, self.base_dir, "processed")
 
         mtt_processed_annot = Path(
-            args.data_input_dir, "magnatagatune", "processed_annotations"
+            args.data_input_dir, self.base_dir, "processed_annotations"
         )
 
         if split == "train":
@@ -127,50 +94,37 @@ class MTTDataset(Dataset):
             self.tags = eval(lines[1][lines[1].find("[") :])
             self.num_tags = len(self.tags)
 
-        [audio_repr_paths, id2audio_repr_path] = load_id2path(
+        [audio_repr_paths, id2audio_path] = load_id2path(
             Path(mtt_processed_annot) / "index_mtt.tsv"
         )
         [ids, id2gt] = load_id2gt(self.annotations_file)
-        self.tracks_list_all, self.tracks_dict = self.indexer(
-            args, self.audio_dir, id2audio_repr_path, id2gt
-        )
+        self.id2audio_path = id2audio_path
 
-        self.nodups = []
-        self.indexes = []
-        for track_id, fp, label, segment in self.tracks_list_all:
-            if track_id not in self.indexes:
-                self.nodups.append([track_id, fp, label, segment])
-                self.indexes.append(track_id)
+        self.index, self.track_index = self.indexer(ids, id2audio_path, id2gt)
 
-        print(
-            "Removed duplicates from:",
-            len(self.tracks_list_all),
-            "to:",
-            len(self.nodups),
-        )
+        if self.pretrain:
+            self.index = [[track_id, clip_id, segment, fp, label] for track_id, clip_id, segment, fp, label in self.index if segment == 0]
 
-        self.tracks_list = self.nodups
-            
         # reduce dataset to n%
-        if args.perc_train_data < 1.0 and train and not validation:  # only on train set
-            print("Train dataset size:", len(self.tracks_list))
-            train_X_indices = np.array(
-                [idx for idx in range(len(self.tracks_list))]
-            ).reshape(-1, 1)
-            train_y = np.array([label.numpy() for _, _, label, _ in self.tracks_list])
-            train_X_indices, _ = random_undersample_balanced(
-                train_X_indices, train_y, args.perc_train_data
-            )
+        # if pretrain and args.perc_train_data < 1.0 and train and not validation:  # only on train set
+        #     print("Train dataset size:", len(self.tracks_list))
+        #     train_X_indices = np.array(
+        #         [idx for idx in range(len(self.tracks_list))]
+        #     ).reshape(-1, 1)
+        #     train_y = np.array([label.numpy() for _, _, label, _ in self.tracks_list])
+        #     train_X_indices, _ = random_undersample_balanced(
+        #         train_X_indices, train_y, args.perc_train_data
+        #     )
 
-            new_tracks_list = []
-            for idx, (track_id, fp, label, segment) in enumerate(self.tracks_list):
-                if idx in train_X_indices:
-                    new_tracks_list.append([track_id, fp, label, segment])
+        #     new_tracks_list = []
+        #     for idx, (track_id, fp, label, segment) in enumerate(self.tracks_list):
+        #         if idx in train_X_indices:
+        #             new_tracks_list.append([track_id, fp, label, segment])
 
-            self.tracks_list = new_tracks_list
-            print("Undersampled train dataset size:", len(self.tracks_list))
+        #     self.tracks_list = new_tracks_list
+        #     print("Undersampled train dataset size:", len(self.tracks_list))
 
-        print(f"Num tracks: {len(self.tracks_list)}")
+        # print(f"Num tracks: {len(self.tracks_list)}")
 
         ## get dataset statistics
         self.mean = None
@@ -199,31 +153,36 @@ class MTTDataset(Dataset):
             f"[{split} dataset ({args.dataset}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}"
         )
 
-        super(MTTDataset, self).__init__(self.sample_rate, self.audio_length, self.tracks_list, self.tracks_list_all, self.mean, self.std)
+        super(MTTDataset, self).__init__(self.sample_rate, self.audio_length, self.index, self.num_segments, self.mean, self.std)
 
     # get one segment (==59049 samples) and its 50-d label
-    def __getitem__(self, index):
-        track_id, fp, label, segment = self.tracks_list[index]
+    def __getitem__(self, idx):
+        track_id, clip_id, segment, fp, label = self.index[idx]
+
+        if self.pretrain:
+            segment = random.randint(0, self.num_segments) # pick a random segment
+
+        fp = os.path.join(self.audio_proc_dir, self.split, fp)
 
         try:
             audio = self.get_audio(fp)
         except Exception as e:
             print(f"Skipped {track_id, fp}, could not load audio: {e}")
-            return self.__getitem__(index + 1)
+            return self.__getitem__(idx + 1)
 
         # only transform if unsupervised training
-        if self.pretrain and self.model_name == "clmr" and self.transform:
+        if self.pretrain and self.transform:
             audio = self.transform(audio, self.mean, self.std)
-        elif self.model_name == "cpc":
-            max_samples = audio.size(1)
-            start_idx = random.randint(0, max_samples - self.audio_length)
-            audio = audio[:, start_idx : start_idx + self.audio_length]
-            audio = self.normalise_audio(audio)
-            audio = (audio, audio)
+        # elif self.model_name == "cpc":
+        #     max_samples = audio.size(1)
+        #     start_idx = random.randint(0, max_samples - self.audio_length)
+        #     audio = audio[:, start_idx : start_idx + self.audio_length]
+        #     audio = self.normalise_audio(audio)
+        #     audio = (audio, audio)
         else:
             start_idx = segment * self.audio_length
             audio = audio[:, start_idx : start_idx + self.audio_length]
             audio = (audio, audio)
-
+        
         return audio, label, track_id
 

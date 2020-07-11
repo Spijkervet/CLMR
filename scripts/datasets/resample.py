@@ -5,7 +5,7 @@ from tqdm import tqdm
 import subprocess
 import re
 
-def convert_samplerate(source, target, sample_rate):
+def resample(source, target, sample_rate):
     process = subprocess.Popen(
         [
             "ffmpeg",
