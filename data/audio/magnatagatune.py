@@ -45,7 +45,9 @@ def default_indexer(args, path, id2audio, id2gt):
         d = fn.parent.stem
         fn = fn.stem
         index_name = "-".join(fn.split("-")[:-2])
-        fp = os.path.join(path, d, index_name + "-full.wav")
+
+        # fp = os.path.join(path, d, index_name + "-full.wav")
+        fp = os.path.join(path, d, fn + ".wav")
 
         if os.path.exists(fp) and os.path.getsize(fp) > 0:
             if index_name not in index.keys():
@@ -94,6 +96,7 @@ class MTTDataset(Dataset):
             )
 
         self.supervised = args.supervised
+        self.pretrain = pretrain
         self.indexer = indexer
         self.transform = transform
         self.sample_rate = args.sample_rate
@@ -132,23 +135,22 @@ class MTTDataset(Dataset):
             args, self.audio_dir, id2audio_repr_path, id2gt
         )
 
-        if pretrain:
-            self.nodups = []
-            self.indexes = []
-            for track_id, fp, label, segment in self.tracks_list_all:
-                if track_id not in self.indexes:
-                    self.nodups.append([track_id, fp, label, segment])
-                    self.indexes.append(track_id)
+        self.nodups = []
+        self.indexes = []
+        for track_id, fp, label, segment in self.tracks_list_all:
+            if track_id not in self.indexes:
+                self.nodups.append([track_id, fp, label, segment])
+                self.indexes.append(track_id)
 
-            print(
-                "Removed duplicates from:",
-                len(self.tracks_list_all),
-                "to:",
-                len(self.nodups),
-            )
+        print(
+            "Removed duplicates from:",
+            len(self.tracks_list_all),
+            "to:",
+            len(self.nodups),
+        )
 
-            self.tracks_list = self.nodups
-
+        self.tracks_list = self.nodups
+            
         # reduce dataset to n%
         if args.perc_train_data < 1.0 and train and not validation:  # only on train set
             print("Train dataset size:", len(self.tracks_list))
@@ -210,7 +212,7 @@ class MTTDataset(Dataset):
             return self.__getitem__(index + 1)
 
         # only transform if unsupervised training
-        if self.model_name == "clmr" and self.transform:
+        if self.pretrain and self.model_name == "clmr" and self.transform:
             audio = self.transform(audio, self.mean, self.std)
         elif self.model_name == "cpc":
             max_samples = audio.size(1)
@@ -219,7 +221,9 @@ class MTTDataset(Dataset):
             audio = self.normalise_audio(audio)
             audio = (audio, audio)
         else:
-            raise Exception("Transformation unknown")
+            start_idx = segment * self.audio_length
+            audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = (audio, audio)
 
         return audio, label, track_id
 

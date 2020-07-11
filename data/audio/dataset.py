@@ -40,7 +40,7 @@ class Dataset(TorchDataset):
         audio = self.get_audio(fp)
 
         # normalise audio
-        audio = self.normalise_audio(audio)
+        # audio = self.normalise_audio(audio)
 
         # split into equally sized tensors of self.audio_length
         batch = torch.split(audio, self.audio_length, dim=1)

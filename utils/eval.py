@@ -60,7 +60,7 @@ def average_precision(y_targets, y_preds):
     return np.array(ap)
 
 
-def eval_all(args, loader, context_model, model, writer, n_tracks=None):
+def eval_all(args, loader, encoder, model, writer, n_tracks=None):
     if model:
         model.eval()
 
@@ -70,14 +70,14 @@ def eval_all(args, loader, context_model, model, writer, n_tracks=None):
 
     # sub-sample if n_tracks is not none, else eval whole dataset
     if n_tracks:
-        ids = np.random.choice(len(loader.dataset.tracks_list_test), n_tracks)
+        ids = np.random.choice(len(loader.dataset.racks_list), n_tracks)
         tracks = [
             (track_id, fp, label)
-            for track_id, fp, label in loader.dataset.tracks_list_test
+            for track_id, fp, label in loader.dataset.racks_list
             if track_id in ids
         ]
     else:
-        tracks = loader.dataset.tracks_list_test
+        tracks = loader.dataset.tracks_list
         n_tracks = len(tracks)
 
     with torch.no_grad():
@@ -87,22 +87,14 @@ def eval_all(args, loader, context_model, model, writer, n_tracks=None):
             x = x.to(args.device)
 
             # get encoding
-            if context_model:
+            if encoder:
                 with torch.no_grad():
-                    if args.model_name == "cpc":
-                        z, c = context_model.model.get_latent_representations(x) # cpc
-                        c = c.permute(0, 2, 1)
-                        pooled = torch.nn.functional.adaptive_avg_pool1d(c, 1) # one label
-                        pooled = pooled.permute(0, 2, 1).reshape(-1, args.n_features)
-                        x = pooled
-                    else:
-                        h, z = context_model(x) # clmr
-                        x = h # clmr
+                    h = encoder(x) # clmr
 
             if not args.supervised:
-                output = model(x)
+                output = model(h)
             else:
-                output = x
+                output = h
                 
             predictions = output.argmax(1).detach()
             classes, counts = torch.unique(predictions, return_counts=True)
@@ -122,11 +114,6 @@ def eval_all(args, loader, context_model, model, writer, n_tracks=None):
     pred_array = np.array(pred_array)
     id_array = np.array(id_array)
     for track_id, _, label, _ in tracks:
-        ## absolute per segment
-        # for p in pred_array[np.where(id_array == track_id)]:
-        #     y_pred.append(p)
-        #     y_true.append(label.numpy())
-
         # average over track
         avg = np.mean(pred_array[np.where(id_array == track_id)], axis=0)
         y_pred.append(avg)
