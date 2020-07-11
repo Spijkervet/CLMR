@@ -77,12 +77,13 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
             if track_id in ids
         ]
     else:
-        tracks = loader.dataset.tracks_list
+        tracks = loader.dataset.index
+        tracks = [[track_id, clip_id, segment, fp, label] for track_id, clip_id, segment, fp, label in tracks if segment == 0] # get_full_size_audio
         n_tracks = len(tracks)
 
     with torch.no_grad():
         # run all audio through model and make prediction array
-        for step, (track_id, fp, y, _) in enumerate(tracks):
+        for step, (track_id, clip_id, segment, fp, label) in enumerate(tracks):
             x = loader.dataset.get_full_size_audio(fp)
             x = x.to(args.device)
 
@@ -103,7 +104,7 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
             # create array of predictions and ids
             for b in output:
                 pred_array.append(b.detach().cpu().numpy())
-                id_array.append(track_id)
+                id_array.append(clip_id)
 
             if step % 1000 == 0:
                 print(f"[Test] Step [{step}/{n_tracks}]")
@@ -113,9 +114,9 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
     y_true = []
     pred_array = np.array(pred_array)
     id_array = np.array(id_array)
-    for track_id, _, label, _ in tracks:
+    for track_id, clip_id, segment, fp, label in tracks:
         # average over track
-        avg = np.mean(pred_array[np.where(id_array == track_id)], axis=0)
+        avg = np.mean(pred_array[np.where(id_array == clip_id)], axis=0)
         y_pred.append(avg)
 
         if isinstance(label, torch.Tensor):
@@ -134,8 +135,6 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
         metrics["hparams/test_tag_ap"] = ap.mean()
         metrics["hparams/test_clip_auc"] = clip_auc.mean()
         metrics["hparams/test_clip_ap"] = clip_ap.mean()
-        # metrics["all/auc"] = auc
-        # metrics["all/ap"] = ap
     else:
         acc = accuracy_score(y_true, y_pred.argmax(1))
         metrics["hparams/test_accuracy"] = acc

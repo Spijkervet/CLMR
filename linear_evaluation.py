@@ -6,6 +6,7 @@ import numpy as np
 import pickle
 from matplotlib import pyplot as plt
 from collections import defaultdict
+import time
 
 # TensorBoard
 from torch.utils.tensorboard import SummaryWriter
@@ -32,11 +33,10 @@ def plot_predicted_classes(predicted_classes, epoch, writer, train):
     writer.add_figure(f"Class_distribution/{train_test}", figure, global_step=epoch)
 
 
-def train(args, loader, model, criterion, optimizer):
+def train(args, loader, encoder, model, criterion, optimizer):
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     metrics = defaultdict(float)
     for step, (x, y) in enumerate(loader):
-
         x = x.to(args.device)
         y = y.to(args.device)
 
@@ -62,12 +62,61 @@ def train(args, loader, model, criterion, optimizer):
         metrics["AUC_tag/train"] += auc
         metrics["AP_tag/train"] += acc
         metrics["Loss/train"] += loss.item()
+
+        if step > 0 and step % 100 == 0:
+            print(
+                f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}"
+            )
+
         args.global_step += 1
 
     # plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
     for k, v in metrics.items():
         metrics[k] /= len(loader)
     return metrics
+
+
+def validate(args, loader, encoder, model, criterion, optimizer):
+    model.eval()
+    predicted_classes = torch.zeros(args.n_classes).to(args.device)
+    metrics = defaultdict(float)
+    for step, (x, y) in enumerate(loader):
+        x = x.to(args.device)
+        y = y.to(args.device)
+
+        with torch.no_grad():
+            output = model(x)
+
+        loss = criterion(output, y)
+        predicted_classes = get_predicted_classes(output, predicted_classes)
+
+        if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
+            auc, acc = get_metrics(
+                args.domain, y.detach().cpu().numpy(), output.detach().cpu().numpy()
+            )
+        else:
+            predictions = output.argmax(1).detach()
+            auc = 0
+            acc = (predictions == y).sum().item() / y.shape[0]
+
+        metrics["AUC_tag/test"] += auc
+        metrics["AP_tag/test"] += acc
+        metrics["Loss/test"] += loss.item()
+
+        if step > 0 and step % 100 == 0:
+            print(
+                f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}"
+            )
+
+        args.global_step += 1
+
+    # plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
+    for k, v in metrics.items():
+        metrics[k] /= len(loader)
+    
+    model.train()
+    return metrics
+
 
 
 if __name__ == "__main__":
@@ -92,7 +141,11 @@ if __name__ == "__main__":
     encoder = encoder.to(args.device)
 
     # linear eval. model
-    model = torch.nn.Sequential(torch.nn.Linear(args.n_features, args.n_classes))
+    model = torch.nn.Sequential(
+        # torch.nn.Linear(args.n_features, args.n_features),
+        # torch.nn.ReLU(),
+        torch.nn.Linear(args.n_features, args.n_classes)
+        )
     model = model.to(args.device)
 
     optimizer = torch.optim.Adam(
@@ -108,25 +161,37 @@ if __name__ == "__main__":
     # initialize TensorBoard
     writer = SummaryWriter()
 
-    (train_X, train_y, test_X, test_y) = get_features(
-        encoder, train_loader, test_loader, args.device
-    )
+    if not os.path.exists("features.p"):
+        print("Computing features")
+        (train_X, train_y, test_X, test_y) = get_features(
+            encoder, train_loader, test_loader, args.device
+        )
+        with open("features.p", "wb") as f:
+            pickle.dump((train_X, train_y, test_X, test_y), f)
+    else:
+        with open("features.p", "rb") as f:
+            (train_X, train_y, test_X, test_y) = pickle.load(f)
 
     arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
-        train_X, train_y, test_X, test_y, args.logistic_batch_size
+        train_X, train_y, test_X, test_y, 2048
     )
 
     # start linear evaluation
     args.global_step = 0
     args.current_epoch = 0
     for epoch in range(args.logistic_epochs):
-        metrics = train(args, arr_train_loader, model, criterion, optimizer)
+        metrics = train(args, arr_train_loader, encoder, model, criterion, optimizer)
         for k, v in metrics.items():
             writer.add_scalar(k, v, epoch)
 
         print(
             f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {metrics['Loss/train']}\t AUC_tag: {metrics['AUC_tag/train']}\tAP_tag: {metrics['AP_tag/train']}"
         )
+        
+        # validate
+        metrics = validate(args, arr_test_loader, encoder, model, criterion, optimizer)
+        for k, v in metrics.items():
+            writer.add_scalar(k, v, epoch)
 
         args.current_epoch += 1
 

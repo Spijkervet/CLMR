@@ -6,7 +6,7 @@ workers: 16
 
 ## dataset options
 dataset: "msd" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
-data_input_dir: "/storage/jspijkervet" # [audio: [datasets/audio] vision: [datasets/vision]
+data_input_dir: "./datasets" # [audio: [datasets/audio] vision: [datasets/vision]
 pretrain_dataset: "msd" # [magnatagatune,billboard,fma,msd]
 download: 0
 
@@ -61,9 +61,9 @@ reload: False
 
 ## linear evaluation options
 mlp: False # use one extra hidden layer
-logistic_batch_size: 64
-logistic_epochs: 100
-logistic_lr: 0.003
+logistic_batch_size: 256
+logistic_epochs: 10
+logistic_lr: 0.0005
 reload_logreg: False
 
 ## train with percentage of total train data 
