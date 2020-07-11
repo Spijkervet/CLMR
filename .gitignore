@@ -1,11 +1,6 @@
 .vscode/
 __pycache__
-datasets/audio
-datasets/stl10_binary
-datasets/cifar-10-batches-py
-datasets/*.tar.gz
-
-datasets/vision
+datasets/
 .tmp/
 
 *.mp3

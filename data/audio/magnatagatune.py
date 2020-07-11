@@ -105,6 +105,7 @@ class MTTDataset(Dataset):
         self.index, self.track_index = self.indexer(ids, id2audio_path, id2gt)
 
         if self.pretrain:
+            # we already load a full fragment of audio (with 10 segments)
             self.index = [
                 [track_id, clip_id, segment, fp, label]
                 for track_id, clip_id, segment, fp, label in self.index
@@ -170,15 +171,22 @@ class MTTDataset(Dataset):
             self.std,
         )
 
+        if self.split == "train":
+            from new_data import load_set
+            print("Loading train data into memory for faster training")
+            # self.audios = np.load("./processed_22050_train.npy")
+            self.audios = load_set(args.sample_rate, "./datasets/magnatagatune/processed/train", False)
+            
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
-
-        if self.pretrain:
-            segment = random.randint(0, self.num_segments)  # pick a random segment
-
         try:
-            audio = self.get_audio(fp)
+            if self.split == "train":
+                audio = self.audios[idx]
+                audio = audio.reshape(1, -1)
+            else:
+                audio = self.get_audio(fp)
+
         except Exception as e:
             print(f"Skipped {track_id, fp}, could not load audio: {e}")
             return self.__getitem__(idx + 1)
@@ -186,6 +194,7 @@ class MTTDataset(Dataset):
         # only transform if unsupervised training
         if self.pretrain and self.transform:
             audio = self.transform(audio, self.mean, self.std)
+
         # elif self.model_name == "cpc":
         #     max_samples = audio.size(1)
         #     start_idx = random.randint(0, max_samples - self.audio_length)
