@@ -171,17 +171,18 @@ class MTTDataset(Dataset):
             self.std,
         )
 
-        if self.split == "train":
-            from new_data import load_set
-            print("Loading train data into memory for faster training")
-            # self.audios = np.load("./processed_22050_train.npy")
-            self.audios = load_set(args.sample_rate, "./datasets/magnatagatune/processed/train", False)
+        # if self.split == "train":
+        #     from new_data import load_set
+        #     print("Loading train data into memory for faster training")
+        #     # self.audios = np.load("./processed_22050_train.npy")
+        #     self.audios = load_set(args.sample_rate, "./datasets/magnatagatune/processed/train", False)
             
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
         try:
-            if self.split == "train":
+            # don't use this for now
+            if False and self.split == "train":
                 audio = self.audios[idx]
                 audio = audio.reshape(1, -1)
             else:
