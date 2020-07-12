@@ -160,6 +160,19 @@ class MTTDataset(Dataset):
             f"[{split} dataset ({args.dataset}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}"
         )
 
+
+        from new_data import load_tracks, concat_tracks
+        if self.pretrain and self.split == "train":
+            # track index contains track_ids matched with clip_ids, so filtering is easier
+            print("Concatenating tracks for pre-training (to avoid positive samples in the negative samples batch)")
+            
+            # new track_id filtered index (unique track_ids)
+            self.index = concat_tracks(args.sample_rate, self.audio_proc_dir, self.split, self.track_index)
+
+        if self.split == "train":
+            print("Loading train data into memory for faster training")
+            self.audios = load_tracks(args.sample_rate, self.index)
+
         super(MTTDataset, self).__init__(
             self.split,
             self.sample_rate,
@@ -171,20 +184,14 @@ class MTTDataset(Dataset):
             self.std,
         )
 
-        # if self.split == "train":
-        #     from new_data import load_set
-        #     print("Loading train data into memory for faster training")
-        #     # self.audios = np.load("./processed_22050_train.npy")
-        #     self.audios = load_set(args.sample_rate, "./datasets/magnatagatune/processed/train", False)
-            
+
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
         try:
-            # don't use this for now
-            if False and self.split == "train":
+            # don't use this for now (5s difference)
+            if self.split == "train":
                 audio = self.audios[idx]
-                audio = audio.reshape(1, -1)
             else:
                 audio = self.get_audio(fp)
 
@@ -204,7 +211,8 @@ class MTTDataset(Dataset):
         #     audio = (audio, audio)
         else:
             start_idx = segment * self.audio_length
-            audio = audio[:, start_idx : start_idx + self.audio_length]
+            audio = audio[start_idx : start_idx + self.audio_length]
+            audio = audio.reshape(1, -1) # [channels, samples]
             audio = (audio, audio)
 
         return audio, label, track_id
