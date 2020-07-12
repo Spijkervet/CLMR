@@ -5,8 +5,11 @@ import torch
 import torch.nn as nn
 import torchaudio
 from torch.utils.data import Dataset as TorchDataset
+import numpy as np
 
 import soundfile as sf
+
+from new_data import read_wav, wav_to_float
 
 # inherits Dataset from PyTorch
 class Dataset(TorchDataset):
@@ -43,21 +46,21 @@ class Dataset(TorchDataset):
         return index, track_index
 
     def loader(self, path):
-        # audio, sr = sf.read(path, dtype="float32")
-        # audio = torch.from_numpy(audio).reshape(1, -1)
-        audio, sr = torchaudio.load(path, normalization=True)
+        audio, sr = read_wav(path)
+        audio = wav_to_float(audio)
+        audio = audio.astype(np.float32)
         return audio, sr
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
-        max_samples = audio.shape[1]
+        max_samples = audio.shape[0]
         if sr != self.sample_rate:
             raise Exception("Sample rate is not consistent throughout the dataset")
 
         if max_samples - self.audio_length <= 0:
             raise Exception("Max samples exceeds number of samples in crop")
 
-        if torch.isnan(audio).any():
+        if np.isnan(audio).any():
             raise Exception("Audio contains NaN values")
 
         return audio
@@ -101,8 +104,8 @@ class Dataset(TorchDataset):
             start_idx = idx * self.audio_length
 
             # too large
-            if (start_idx + self.audio_length) > audio.size(1):
+            if (start_idx + self.audio_length) > audio.shape[0]:
                 return None
 
-            batch[idx, 0, :] = audio[:, start_idx : start_idx + self.audio_length]
+            batch[idx, 0, :] = torch.from_numpy(audio[start_idx : start_idx + self.audio_length])
         return batch

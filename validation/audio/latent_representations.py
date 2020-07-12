@@ -65,10 +65,11 @@ def audio_latent_representations(
 
     model.eval()
     with torch.no_grad():
-        if args.model_name == "cpc":
-            model = model.model # quick fix
+        if args.nodes > 1:
+            model = model.module # DDP wrapper
 
         x = torch.zeros(input_size).to(args.device)
+        
         latent_rep_size = model.get_latent_size(x)
         features = torch.zeros(max_tracks, batch_size, latent_rep_size).to(args.device)
 

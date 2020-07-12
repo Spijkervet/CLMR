@@ -5,11 +5,11 @@ from data.vision import get_universal_dataloader
 
 # from scripts.datasets.prepare_dataset import prepare_dataset
 
-def get_dataset(args, train_sampler, pretrain=True, download=False):
+def get_dataset(args, pretrain=True, download=False):
     val_loader = None
     val_dataset = None
     if args.domain == "audio":
-        (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_audio_dataloader(args, train_sampler, pretrain, download)
+        (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_audio_dataloader(args, pretrain, download)
     elif args.domain == "scores":
         if args.dataset == "deepscores":
             (train_loader, train_dataset, test_loader, test_dataset) = get_deepscores_dataloader(args)
