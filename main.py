@@ -1,4 +1,3 @@
-import essentia.standard
 import os
 import torch
 import torchvision
@@ -7,6 +6,12 @@ import numpy as np
 from collections import defaultdict
 
 from torch.utils.tensorboard import SummaryWriter
+
+# distributed training
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel
+
 
 from data import get_dataset
 from model import load_encoder, load_optimizer, save_model
@@ -17,20 +22,13 @@ from validation import audio_latent_representations, vision_latent_representatio
 from utils import parse_args
 
 def main(gpu, args):
-    rank = args.nr * args.gpus + gpu
+    args.rank = args.nr * args.gpus + gpu
     if args.nodes > 1:
-        dist.init_process_group("nccl", rank=rank, world_size=args.world_size)
+        dist.init_process_group("nccl", rank=args.rank, world_size=args.world_size)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     torch.cuda.set_device(gpu)
-
-    if args.nodes > 1:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, num_replicas=args.world_size, rank=rank, shuffle=True
-        )
-    else:
-        train_sampler = None
 
     # data loaders
     (
@@ -40,7 +38,8 @@ def main(gpu, args):
         val_dataset,
         test_loader,
         test_dataset,
-    ) = get_dataset(args, train_sampler, pretrain=True, download=args.download)
+    ) = get_dataset(args, pretrain=True, download=args.download)
+    
     
     encoder = load_encoder(args)
     
@@ -57,7 +56,7 @@ def main(gpu, args):
     # DDP
     if args.nodes > 1:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model = DDP(model, device_ids=[gpu])
+        model = DistributedDataParallel(model, device_ids=[gpu])
 
     writer = SummaryWriter()
     # save random init. model
@@ -126,7 +125,7 @@ if __name__ == "__main__":
     args = parse_args()
     # Master address for distributed data parallel
     os.environ["MASTER_ADDR"] = "127.0.0.1"
-    os.environ["MASTER_PORT"] = "8000"
+    os.environ["MASTER_PORT"] = "5000"
 
     if not os.path.exists(args.model_path):
         os.makedirs(args.model_path)
