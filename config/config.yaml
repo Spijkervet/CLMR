@@ -63,7 +63,7 @@ reload: False
 mlp: False # use one extra hidden layer
 logistic_batch_size: 256
 logistic_epochs: 10
-logistic_lr: 0.0005
+logistic_lr: 0.001
 reload_logreg: False
 
 ## train with percentage of total train data 
