@@ -51,6 +51,17 @@ def main(gpu, args):
     model = model.to(args.device)
     print(model.summary())
 
+    if args.reload:
+        model_fp = os.path.join(
+            args.model_path,
+            "{}_checkpoint_{}.tar".format(args.model_name, args.epoch_num),
+        )
+        print(
+            f"### RELOADING {args.model_name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###"
+        )
+        model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
+
+
     # optimizer / scheduler
     optimizer, scheduler = load_optimizer(args, model)
 
@@ -69,7 +80,7 @@ def main(gpu, args):
         write_audio_tb(args, train_loader, test_loader, writer)
 
     # start training
-    args.current_epoch = 0
+    args.current_epoch = args.start_epoch
     solver = Solver(model, optimizer, writer)
     validate_idx = 10
     for epoch in range(args.start_epoch, args.epochs):
@@ -94,7 +105,6 @@ def main(gpu, args):
             )
 
         learning_rate = optimizer.param_groups[0]["lr"]
-
         metrics = solver.train(args, train_loader)
         for k, v in metrics.items():
             writer.add_scalar(k, v, epoch)

@@ -6,14 +6,11 @@ import scipy.io.wavfile
 
 def load_set(sample_rate, set_dirname, use_ulaw):
     ulaw_str = '_ulaw' if use_ulaw else ''
-    
     file_names = [fn for fn in os.listdir(set_dirname) if fn.endswith('.wav')]
     full_sequences = []
     for fn in tqdm(file_names):
         sequence = process_wav(sample_rate, os.path.join(set_dirname, fn), use_ulaw)
         full_sequences.append(sequence)
-
-    # np.save(f"processed_{sample_rate}_train", full_sequences)
 
     return full_sequences
 
