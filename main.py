@@ -66,7 +66,7 @@ def main(gpu, args):
         save_model(args, model, optimizer, args.model_name)
 
         # write a few audio files to TensorBoard for comparison
-        write_audio_tb(args, train_loader, test_loader, writer)
+        # write_audio_tb(args, train_loader, test_loader, writer)
 
     # start training
     args.current_epoch = 0

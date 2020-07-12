@@ -26,7 +26,7 @@ class InvertSignal:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            audio = audio * -1
+            audio = audio * -1.0
         return audio
 
 
@@ -74,8 +74,7 @@ class HighLowBandPass:
                 )
             # else:
             #     filt = essentia.standard.BandPass(bandwidth=1000, cutoffFrequency=1500, sampleRate=self.sr)
-
-            # audio = filt(audio)
+            audio = filt(audio)
 
         return audio
 
@@ -139,12 +138,12 @@ class Delay:
 
             # calculate delay
             offset = self.calc_offset(ms)
-            beginning = [0] * offset
+            beginning = [0.] * offset
             end = audio[:-offset]
             delayed_signal = np.hstack((beginning, end))
-            delayed_signal = (delayed_signal * self.factor).astype(np.uint8)
+            delayed_signal = (delayed_signal * self.factor)
             audio = (audio + delayed_signal) / 2
-            # audio = audio.astype(np.float32)
+            audio = audio.astype(np.float32)
 
         return audio
 
