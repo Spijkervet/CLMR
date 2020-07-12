@@ -174,9 +174,10 @@ class AudioTransforms:
         self.test_transform = []
 
     def __call__(self, x, mean, std):
-        x0 = self.transform(x.squeeze())
-        x1 = self.transform(x.squeeze())
+        x0 = self.transform(x)
+        x1 = self.transform(x)
 
+        # to PyTorch format (channels, samples)
         x0 = x0.reshape(1, -1)
         x1 = x1.reshape(1, -1)
 

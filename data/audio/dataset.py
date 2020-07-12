@@ -9,7 +9,7 @@ import numpy as np
 
 import soundfile as sf
 
-from new_data import read_wav, wav_to_float
+from new_data import process_wav
 
 # inherits Dataset from PyTorch
 class Dataset(TorchDataset):
@@ -46,9 +46,7 @@ class Dataset(TorchDataset):
         return index, track_index
 
     def loader(self, path):
-        audio, sr = read_wav(path)
-        audio = wav_to_float(audio)
-        audio = audio.astype(np.float32)
+        audio, sr = process_wav(self.sample_rate, path, False)
         return audio, sr
 
     def get_audio(self, fp):
@@ -75,6 +73,7 @@ class Dataset(TorchDataset):
         # audio = self.normalise_audio(audio)
 
         # split into equally sized tensors of self.audio_length
+        audio = torch.from_numpy(audio).reshape(1, -1)
         batch = torch.split(audio, self.audio_length, dim=1)
 
         # remove last, since it is not a full self.audio_length, and stack

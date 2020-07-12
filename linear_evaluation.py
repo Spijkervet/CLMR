@@ -133,7 +133,7 @@ if __name__ == "__main__":
         val_dataset,
         test_loader,
         test_dataset,
-    ) = get_dataset(args, train_sampler=None, pretrain=False)
+    ) = get_dataset(args, pretrain=False)
 
     # load pre-trained encoder
     encoder = load_encoder(args, reload=True)
@@ -142,8 +142,8 @@ if __name__ == "__main__":
 
     # linear eval. model
     model = torch.nn.Sequential(
-        # torch.nn.Linear(args.n_features, args.n_features),
-        # torch.nn.ReLU(),
+        torch.nn.Linear(args.n_features, args.n_features),
+        torch.nn.ReLU(),
         torch.nn.Linear(args.n_features, args.n_classes)
         )
     model = model.to(args.device)
