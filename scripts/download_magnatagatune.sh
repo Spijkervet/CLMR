@@ -14,7 +14,7 @@ wget -nc http://mi.soi.city.ac.uk/datasets/magnatagatune/mp3.zip.003
 wget -nc http://mi.soi.city.ac.uk/datasets/magnatagatune/annotations_final.csv
 rm -f mp3_all.zip
 cat mp3.zip.* > mp3_all.zip
-unzip mp3_all.zip -n # do not overwrite existing file
+unzip mp3_all.zip
 
 # put all unprocessed files in the ./raw folder
 mkdir raw
