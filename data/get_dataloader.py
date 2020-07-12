@@ -7,7 +7,7 @@ from modules.transformations import AudioTransforms
 from .audio import datasets
 
 
-def get_audio_dataloader(args, train_sampler, pretrain=True, download=False):
+def get_audio_dataloader(args, pretrain=True, download=False):
 
     Dataset = datasets[args.dataset]
 
@@ -21,11 +21,19 @@ def get_audio_dataloader(args, train_sampler, pretrain=True, download=False):
     val_dataset = Dataset(args, split="validation", pretrain=pretrain, transform=transforms)
 
     test_dataset = Dataset(args, split="test", pretrain=pretrain, transform=transforms)
+    
+    if args.nodes > 1:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            train_dataset, num_replicas=args.world_size, rank=args.rank, shuffle=True
+        )
+    else:
+        train_sampler = None
+    
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=(train_sampler is None),
         drop_last=True,
         num_workers=args.workers,
         pin_memory=True,
@@ -34,11 +42,10 @@ def get_audio_dataloader(args, train_sampler, pretrain=True, download=False):
     val_loader = torch.utils.data.DataLoader(
         dataset=val_dataset,
         batch_size=args.batch_size,
-        shuffle=False,
+        shuffle=True,
         drop_last=True,
         num_workers=args.workers,
         pin_memory=True,
-        sampler=train_sampler,
     )
 
     test_loader = torch.utils.data.DataLoader(
