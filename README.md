@@ -10,7 +10,7 @@ wget https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_15
 wget https://github.com/Spijkervet/CLMR/releases/download/1.0/features.p
 sh setup.sh || python3 -m pip install -r requirements.txt || exit 1
 conda activate clmr
-python linear_evaluation.py --dataset magnatagatune --model_path . --epoch_num 1550 --logistic_epochs 20 --logistic_lr 0.001
+python linear_evaluation.py --dataset magnatagatune --download 1 --model_path . --epoch_num 1550 --logistic_epochs 20 --logistic_lr 0.001
 
 ```
 

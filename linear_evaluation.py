@@ -207,6 +207,7 @@ if __name__ == "__main__":
             (train_X, train_y, test_X, test_y) = pickle.load(f)
 
     if train_X is not None:
+        _test_loader = test_loader # for final evaluation
         train_loader, test_loader = create_data_loaders_from_arrays(
             train_X, train_y, test_X, test_y, 2048
         )
@@ -231,6 +232,6 @@ if __name__ == "__main__":
         args.current_epoch += 1
 
     # eval all
-    metrics = eval_all(args, test_loader, encoder, model, writer, n_tracks=None,)
+    metrics = eval_all(args, _test_loader, encoder, model, writer, n_tracks=None,)
     for k, v in metrics.items():
         print("[Test]:", k, v)
