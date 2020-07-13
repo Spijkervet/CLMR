@@ -6,8 +6,8 @@ This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data) a
 ```
 git clone https://github.com/spijkervet/clmr.git
 cd clmr
-curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt -O
-curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/features.p -O
+wget https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt
+wget https://github.com/Spijkervet/CLMR/releases/download/1.0/features.p
 sh setup.sh || python3 -m pip install -r requirements.txt || exit 1
 conda activate clmr
 python linear_evaluation.py --dataset magnatagatune --model_path . --epoch_num 1550 --logistic_epochs 20 --logistic_lr 0.001
