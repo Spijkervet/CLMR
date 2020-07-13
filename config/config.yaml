@@ -52,7 +52,7 @@ dropout: 0.5
 
 
 ## reload options
-model_path: "save" # set to the directory containing `checkpoint_##.tar` 
+model_path: "save" # set to the directory containing `checkpoint_##.pt` 
 epoch_num: 0 # set to checkpoint number
 finetune_model_path: ""
 finetune_epoch_num: ""
@@ -61,7 +61,7 @@ reload: False
 
 ## linear evaluation options
 mlp: False # use one extra hidden layer
-logistic_batch_size: 256
+logistic_batch_size: 48
 logistic_epochs: 10
 logistic_lr: 0.001
 reload_logreg: False

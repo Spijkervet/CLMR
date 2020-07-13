@@ -56,7 +56,7 @@ transforms_lowpass_freq: 3500
 
 
 ## reload options
-model_path: "save" # set to the directory containing `checkpoint_##.tar` 
+model_path: "save" # set to the directory containing `checkpoint_##.pt` 
 epoch_num: 0 # set to checkpoint number
 reload: False
 

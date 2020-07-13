@@ -53,7 +53,7 @@ def main(gpu, args):
     if args.reload:
         model_fp = os.path.join(
             args.model_path,
-            "{}_checkpoint_{}.tar".format(args.model_name, args.epoch_num),
+            "{}_checkpoint_{}.pt".format(args.model_name, args.epoch_num),
         )
         print(
             f"### RELOADING {args.model_name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###"
