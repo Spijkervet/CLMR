@@ -149,7 +149,7 @@ if __name__ == "__main__":
     model = model.to(args.device)
 
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.logistic_lr  # , weight_decay=weight_decay
+        model.parameters(), lr=args.logistic_lr, weight_decay=args.weight_decay
     )
 
     # set criterion, e.g. gtzan has one label per segment, MTT has multiple

@@ -4,7 +4,7 @@ from tqdm import tqdm
 import warnings
 import scipy.io.wavfile
 import scipy
-
+from scripts.datasets.resample import resample
 
 def load_tracks(sample_rate, index):
     audios = []
@@ -119,8 +119,7 @@ def concat_tracks(sample_rate, dir, split, track_index):
 
         # only process files that do not exist yet
         if not os.path.exists(out_file):
-            for clips in v:
-                clip_id, segment, fp, label = clips
+            for clip_id, segment, fp, label in v:
                 # only use 1 segment, it is already the whole 30s file
                 if segment == 0:
                     concat_fps.append(fp)
@@ -138,6 +137,30 @@ def concat_tracks(sample_rate, dir, split, track_index):
         new_index.append([track_id, 0, 0, out_file, 0])
     return new_index
 
+
+def preprocess_tracks(sample_rate, raw_dir, proc_dir, split, track_index, id2audio_path):
+    clips = []
+    proc_dir = os.path.join(proc_dir, split)
+    if not os.path.exists(proc_dir):
+        os.makedirs(proc_dir)
+
+    for track_id, values in tqdm(track_index.items()):
+        for clip_id, segment, fp, label in values:
+            if segment == 0:
+                orig_fp = id2audio_path[clip_id]
+                orig_fp = os.path.join(raw_dir, orig_fp)
+                
+                new_fp = f"{track_id}-{clip_id}-{sample_rate}.wav"
+                new_fp = os.path.join(proc_dir, new_fp)
+
+                # convert to wav to avoid conversion during training i/o
+                conv_fp = orig_fp + ".wav"
+                resample(orig_fp, conv_fp, sample_rate)
+                audio, sr = read_wav(conv_fp)
+                audio = ensure_mono(audio)
+                write_wav(new_fp, sample_rate, audio)
+                os.remove(conv_fp)
+        
 
 if __name__ == "__main__":
     load_set(22050, "./datasets/magnatagatune/processed/train", False)

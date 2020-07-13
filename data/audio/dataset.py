@@ -7,7 +7,7 @@ import torchaudio
 from torch.utils.data import Dataset as TorchDataset
 import numpy as np
 
-import soundfile as sf
+from tqdm import tqdm
 
 from new_data import process_wav
 
@@ -24,25 +24,32 @@ class Dataset(TorchDataset):
         self.mean = mean
         self.std = std
 
-    def indexer(self, ids, id2audio_path, id2gt):
+        
+
+    def indexer(self, ids, id2audio_path, id2gt, dataset):
         index = []
         tmp = []
         track_index = defaultdict(list)
-        track_id = 0
-        for clip_id in ids:
+        track_idx = 0
+        for clip_id in tqdm(ids):
             fp = id2audio_path[clip_id]
             label = id2gt[clip_id]
             label = torch.FloatTensor(label)
-            full_track = "".join(Path(fp).stem.split("-")[:-2])
-            if full_track not in tmp:
-                tmp.append(full_track)
-                track_id += 1
 
-            fp = f"{track_id}-{clip_id}-{self.sample_rate}.wav"
-            fp = os.path.join(self.audio_proc_dir, self.split, fp)
+            if dataset == "magnatagatune":
+                track_id = "".join(Path(fp).stem.split("-")[:-2])
+                if track_id not in tmp:
+                    tmp.append(track_id)
+                    track_idx += 1
+                fp = f"{track_idx}-{clip_id}-{self.sample_rate}.wav"
+                fp = os.path.join(self.audio_proc_dir, self.split, fp)
+            else:
+                track_idx = clip_id
+                fp = os.path.join(self.audio_proc_dir, fp)
+
             for s in range(self.num_segments): 
-                index.append([track_id, clip_id, s, fp, label])
-                track_index[track_id].append([clip_id, s, fp, label])
+                index.append([track_idx, clip_id, s, fp, label])
+                track_index[track_idx].append([clip_id, s, fp, label])
         return index, track_index
 
     def loader(self, path):
