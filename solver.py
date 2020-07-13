@@ -9,7 +9,7 @@ class Solver:
 
     def train(self, args, loader):
         metrics = defaultdict(float)
-        for step, ((x_i, x_j), y, _) in enumerate(loader):
+        for step, ((x_i, x_j), y) in enumerate(loader):
             if not args.supervised:
                 x_i = x_i.cuda(non_blocking=True)
                 x_j = x_j.cuda(non_blocking=True)
@@ -59,7 +59,7 @@ class Solver:
         self.model.eval()
         metrics = defaultdict(float)
         with torch.no_grad():
-            for step, ((x_i, x_j), y, _) in enumerate(loader):
+            for step, ((x_i, x_j), y) in enumerate(loader):
                 if not args.supervised:
                     x_i = x_i.to(args.device)
                     x_j = x_j.to(args.device)

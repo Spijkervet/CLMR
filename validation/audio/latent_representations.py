@@ -2,11 +2,13 @@ import os
 import torch
 import torchaudio
 import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.manifold import TSNE
 import seaborn as sns
 import pandas as pd
 from tqdm import tqdm
 from utils import tsne_to_json
+
 # from tsnecuda import TSNE
 
 
@@ -56,7 +58,7 @@ def audio_latent_representations(
     if max_tracks is None:
         max_tracks = len(dataset.tracks_dict)
 
-    batch_size = 10 # 16 for 20480 samples, and a max.
+    batch_size = 10  # 16 for 20480 samples, and a max.
     input_size = (args.batch_size, 1, args.audio_length)
 
     print("### Processing representations through TSNE ###")
@@ -66,14 +68,16 @@ def audio_latent_representations(
     model.eval()
     with torch.no_grad():
         if args.nodes > 1:
-            model = model.module # DDP wrapper
+            model = model.module  # DDP wrapper
 
         x = torch.zeros(input_size).to(args.device)
-        
+
         latent_rep_size = model.get_latent_size(x)
         features = torch.zeros(max_tracks, batch_size, latent_rep_size).to(args.device)
 
-        labels = torch.zeros(max_tracks, batch_size).to(args.device)
+        labels = np.empty(
+            (max_tracks, batch_size), dtype=object
+        )  # torch.zeros(max_tracks, batch_size).to(args.device)
 
         idx = 0
         for _, track_idx in enumerate(tqdm(dataset.track_index, total=max_tracks)):
@@ -93,22 +97,25 @@ def audio_latent_representations(
             #     torchaudio.save(f"{idx}_{bidx}_{track_idx}_.wav", audio, dataset.sample_rate)
 
             model_in = model_in.to(args.device)
-            
+
             if args.model_name == "cpc":
                 z, c = model.get_latent_representations(model_in)
-                h = c # context vector
+                h = c  # context vector
             else:
                 h, z = model.get_latent_representations(model_in)
 
             features[idx, :, :] = h.reshape((batch_size, -1))
-            labels[idx, :] = int(track_idx)
+
+            labels[idx, :] = track_idx
             idx += 1
 
     features = features.reshape(features.size(0) * features.size(1), -1).cpu()
-    labels = labels.reshape(-1, 1).cpu().numpy()
+    labels = labels.reshape(-1, 1)
 
     embedding = tsne(features)
-    figure = plot_tsne(args, embedding, labels, epoch, global_step, num_labels=max_tracks)
+    figure = plot_tsne(
+        args, embedding, labels, epoch, global_step, num_labels=max_tracks
+    )
 
     is_train = "train" if train else "test"
     writer.add_figure(f"TSNE_{is_train}", figure, global_step=global_step)
