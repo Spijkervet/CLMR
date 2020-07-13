@@ -215,5 +215,5 @@ class MTTDataset(Dataset):
             audio = audio.reshape(1, -1) # [channels, samples]
             audio = (audio, audio)
 
-        return audio, label, track_id
+        return audio, label 
 

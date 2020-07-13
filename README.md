@@ -1,14 +1,30 @@
 # Contrastive Learning of Musical Representations
-PyTorch implementation of Contrastive Learning of Musical Representations.
+PyTorch implementation of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne (2020).
 
-### Quickstart
+## Quickstart
+This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data) and trains a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±88\%` and a PR-AUC of `±34.3%` on the test set.
+```
+git clone https://github.com/spijkervet/clmr.git
+cd clmr
+curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt -O
+curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/features.p -O
+sh setup.sh || python3 -m pip install -r requirements.txt || exit 1
+conda activate clmr
+python linear_evaluation.py --dataset magnatagatune --model_path . --epoch_num 1550 --logistic_epochs 20 --logistic_lr 0.001
+
+```
+
+
+## Pre-trained models
+| Encoder (batch_size, epochs) | Optimizer | ROC-AUC |  PR-AUC
+| ------------- | ------------- | ------------- | ------------- |
+| [SampleCNN (48, 1550)]() | Adam | **87.71 (88.47)** | 34.27(34.96)
 
 
 
-### Pre-trained models
+## Results
 
 
-### Results
 
 ## Usage
 Run the following command to setup a conda environment:
@@ -22,9 +38,9 @@ Or alternatively with pip:
 pip install -r requirements.txt
 ```
 
-Then, simply run:
+Then, simply run the following command to pre-train the CLMR model on the MagnaTagATune dataset (and download / pre-process it for the first time, flag can be removed after completion):
 ```
-python main.py
+python main.py --dataset magnatagatune --download 1
 ```
 
 ### Testing
@@ -64,7 +80,7 @@ projection_dim: 64
 temperature: 0.5
 
 # reload options
-model_path: "logs/0" # set to the directory containing `checkpoint_##.tar` 
+model_path: "logs/0" # set to the directory containing `checkpoint_##.p` 
 epoch_num: 40 # set to checkpoint number
 
 # logistic regression options

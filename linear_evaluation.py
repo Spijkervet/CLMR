@@ -7,6 +7,7 @@ import pickle
 from matplotlib import pyplot as plt
 from collections import defaultdict
 import time
+import urllib.request
 
 # TensorBoard
 from torch.utils.tensorboard import SummaryWriter
@@ -36,11 +37,14 @@ def plot_predicted_classes(predicted_classes, epoch, writer, train):
 def train(args, loader, encoder, model, criterion, optimizer):
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     metrics = defaultdict(float)
-    for step, (x, y) in enumerate(loader):
+    for step, ((x, _), y) in enumerate(loader):
         x = x.to(args.device)
         y = y.to(args.device)
 
-        output = model(x)
+        with torch.no_grad():
+            h = encoder(x)
+
+        output = model(h)
 
         loss = criterion(output, y)
 
@@ -80,7 +84,7 @@ def validate(args, loader, encoder, model, criterion, optimizer):
     model.eval()
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     metrics = defaultdict(float)
-    for step, (x, y) in enumerate(loader):
+    for step, ((x, _), y) in enumerate(loader):
         x = x.to(args.device)
         y = y.to(args.device)
 
@@ -161,26 +165,43 @@ if __name__ == "__main__":
     # initialize TensorBoard
     writer = SummaryWriter()
 
+    train_X = None
     if not os.path.exists("features.p"):
-        print("Computing features")
-        (train_X, train_y, test_X, test_y) = get_features(
-            encoder, train_loader, test_loader, args.device
-        )
+        output = input("Download (0) or compute (1) features from pre-trained network? Type \"0\" or \"1\": ")
+        try:
+            # download
+            if int(output) == 0:
+                urllib.request.urlretrieve("https://github.com/spijkervet/clmr", "features.p")
+                with open("features.p", "rb") as f:
+                    (train_X, train_y, test_X, test_y) = pickle.load(f)
+            # compute
+            elif int(output) == 1:
+                print("Computing features...")
+                (train_X, train_y, test_X, test_y) = get_features(
+                    encoder, train_loader, test_loader, args.device
+                )
+            else:
+                raise Exception("Invalid option")
+        except Exception as e:
+            print(e)
+            exit(0)
+
         with open("features.p", "wb") as f:
             pickle.dump((train_X, train_y, test_X, test_y), f)
     else:
         with open("features.p", "rb") as f:
             (train_X, train_y, test_X, test_y) = pickle.load(f)
 
-    arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
-        train_X, train_y, test_X, test_y, 2048
-    )
+    if train_X is not None:
+        arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
+            train_X, train_y, test_X, test_y, 2048
+        )
 
     # start linear evaluation
     args.global_step = 0
     args.current_epoch = 0
     for epoch in range(args.logistic_epochs):
-        metrics = train(args, arr_train_loader, encoder, model, criterion, optimizer)
+        metrics = train(args, train_loader, encoder, model, criterion, optimizer)
         for k, v in metrics.items():
             writer.add_scalar(k, v, epoch)
 
@@ -189,7 +210,7 @@ if __name__ == "__main__":
         )
         
         # validate
-        metrics = validate(args, arr_test_loader, encoder, model, criterion, optimizer)
+        metrics = validate(args, test_loader, encoder, model, criterion, optimizer)
         for k, v in metrics.items():
             writer.add_scalar(k, v, epoch)
 

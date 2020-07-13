@@ -48,7 +48,7 @@ def load_optimizer(args, model):
     if args.reload:
         optim_fp = os.path.join(
             args.model_path,
-            "{}_checkpoint_{}_optim.tar".format(args.model_name, args.epoch_num),
+            "{}_checkpoint_{}_optim.pt".format(args.model_name, args.epoch_num),
         )
         print(
             f"### RELOADING {args.model_name.upper()} OPTIMIZER FROM CHECKPOINT {args.epoch_num} ###"
@@ -82,7 +82,7 @@ def load_encoder(args, reload=False):
         )
         model_fp = os.path.join(
             args.model_path,
-            "{}_checkpoint_{}.tar".format(args.model_name, args.epoch_num),
+            "{}_checkpoint_{}.pt".format(args.model_name, args.epoch_num),
         )
 
         # tmp workaround
@@ -103,12 +103,12 @@ def save_model(args, model, optimizer, name="clmr"):
             os.makedirs(args.model_path)
             
         out = os.path.join(
-            args.model_path, "{}_checkpoint_{}.tar".format(name, args.current_epoch)
+            args.model_path, "{}_checkpoint_{}.pt".format(name, args.current_epoch)
         )
 
         optim_out = os.path.join(
             args.model_path,
-            "{}_checkpoint_{}_optim.tar".format(name, args.current_epoch),
+            "{}_checkpoint_{}_optim.pt".format(name, args.current_epoch),
         )
 
         # To save a DataParallel model generically, save the model.module.state_dict().

@@ -1,7 +1,12 @@
 torch
 torchvision
 tensorboard
-sacred
+essentia
+seaborn
 PyYAML
 opencv-python
 youtube-dl
+pydot
+python-dotenv
+matplotlib
+imageio

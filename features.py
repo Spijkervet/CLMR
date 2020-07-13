@@ -4,7 +4,7 @@ import numpy as np
 def inference(loader, encoder, device):
     feature_vector = []
     labels_vector = []
-    for step, ((x, _), y, _) in enumerate(loader):
+    for step, ((x, _), y) in enumerate(loader):
         x = x.to(device)
 
         # get encoding
