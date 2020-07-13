@@ -102,7 +102,7 @@ class MTTDataset(Dataset):
         [ids, id2gt] = load_id2gt(self.annotations_file)
         self.id2audio_path = id2audio_path
 
-        self.index, self.track_index = self.indexer(ids, id2audio_path, id2gt)
+        self.index, self.track_index = self.indexer(ids, id2audio_path, id2gt, "magnatagatune")
 
         if self.pretrain:
             # we already load a full fragment of audio (with 10 segments)
@@ -169,7 +169,7 @@ class MTTDataset(Dataset):
             # new track_id filtered index (unique track_ids)
             self.index = concat_tracks(args.sample_rate, self.audio_proc_dir, self.split, self.track_index)
 
-        if self.split == "train":
+        if self.pretrain and self.split == "train":
             print("Loading train data into memory for faster training")
             self.audios = load_tracks(args.sample_rate, self.index)
 
@@ -189,8 +189,8 @@ class MTTDataset(Dataset):
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
         try:
-            # don't use this for now (5s difference)
-            if self.split == "train":
+            # don't use this for now
+            if self.pretrain and self.split == "train":
                 audio = self.audios[idx]
             else:
                 audio = self.get_audio(fp)
