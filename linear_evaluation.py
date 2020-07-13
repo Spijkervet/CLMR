@@ -37,14 +37,19 @@ def plot_predicted_classes(predicted_classes, epoch, writer, train):
 def train(args, loader, encoder, model, criterion, optimizer):
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     metrics = defaultdict(float)
-    for step, ((x, _), y) in enumerate(loader):
-        x = x.to(args.device)
+    for step, (x, y) in enumerate(loader):
+        # if len(x), we did not pre-compute features
+        if type(x) == tuple:
+            x = x[0]
+            x = x.to(args.device)
+            with torch.no_grad():
+                x = encoder(x)
+        else:
+            x = x.to(args.device)
+
         y = y.to(args.device)
 
-        with torch.no_grad():
-            h = encoder(x)
-
-        output = model(h)
+        output = model(x)
 
         loss = criterion(output, y)
 
@@ -84,7 +89,16 @@ def validate(args, loader, encoder, model, criterion, optimizer):
     model.eval()
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     metrics = defaultdict(float)
-    for step, ((x, _), y) in enumerate(loader):
+    for step, (x, y) in enumerate(loader):
+        # if len(x), we did not pre-compute features
+        if type(x) == tuple:
+            x = x[0]
+            x = x.to(args.device)
+            with torch.no_grad():
+                x = encoder(x)
+        else:
+            x = x.to(args.device)
+
         x = x.to(args.device)
         y = y.to(args.device)
 
@@ -193,7 +207,7 @@ if __name__ == "__main__":
             (train_X, train_y, test_X, test_y) = pickle.load(f)
 
     if train_X is not None:
-        arr_train_loader, arr_test_loader = create_data_loaders_from_arrays(
+        train_loader, test_loader = create_data_loaders_from_arrays(
             train_X, train_y, test_X, test_y, 2048
         )
 
