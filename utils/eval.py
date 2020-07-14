@@ -131,10 +131,18 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
     if args.dataset in ["magnatagatune", "msd"]:
         auc, ap = tagwise_auc_ap(y_true, y_pred)
         clip_auc, clip_ap = itemwise_auc_ap(y_true, y_pred)
-        metrics["hparams/test_tag_auc"] = auc.mean()
-        metrics["hparams/test_tag_ap"] = ap.mean()
-        metrics["hparams/test_clip_auc"] = clip_auc.mean()
-        metrics["hparams/test_clip_ap"] = clip_ap.mean()
+        # for TensorBoard
+        metrics["all/test_tag_auc"] = auc
+        metrics["all/test_tag_ap"] = ap
+        metrics["all/test_clip_auc"] = clip_auc
+        metrics["all/test_clip_ap"] = clip_ap
+
+        metrics["hparams/test_tag_auc_mean"] = auc.mean()
+        metrics["hparams/test_tag_ap_mean"] = ap.mean()
+        metrics["hparams/test_clip_auc_mean"] = clip_auc.mean()
+        metrics["hparams/test_clip_ap_mean"] = clip_ap.mean()
+
+
     else:
         acc = accuracy_score(y_true, y_pred.argmax(1))
         metrics["hparams/test_accuracy"] = acc
