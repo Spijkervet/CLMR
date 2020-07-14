@@ -233,5 +233,10 @@ if __name__ == "__main__":
 
     # eval all
     metrics = eval_all(args, _test_loader, encoder, model, writer, n_tracks=None,)
+    print("### Final tag/clip ROC-AUC/PR-AUC scores ###")
     for k, v in metrics.items():
-        print("[Test]:", k, v)
+        if "hparams" in k:
+            print("[Test average AUC/AP]:", k, v)
+        else:
+            for tag, val in zip(_test_loader.dataset.tags, v):
+                print(f"[Test {k}]\t\t{tag}\t{val}")
