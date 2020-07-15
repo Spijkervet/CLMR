@@ -1,7 +1,7 @@
 # Contrastive Learning of Musical Representations
 PyTorch implementation of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne (2020). We adapt SimCLR to the raw audio domain and contribute a pipeline of audio augmentations and encoder suited for pre-training on unlabeled, raw (musical) audio data. We evaluate the performance of the self-supervised learned representations on the task of music classification. 
 
-Despite unsupervised, contrastive pre-training and fine-tuning on the music classification task using *linear* classification, we achieve competitive results compared to fully supervised training. 
+Despite unsupervised, contrastive pre-training and fine-tuning on the music classification task using *linear* classifier, we achieve competitive results relative to fully supervised training. 
 
 <div align="center">
   <img width="50%" alt="CLMR model" src="https://github.com/Spijkervet/CLMR/blob/master/media/clmr_model.png?raw=true">
@@ -13,7 +13,7 @@ Despite unsupervised, contrastive pre-training and fine-tuning on the music clas
 
 
 # Quickstart
-This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data) and trains a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±88\%` and a PR-AUC of `±34.3%` on the test set.
+This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data from MagnaTagATune) and fine-tunes a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±88\%` and a PR-AUC of `±34.3%` on the test set.
 ```
 git clone https://github.com/spijkervet/clmr.git && cd clmr
 curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt -O
@@ -27,7 +27,7 @@ conda activate clmr
 python3 -m pip install -r requirements.txt
 
 # download MagnaTagATune and train a linear classifier for 20 epochs:
-python linear_evaluation.py --dataset magnatagatune --download 1 --model_path . --epoch_num 1550 --logistic_epochs 20 --logistic_lr 0.001
+python linear_evaluation.py --dataset magnatagatune --download 1 --model_path . --epoch_num 1550 --logistic_epochs 10 --logistic_lr 0.001
 
 ```
 
@@ -74,22 +74,15 @@ python main.py --dataset magnatagatune --download 1
 
 ### Linear evaluation
 To test a trained model, make sure to set the `model_path` variable in the `config/config.yaml` to the folder containing the saved pre-trained model (e.g. `./save`). Set the `epoch_num` to the epoch number you want to load the checkpoints from (e.g. `40`).
-
 ```
 python -m testing.logistic_regression
 ```
 
+E.g., you can first download the pre-traind model from the table above, move it to the folder containing this repository, and use:
 or in place:
 ```
-python -m testing.logistic_regression --model_path=./save/ --epoch_num=100
+python -m testing.logistic_regression --model_path=./ --epoch_num=1550
 ```
-
-
-## Visualise TSNE manifold
-```
-python validate_latent_space.py with model_path=./logs/audio/magnatagatune/clmr/1 epoch_num=1490 sample_rate=22050  audio_length=59049  -u
-```
-
 
 ## Configuration
 The configuration of training can be found in: `config/config.yaml`. I personally prefer to use files instead of long strings of arguments when configuring a run. Every entry in the config file can be overrided with the corresponding flag (e.g. `--epochs 500` if you would like to train with 500 epochs).
