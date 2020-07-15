@@ -57,6 +57,8 @@ if __name__ == "__main__":
     args.domain = "audio"
     args.batch_size = 64
     args.workers = 0  # number of threads in CPU
+    args.load_ram = False # do not load data into memory for processing
+    args.nodes = 1
 
     from data import get_dataset
 
@@ -68,7 +70,7 @@ if __name__ == "__main__":
         val_dataset,
         test_loader,
         test_dataset,
-    ) = get_dataset(args, train_sampler=None, pretrain=False, download=False)
+    ) = get_dataset(args, pretrain=False, download=False)
 
     base_dir = train_dataset.base_dir
     audio_dir = train_dataset.audio_dir
