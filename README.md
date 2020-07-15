@@ -31,6 +31,11 @@ python linear_evaluation.py --dataset magnatagatune --download 1 --model_path . 
 
 ```
 
+The following command downloads MagnaTagATune, pre-processes it and starts self-supervised pre-training:
+```
+python main.py --dataset magnatagatune --download 1
+```
+
 
 ## Results
 
