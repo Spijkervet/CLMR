@@ -7,7 +7,7 @@ import torchaudio
 from torch.utils.data import Dataset as TorchDataset
 import numpy as np
 
-from new_data import process_wav
+from utils.audio import process_wav
 
 # inherits Dataset from PyTorch
 class Dataset(TorchDataset):

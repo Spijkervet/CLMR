@@ -70,6 +70,7 @@ class MTTDataset(Dataset):
         self.transform = transform
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
+        self.load_ram = args.load_ram
 
         # MagnaTagATune has clips of 30s, of which the last is not a full |audio_length|
         self.num_segments = (30 * self.sample_rate) // self.audio_length - 1
@@ -157,7 +158,7 @@ class MTTDataset(Dataset):
         #         self.mean = float(stats[0])
         #         self.std = float(stats[1])
 
-        from new_data import load_tracks, concat_tracks
+        from utils.audio import load_tracks, concat_tracks
         if self.pretrain and self.split == "train":
             # track index contains track_ids matched with clip_ids, so filtering is easier
             print("Concatenating tracks for pre-training (to avoid positive samples in the negative samples batch)")
@@ -165,7 +166,7 @@ class MTTDataset(Dataset):
             # new track_id filtered index (unique track_ids)
             self.index = concat_tracks(args.sample_rate, self.audio_proc_dir, self.split, self.track_index)
 
-        if self.pretrain and self.split == "train":
+        if self.load_ram and self.pretrain and self.split == "train":
             print("Loading train data into memory for faster training")
             self.audios = load_tracks(args.sample_rate, self.index)
 
@@ -187,7 +188,7 @@ class MTTDataset(Dataset):
         track_id, clip_id, segment, fp, label = self.index[idx]
         try:
             # don't use this for now
-            if self.pretrain and self.split == "train":
+            if self.load_ram and self.pretrain and self.split == "train":
                 audio = self.audios[idx]
             else:
                 audio = self.get_audio(fp)

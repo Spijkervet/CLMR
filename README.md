@@ -13,7 +13,7 @@ Despite unsupervised, contrastive pre-training and fine-tuning on the music clas
 
 
 ## Quickstart
-This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data from MagnaTagATune) and fine-tunes a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±88\%` and a PR-AUC of `±34.3%` on the test set.
+This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data from MagnaTagATune) and fine-tunes a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±87.7\%` and a PR-AUC of `±34.3%` on the test set.
 ```
 git clone https://github.com/spijkervet/clmr.git && cd clmr
 curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt -O
@@ -47,9 +47,10 @@ SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  88.47 | **34.96** |
 
 
 ## Pre-trained models
-| Encoder (batch-size, epochs) | Pre-train dataset | ROC-AUC | PR-AUC
-| ------------- | ------------- | ------------- | -------------
-[SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
+*Links go to download*
+| Encoder (batch-size, epochs) | Fine-tune head | Pre-train dataset | ROC-AUC | PR-AUC
+| ------------- | ------------- | ------------- | ------------- | -------------
+[SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/1.0-l/finetuner_checkpoint_20.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
 
 ## Usage
@@ -95,14 +96,14 @@ tensorboard --logdir ./runs
 ```
 
 ## Inference
+This command performs inference using a pre-trained encoder using CLMR (task-agnostic) and a fine-tuned linear classifier on the task of music classification. It will predict the tags corresponding to the song "Bohemian Rhapsody" by Queen, and yield ROC-AUC/ROC-AP scores and a taggram for the entire song:
 ```
 python inference.py \
-    with \
-    audio_url="https://www.youtube.com/watch?v=ftjEcrrf7r0" \
-    model_path=/storage/jspijkervet/logs_backup_ws7/clmr/2/ \
-    epoch_num=1490 \
-    finetune_model_path=/storage/jspijkervet/logs_backup_ws7/clmr/4/ \
-    finetune_epoch_num=50
+    --audio_url="https://www.youtube.com/watch?v=fJ9rUzIMcZQ" \
+    --model_path=. \
+    --epoch_num=1550 \
+    --finetune_model_path=. \
+    --finetune_epoch_num=20
 ```
 
 #### Dependencies
