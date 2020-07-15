@@ -7,14 +7,13 @@ import torchaudio
 from torch.utils.data import Dataset as TorchDataset
 import numpy as np
 
-from tqdm import tqdm
-
 from new_data import process_wav
 
 # inherits Dataset from PyTorch
 class Dataset(TorchDataset):
 
-    def __init__(self, split, sample_rate, audio_length, tracks_list, num_segments, audio_proc_dir, mean, std):
+    def __init__(self, name, split, sample_rate, audio_length, tracks_list, num_segments, audio_proc_dir, mean, std):
+        self.name = name
         self.split = split
         self.audio_proc_dir
         self.sample_rate = sample_rate
@@ -24,7 +23,8 @@ class Dataset(TorchDataset):
         self.mean = mean
         self.std = std
 
-        
+        print(f"[{self.name} {self.split}]: Loaded {len(self.tracks_list)} audio segments")
+
 
     def indexer(self, ids, id2audio_path, id2gt, dataset):
         index = []
@@ -32,7 +32,7 @@ class Dataset(TorchDataset):
         track_index = defaultdict(list)
         track_idx = 0
         clip_idx = 0
-        for clip_id in tqdm(ids):
+        for clip_id in ids:
             fp = id2audio_path[clip_id]
             label = id2gt[clip_id]
             label = torch.FloatTensor(label)

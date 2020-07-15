@@ -1,7 +1,16 @@
 # Contrastive Learning of Musical Representations
-PyTorch implementation of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne (2020).
+PyTorch implementation of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne (2020). 
 
-## Quickstart
+<div align="center">
+  <img width="50%" alt="CLMR model" src="">
+</div>
+<div align="center">
+  An illustration of CLMR.
+</div>
+
+
+
+# Quickstart
 This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data) and trains a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±88\%` and a PR-AUC of `±34.3%` on the test set.
 ```
 git clone https://github.com/spijkervet/clmr.git && cd clmr
@@ -21,18 +30,30 @@ python linear_evaluation.py --dataset magnatagatune --download 1 --model_path . 
 ```
 
 
-## Pre-trained models
-| Encoder (batch_size, epochs) | Optimizer | ROC-AUC |  PR-AUC
-| ------------- | ------------- | ------------- | ------------- |
-| [SampleCNN (48, 1550)]() | Adam | **87.71 (88.47)** | 34.27(34.96)
-
-
-
 ## Results
 
+### MagnaTagATune
+| Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC
+| ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
+| SampleCNN / CLMR | 48 / 1550 | Linear Classifier | 87.71 | 34.27 |
+SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  88.47 | **34.96**
+| [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | 88.56 | 34.38
+| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | **89.05** | 34.92
+
+*Million Song Dataset experiments will follow soon*
+
+
+## Pre-trained models
+| Encoder (batch-size, epochs) | Pre-train dataset | ROC-AUC | PR-AUC
+| ------------- | ------------- | ------------- | -------------
+[SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
 
 ## Usage
+
+### Pre-training
+The following commands are used to set-up and pre-train on raw, unlabeled audio data:
+
 Run the following command to setup a conda environment:
 ```
 sh setup.sh
@@ -49,9 +70,8 @@ Then, simply run the following command to pre-train the CLMR model on the MagnaT
 python main.py --dataset magnatagatune --download 1
 ```
 
-### Testing
-To test a trained model, make sure to set the `model_path` variable in the `config/config.yaml` to the log ID of the training (e.g. `logs/0`).
-Set the `epoch_num` to the epoch number you want to load the checkpoints from (e.g. `40`).
+### Linear evaluation
+To test a trained model, make sure to set the `model_path` variable in the `config/config.yaml` to the folder containing the saved pre-trained model (e.g. `./save`). Set the `epoch_num` to the epoch number you want to load the checkpoints from (e.g. `40`).
 
 ```
 python -m testing.logistic_regression
@@ -59,8 +79,9 @@ python -m testing.logistic_regression
 
 or in place:
 ```
-python -m testing.logistic_regression with model_path=./logs/0 epoch_num=40
+python -m testing.logistic_regression --model_path=./save/ --epoch_num=100
 ```
+
 
 ## Visualise TSNE manifold
 ```
@@ -69,42 +90,13 @@ python validate_latent_space.py with model_path=./logs/audio/magnatagatune/clmr/
 
 
 ## Configuration
-The configuration of training can be found in: `config/config.yaml`. I personally prefer to use files instead of long strings of arguments when configuring a run. An example `config.yaml` file:
-```
-# train options
-batch_size: 256
-workers: 16
-start_epoch: 0
-epochs: 40
-
-# model options
-resnet: "resnet18"
-normalize: True
-projection_dim: 64
-
-# loss options
-temperature: 0.5
-
-# reload options
-model_path: "logs/0" # set to the directory containing `checkpoint_##.p` 
-epoch_num: 40 # set to checkpoint number
-
-# logistic regression options
-logistic_batch_size: 256
-logistic_epochs: 100
-```
+The configuration of training can be found in: `config/config.yaml`. I personally prefer to use files instead of long strings of arguments when configuring a run. Every entry in the config file can be overrided with the corresponding flag (e.g. `--epochs 500` if you would like to train with 500 epochs).
 
 ## Logging and TensorBoard
-The `sacred` package is used to log all experiments into the `logs` directory. To view results in TensorBoard, run:
+To view results in TensorBoard, run:
 ```
-tensorboard --logdir logs
+tensorboard --logdir ./runs
 ```
-
-## Optimizers and learning rate schedule
-This implementation features the Adam optimizer and the LARS optimizer, with the option to decay the learning rate using a cosine decay schedule. The optimizer and weight decay can be configured in the `config/config.yaml` file.
-<p align="center">
-  <img src="https://github.com/Spijkervet/SimCLR/blob/master/media/lr_cosine_decay_schedule.png?raw=true" width="400"/>
-</p>
 
 ## Inference
 ```

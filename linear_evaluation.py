@@ -163,14 +163,12 @@ if __name__ == "__main__":
 
     # linear eval. model
     model = torch.nn.Sequential(
-        torch.nn.Linear(args.n_features, args.n_features),
-        torch.nn.ReLU(),
         torch.nn.Linear(args.n_features, args.n_classes)
-        )
+    )
     model = model.to(args.device)
 
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.logistic_lr, weight_decay=args.weight_decay
+        model.parameters(), lr=args.logistic_lr # , weight_decay=args.weight_decay
     )
 
     # set criterion, e.g. gtzan has one label per segment, MTT has multiple
@@ -214,7 +212,7 @@ if __name__ == "__main__":
     _test_loader = test_loader # for final evaluation
     if train_X is not None:
         train_loader, test_loader = create_data_loaders_from_arrays(
-            train_X, train_y, test_X, test_y, 2048
+            train_X, train_y, test_X, test_y, 2048 # batch size for logistic regression (pre-computed features)
         )
 
     # start linear evaluation
@@ -223,7 +221,7 @@ if __name__ == "__main__":
     for epoch in range(args.logistic_epochs):
         metrics = train(args, train_loader, encoder, model, criterion, optimizer, writer)
         for k, v in metrics.items():
-            wrier.add_scalar(k, v, epoch)
+            writer.add_scalar(k, v, epoch)
 
         print(
             f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {metrics['Loss/train']}\t AUC_tag: {metrics['AUC_tag/train']}\tAP_tag: {metrics['AP_tag/train']}"
@@ -234,11 +232,11 @@ if __name__ == "__main__":
         for k, v in metrics.items():
             writer.add_scalar(k, v, epoch)
 
-        args.current_epoch += 1
         save_model(args, model, optimizer, name="finetuner")
+        args.current_epoch += 1
 
     # eval all
-    metrics = eval_all(args, _test_loader, encoder, model, writer, n_tracks=None,)
+    metrics = eval_all(args, _test_loader, encoder, model, writer, n_tracks=None)
     print("### Final tag/clip ROC-AUC/PR-AUC scores ###")
     for k, v in metrics.items():
         if "hparams" in k:

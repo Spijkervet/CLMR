@@ -28,9 +28,11 @@ def itemwise_auc_ap(y, pred):
     auc = []
     ap = []
     for i in range(n_songs):
-        if y[i].sum() != 0:
+        try:
             auc.append(roc_auc_score(y[i], pred[i], average="macro"))
             ap.append(average_precision_score(y[i], pred[i], average="macro"))
+        except:
+            pass
     return np.array(auc), np.array(ap)
 
 
@@ -46,8 +48,11 @@ def tagwise_auc_ap(y, pred):
     auc = []
     ap = []
     for i in range(n_tags):
-        auc.append(roc_auc_score(y[:, i], pred[:, i], average="macro"))
-        ap.append(average_precision_score(y[:, i], pred[:, i]))
+        try:
+            auc.append(roc_auc_score(y[:, i], pred[:, i], average="macro"))
+            ap.append(average_precision_score(y[:, i], pred[:, i]))
+        except:
+            pass
     return np.array(auc), np.array(ap)
 
 
@@ -108,7 +113,7 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
 
             if step % 1000 == 0:
                 print(f"[Test] Step [{step}/{n_tracks}]")
-                
+            
     # normalise pred_array acc. ids
     y_pred = np.array(pred_array)
     y_true = np.array(y_true)
