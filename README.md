@@ -73,6 +73,10 @@ E.g. for MagnaTagATune:
 Or the Million Song Dataset:
 - `./datasets/million_song_dataset/raw` - containing the folders (and sub-folders) with .mp3 files.
 
+Subseqently, the following Python script can be invoked to pre-process the raw files:
+```
+python3 -m scripts.datasets.preprocess_dataset --data_input_dir ./datasets --dataset magnatagatune --sample_rate 22050 --audio_length 59049
+```
 
 ### Pre-training
 The following commands are used to set-up and pre-train on raw, unlabeled audio data:
