@@ -54,7 +54,7 @@ class MTTDataset(Dataset):
     def __init__(
         self, args, split, pretrain, download=False, transform=None,
     ):
-
+        self.name = "magnatagatune"
         if download:
             subprocess.call(
                 [
@@ -156,10 +156,6 @@ class MTTDataset(Dataset):
         #         stats = l[1].split(";")
         #         self.mean = float(stats[0])
         #         self.std = float(stats[1])
-        print(
-            f"[{split} dataset ({args.dataset}_{self.sample_rate})]: Loaded mean/std: {self.mean}, {self.std}"
-        )
-
 
         from new_data import load_tracks, concat_tracks
         if self.pretrain and self.split == "train":
@@ -174,6 +170,7 @@ class MTTDataset(Dataset):
             self.audios = load_tracks(args.sample_rate, self.index)
 
         super(MTTDataset, self).__init__(
+            self.name,
             self.split,
             self.sample_rate,
             self.audio_length,
