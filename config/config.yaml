@@ -4,17 +4,19 @@ gpus: 1 # I recommend always assigning 1 GPU to 1 node
 nr: 0 # machine nr. in node (0 -- nodes - 1)
 workers: 16
 
+
 ## dataset options
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
 data_input_dir: "./datasets" # [audio: [datasets/audio] vision: [datasets/vision]
-pretrain_dataset: "msd" # [magnatagatune,billboard,fma,msd]
+pretrain_dataset: "magnatagatune" # [magnatagatune,billboard,fma,msd]
 download: 0
-
+load_ram: False # whether to load the entire train set into RAM for faster training
 
 ## task / dataset options
 domain: "audio" # [audio,scores]
 task: "tags" # [tags,chords,symbol]
 model_name: "clmr" # [clmr, cpc]
+
 
 ## train options
 seed: 42 # sacred handles automatic seeding when passed in the config
@@ -23,9 +25,11 @@ start_epoch: 0
 epochs: 2000
 checkpoint_epochs: 10
 
+
 ## audio
 audio_length: 59049
 sample_rate: 22050
+
 
 ## audio transformations
 transforms_polarity: 0.8
@@ -34,21 +38,23 @@ transforms_gain: 0.0
 transforms_filters: 0.4
 transforms_delay: 0.3
 
+
 ## loss options
 optimizer: "Adam" # [Adam, LARS]
 learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
 weight_decay: 1.0e-4
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
 
+
 ## supervised params
 supervised: False # to train encoder in fully supervised fashion
+
 
 ## model options
 normalize: True
 projection_dim: 128
 projector_layers: 2
 dropout: 0.5
-
 
 
 ## reload options
@@ -66,8 +72,10 @@ logistic_epochs: 10
 logistic_lr: 0.001
 reload_logreg: False
 
+
 ## train with percentage of total train data 
 perc_train_data: 1.0
+
 
 ## inference
 audio_url: ""
