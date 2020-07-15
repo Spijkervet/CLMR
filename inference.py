@@ -7,41 +7,40 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from data import get_dataset
-from experiment import ex
-from model import load_model
+from model import load_encoder
 
-from utils import post_config_hook
+from utils import yaml_config_hook, parse_args
 from utils.eval import eval_all
 from utils.youtube import download_yt
-from datasets.utils.resample import convert_samplerate
+from scripts.datasets.resample import resample
 
 import matplotlib.pyplot as plt
 
-@ex.automain
-def main(_run, _log):
-    args = argparse.Namespace(**_run.config)
-    args.lin_eval = True
-
-    args = post_config_hook(args, _run)
+if __name__ == "__main__":
+    args = parse_args()
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.batch_size = args.logistic_batch_size
 
     (train_loader, train_dataset, val_loader, val_dataset, test_loader, test_dataset) = get_dataset(args)
 
-    context_model, _, _ = load_model(args, reload_model=True, name=args.model_name)
-    context_model.eval()
+    # load pre-trained encoder
+    encoder = load_encoder(args, reload=True)
+    encoder.eval()
+    encoder = encoder.to(args.device)
 
-    args.n_features = context_model.n_features
-
-    model, _, _ = load_model(args, reload_model=True, name="supervised")
+    model = torch.nn.Sequential(
+        torch.nn.Linear(args.n_features, args.n_features),
+        torch.nn.ReLU(),
+        torch.nn.Linear(args.n_features, args.n_classes)
+    )
+    
+    model.load_state_dict(torch.load(os.path.join(args.finetune_model_path, f"finetuner_checkpoint_{args.finetune_epoch_num}.pt")))
     model = model.to(args.device)
 
-    print(context_model)
-    print(model)
 
     # initialize TensorBoard
-    writer = SummaryWriter(log_dir=args.tb_dir)
+    writer = SummaryWriter()
 
     args.input_file = "yt.mp3"
     args.current_epoch = 0
@@ -49,15 +48,15 @@ def main(_run, _log):
     download_yt(args.audio_url, args.input_file, args.sample_rate)
 
     conv_fn = f"{args.input_file}_{args.sample_rate}"
-    convert_samplerate(args.input_file, conv_fn, args.sample_rate)
+    resample(args.input_file, conv_fn, args.sample_rate)
 
     yt_audio = train_dataset.get_audio(conv_fn)
     
     # to mono
-    yt_audio = yt_audio.mean(axis=0).reshape(1, -1)
+    yt_audio = yt_audio.reshape(1, -1)
 
     # split into equally sized tensors of args.audio_length
-    chunks = torch.split(yt_audio, args.audio_length, dim=1)
+    chunks = torch.split(torch.from_numpy(yt_audio), args.audio_length, dim=1)
     chunks = chunks[:-1] # remove last one, since it's not a complete segment of audio_length
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
 
@@ -67,11 +66,12 @@ def main(_run, _log):
             x = x.to(args.device)
 
             # normalise
-            x = train_dataset.normalise_audio(x)
+            if train_dataset.mean:
+                x = train_dataset.normalise_audio(x)
 
             # add batch dim
             x = x.unsqueeze(0)         
-            h, z = context_model(x)
+            h = encoder(x)
 
             output = model(h)
             output = torch.nn.functional.softmax(output, dim=1)

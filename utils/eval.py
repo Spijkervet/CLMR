@@ -46,9 +46,8 @@ def tagwise_auc_ap(y, pred):
     auc = []
     ap = []
     for i in range(n_tags):
-        if y[:, i].sum() != 0:
-            auc.append(roc_auc_score(y[:, i], pred[:, i], average="macro"))
-            ap.append(average_precision_score(y[:, i], pred[:, i]))
+        auc.append(roc_auc_score(y[:, i], pred[:, i], average="macro"))
+        ap.append(average_precision_score(y[:, i], pred[:, i]))
     return np.array(auc), np.array(ap)
 
 
@@ -61,11 +60,13 @@ def average_precision(y_targets, y_preds):
 
 
 def eval_all(args, loader, encoder, model, writer, n_tracks=None):
+    encoder.eval()
     if model:
         model.eval()
 
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     pred_array = []
+    y_true = []
     id_array = []
 
     # sub-sample if n_tracks is not none, else eval whole dataset
@@ -101,30 +102,15 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
             classes, counts = torch.unique(predictions, return_counts=True)
             predicted_classes[classes] += counts.float()
             
-            # create array of predictions and ids
-            for b in output:
-                pred_array.append(b.detach().cpu().numpy())
-                id_array.append(clip_id)
+            # average prediction of all segments
+            pred_array.append(output.mean(axis=0).detach().cpu().numpy())
+            y_true.append(label.numpy())
 
             if step % 1000 == 0:
                 print(f"[Test] Step [{step}/{n_tracks}]")
                 
     # normalise pred_array acc. ids
-    y_pred = []
-    y_true = []
-    pred_array = np.array(pred_array)
-    id_array = np.array(id_array)
-    for track_id, clip_id, segment, fp, label in tracks:
-        # average over track
-        avg = np.mean(pred_array[np.where(id_array == clip_id)], axis=0)
-        y_pred.append(avg)
-
-        if isinstance(label, torch.Tensor):
-            y_true.append(label.numpy())
-        else:
-            y_true.append(label)
-
-    y_pred = np.array(y_pred)
+    y_pred = np.array(pred_array)
     y_true = np.array(y_true)
 
     metrics = {}
@@ -141,8 +127,6 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
         metrics["hparams/test_tag_ap_mean"] = ap.mean()
         metrics["hparams/test_clip_auc_mean"] = clip_auc.mean()
         metrics["hparams/test_clip_ap_mean"] = clip_ap.mean()
-
-
     else:
         acc = accuracy_score(y_true, y_pred.argmax(1))
         metrics["hparams/test_accuracy"] = acc
@@ -153,6 +137,7 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
         "Class_distribution/test_all", figure, global_step=args.current_epoch
     )
 
+    encoder.train()
     if model:
         model.train()
     return metrics

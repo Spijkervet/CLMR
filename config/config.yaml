@@ -54,7 +54,7 @@ dropout: 0.5
 ## reload options
 model_path: "save" # set to the directory containing `checkpoint_##.pt` 
 epoch_num: 0 # set to checkpoint number
-finetune_model_path: ""
+finetune_model_path: "save"
 finetune_epoch_num: ""
 reload: False
 
@@ -68,3 +68,6 @@ reload_logreg: False
 
 ## train with percentage of total train data 
 perc_train_data: 1.0
+
+## inference
+audio_url: ""
