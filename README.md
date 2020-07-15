@@ -12,7 +12,7 @@ Despite unsupervised, contrastive pre-training and fine-tuning on the music clas
 
 
 
-# Quickstart
+## Quickstart
 This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data from MagnaTagATune) and fine-tunes a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±88\%` and a PR-AUC of `±34.3%` on the test set.
 ```
 git clone https://github.com/spijkervet/clmr.git && cd clmr
@@ -35,13 +35,14 @@ python linear_evaluation.py --dataset magnatagatune --download 1 --model_path . 
 ## Results
 
 ### MagnaTagATune
-| Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC
-| ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
+| Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
+| ------------- | ------------- | ------------- | ------------- | ------------- |
 | SampleCNN / CLMR | 48 / 1550 | Linear Classifier | 87.71 | 34.27 |
-SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  88.47 | **34.96**
-| [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | 88.56 | 34.38
-| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | **89.05** | 34.92
+SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  88.47 | **34.96** |
+| [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | 88.56 | 34.38 |
+| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | **89.05** | 34.92 |
 
+### Million Song Dataset
 *Million Song Dataset experiments will follow soon*
 
 
