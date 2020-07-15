@@ -1,8 +1,10 @@
 # Contrastive Learning of Musical Representations
-PyTorch implementation of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne (2020). 
+PyTorch implementation of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne (2020). We adapt SimCLR to the raw audio domain and contribute a pipeline of audio augmentations and encoder suited for pre-training on unlabeled, raw (musical) audio data. We evaluate the performance of the self-supervised learned representations on the task of music classification. 
+
+Despite unsupervised, contrastive pre-training and fine-tuning on the music classification task using *linear* classification, we achieve competitive results compared to fully supervised training. 
 
 <div align="center">
-  <img width="50%" alt="CLMR model" src="">
+  <img width="50%" alt="CLMR model" src="https://github.com/Spijkervet/CLMR/blob/master/media/clmr_model.png?raw=true">
 </div>
 <div align="center">
   An illustration of CLMR.
@@ -110,10 +112,18 @@ python inference.py \
 ```
 
 #### Dependencies
+\>= Python 3.7
 ```
 torch
 torchvision
 tensorboard
-sacred
-pyyaml
+essentia
+seaborn
+PyYAML
+opencv-python
+youtube-dl
+pydot
+python-dotenv
+matplotlib
+imageio
 ```
