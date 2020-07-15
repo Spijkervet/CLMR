@@ -60,6 +60,20 @@ SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  88.47 | **34.96** |
 
 ## Usage
 
+### Downloading & Pre-processing datasets
+In the `scripts` folder, various bash scripts can be found that download the dataset and, at the end, provide a command that pre-processes all audio files automatically. These are invoked when the `--download 1` flag is submitted for pre-training or fine-tuning. `ffmpeg` is required to resample audio tracks. All datasets are on the filesystem in below mentioned format. So if the MagnaTagATune's or Million Song Dataset's files are already present on the file system, they can simply be moved to the corresponding dataset's `raw` folder:
+
+- `DATA_INPUT_DIR`/`DATASET_NAME`/`raw` containing the unprocessed version of the dataset
+- `DATA_INPUT_DIR`/`DATASET_NAME`/`processed` containing processed audio (sample rate) for training / testing
+- `DATA_INPUT_DIR`/`DATASET_NAME`/`processed_annotations` containing annotations of the dataset (if present)
+
+E.g. for MagnaTagATune:
+- `./datasets/magnatagatune/raw` - containing the 0-9 and a-f folders with the .mp3 files.
+
+Or the Million Song Dataset:
+- `./datasets/million_song_dataset/raw` - containing the folders (and sub-folders) with .mp3 files.
+
+
 ### Pre-training
 The following commands are used to set-up and pre-train on raw, unlabeled audio data:
 
