@@ -7,7 +7,6 @@ datasets/
 *.wav
 features.p
 .ipynb_checkpoints
-*.png
 *.pt
 
 logs/
