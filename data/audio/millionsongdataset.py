@@ -52,9 +52,6 @@ def default_indexer(args, path, id2audio, id2gt):
     index = {}
     index_num = 0
     for idx, (clip_id, label) in tqdm(enumerate(id2gt.items())):
-        if idx > 100:
-            break
-
         fp = os.path.join(path, id2audio[clip_id])
         if os.path.exists(fp) and os.path.getsize(fp) > 0:
             index_name = Path(id2audio[clip_id].split(".")[0]).stem  # 7 digital ID

@@ -31,6 +31,7 @@ class Dataset(TorchDataset):
         tmp = []
         track_index = defaultdict(list)
         track_idx = 0
+        clip_idx = 0
         for clip_id in tqdm(ids):
             fp = id2audio_path[clip_id]
             label = id2gt[clip_id]
@@ -45,7 +46,9 @@ class Dataset(TorchDataset):
                 fp = os.path.join(self.audio_proc_dir, self.split, fp)
             else:
                 track_idx = clip_id
+                clip_id = clip_idx
                 fp = os.path.join(self.audio_proc_dir, fp)
+                clip_idx += 1
 
             for s in range(self.num_segments): 
                 index.append([track_idx, clip_id, s, fp, label])

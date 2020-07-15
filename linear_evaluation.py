@@ -34,12 +34,12 @@ def plot_predicted_classes(predicted_classes, epoch, writer, train):
     writer.add_figure(f"Class_distribution/{train_test}", figure, global_step=epoch)
 
 
-def train(args, loader, encoder, model, criterion, optimizer):
+def train(args, loader, encoder, model, criterion, optimizer, writer):
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     metrics = defaultdict(float)
     for step, (x, y) in enumerate(loader):
-        # if len(x), we did not pre-compute features
-        if type(x) == tuple:
+        # if len(x) contains the two x_i, x_j, we did not pre-compute features
+        if len(x) == 2:
             x = x[0]
             x = x.to(args.device)
             with torch.no_grad():
@@ -71,6 +71,11 @@ def train(args, loader, encoder, model, criterion, optimizer):
         metrics["AUC_tag/train"] += auc
         metrics["AP_tag/train"] += acc
         metrics["Loss/train"] += loss.item()
+            
+        
+        writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
+        writer.add_scalar("AP_tag/train_step", acc, args.global_step)
+        writer.add_scalar("Loss/train_step", loss, args.global_step)
 
         if step > 0 and step % 100 == 0:
             print(
@@ -91,7 +96,7 @@ def validate(args, loader, encoder, model, criterion, optimizer):
     metrics = defaultdict(float)
     for step, (x, y) in enumerate(loader):
         # if len(x), we did not pre-compute features
-        if type(x) == tuple:
+        if len(x) == 2:
             x = x[0]
             x = x.to(args.device)
             with torch.no_grad():
@@ -99,7 +104,6 @@ def validate(args, loader, encoder, model, criterion, optimizer):
         else:
             x = x.to(args.device)
 
-        x = x.to(args.device)
         y = y.to(args.device)
 
         with torch.no_grad():
@@ -126,7 +130,6 @@ def validate(args, loader, encoder, model, criterion, optimizer):
                 f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}"
             )
 
-        args.global_step += 1
 
     # plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
     for k, v in metrics.items():
@@ -180,34 +183,36 @@ if __name__ == "__main__":
     writer = SummaryWriter()
 
     train_X = None
-    if not os.path.exists("features.p"):
-        output = input("Download (0) or compute (1) features from pre-trained network? Type \"0\" or \"1\": ")
-        try:
-            # download
-            if int(output) == 0:
-                urllib.request.urlretrieve("https://github.com/spijkervet/clmr", "features.p")
-                with open("features.p", "rb") as f:
-                    (train_X, train_y, test_X, test_y) = pickle.load(f)
-            # compute
-            elif int(output) == 1:
-                print("Computing features...")
-                (train_X, train_y, test_X, test_y) = get_features(
-                    encoder, train_loader, test_loader, args.device
-                )
-            else:
-                raise Exception("Invalid option")
-        except Exception as e:
-            print(e)
-            exit(0)
+    # The Million Song Dataset is too large to fit in memory (of most machines)
+    if args.dataset != "msd":
+        if not os.path.exists("features.p"):
+            output = input("Download (0) or compute (1) features from pre-trained network? Type \"0\" or \"1\": ")
+            try:
+                # download
+                if int(output) == 0:
+                    urllib.request.urlretrieve("https://github.com/spijkervet/clmr", "features.p")
+                    with open("features.p", "rb") as f:
+                        (train_X, train_y, test_X, test_y) = pickle.load(f)
+                # compute
+                elif int(output) == 1:
+                    print("Computing features...")
+                    (train_X, train_y, test_X, test_y) = get_features(
+                        encoder, train_loader, test_loader, args.device
+                    )
+                else:
+                    raise Exception("Invalid option")
+            except Exception as e:
+                print(e)
+                exit(0)
 
-        with open("features.p", "wb") as f:
-            pickle.dump((train_X, train_y, test_X, test_y), f)
-    else:
-        with open("features.p", "rb") as f:
-            (train_X, train_y, test_X, test_y) = pickle.load(f)
+            with open("features.p", "wb") as f:
+                pickle.dump((train_X, train_y, test_X, test_y), f)
+        else:
+            with open("features.p", "rb") as f:
+                (train_X, train_y, test_X, test_y) = pickle.load(f)
 
+    _test_loader = test_loader # for final evaluation
     if train_X is not None:
-        _test_loader = test_loader # for final evaluation
         train_loader, test_loader = create_data_loaders_from_arrays(
             train_X, train_y, test_X, test_y, 2048
         )
@@ -216,9 +221,9 @@ if __name__ == "__main__":
     args.global_step = 0
     args.current_epoch = 0
     for epoch in range(args.logistic_epochs):
-        metrics = train(args, train_loader, encoder, model, criterion, optimizer)
+        metrics = train(args, train_loader, encoder, model, criterion, optimizer, writer)
         for k, v in metrics.items():
-            writer.add_scalar(k, v, epoch)
+            wrier.add_scalar(k, v, epoch)
 
         print(
             f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {metrics['Loss/train']}\t AUC_tag: {metrics['AUC_tag/train']}\tAP_tag: {metrics['AP_tag/train']}"
@@ -230,6 +235,7 @@ if __name__ == "__main__":
             writer.add_scalar(k, v, epoch)
 
         args.current_epoch += 1
+        save_model(args, model, optimizer, name="finetuner")
 
     # eval all
     metrics = eval_all(args, _test_loader, encoder, model, writer, n_tracks=None,)
