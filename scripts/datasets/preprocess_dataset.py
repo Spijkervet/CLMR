@@ -6,6 +6,7 @@ import multiprocessing
 import torchaudio
 from pathlib import Path
 from tqdm import tqdm
+from shutil import which
 from .resample import resample
 
 
@@ -46,6 +47,10 @@ def process_dataset(split, dataset, data_input_dir, sample_rate):
 
 
 if __name__ == "__main__":
+
+    if which("ffmpeg") is None:
+        raise Exception("ffmpeg is not installed on this system")
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_input_dir", type=str, required=True)
     parser.add_argument("--dataset", type=str, required=True)

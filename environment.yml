@@ -9,11 +9,15 @@ dependencies:
   - pip:
     - essentia
     - imageio
+    - imblearn
     - matplotlib
+    - opencv-python
     - pydot
     - python-dotenv
+    - scikit-multilearn
     - seaborn
     - tensorboard
     - torchaudio
     - torchvision
+    - tqdm
     - youtube-dl
