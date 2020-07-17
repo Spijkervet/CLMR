@@ -154,7 +154,7 @@ if __name__ == "__main__":
         val_dataset,
         test_loader,
         test_dataset,
-    ) = get_dataset(args, pretrain=False)
+    ) = get_dataset(args, download=args.download, pretrain=False)
 
     # load pre-trained encoder
     encoder = load_encoder(args, reload=True)
