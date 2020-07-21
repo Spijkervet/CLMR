@@ -1,4 +1,5 @@
 # distributed training
+id: 0 # Experiment ID
 nodes: 1
 gpus: 1 # I recommend always assigning 1 GPU to 1 node
 nr: 0 # machine nr. in node (0 -- nodes - 1)
@@ -58,9 +59,9 @@ dropout: 0.5
 
 
 ## reload options
-model_path: "save" # set to the directory containing `checkpoint_##.pt` 
+model_path: "./logs/0" # set to the directory containing `checkpoint_##.pt` 
 epoch_num: 0 # set to checkpoint number
-finetune_model_path: "save"
+finetune_model_path: "./logs/0"
 finetune_epoch_num: ""
 reload: False
 
