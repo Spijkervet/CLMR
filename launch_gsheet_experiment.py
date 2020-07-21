@@ -8,10 +8,10 @@ def csv_to_dict(content):
     experiments = {}
     for row in reader:
         d = {}
+        i = row[0]
         for idx, r in enumerate(row):
             d[header[idx]] = r
-
-        experiments[idx] = d
+        experiments[i] = d
     return experiments
 
 def get_host_experiment(experiments):
