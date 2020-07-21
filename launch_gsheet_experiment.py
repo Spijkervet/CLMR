@@ -11,7 +11,6 @@ def csv_to_dict(content):
         for idx, r in enumerate(row):
             d[header[idx]] = r
 
-        del d["id"]
         experiments[idx] = d
     return experiments
 
