@@ -22,9 +22,9 @@ class Solver:
                     logging.info(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
             else:
                 x_i = x_i.to(
-                    self.device
+                    args.device
                 )  # x_i and x_j are identital in supervised case (dataloader)
-                y = y.to(self.device)
+                y = y.to(args.device)
 
                 loss = self.model(x_i, x_i)
 
@@ -70,9 +70,9 @@ class Solver:
                     loss = self.model(x_i, x_j)
                 else:
                     x_i = x_i.to(
-                        self.device
+                        args.device
                     )  # x_i and x_j are identital in supervised case (dataloader)
-                    y = y.to(self.device)
+                    y = y.to(args.device)
                     loss = self.model(x_i, x_i)
                 if step > 0 and step % 10 == 0:
                     logging.info(
