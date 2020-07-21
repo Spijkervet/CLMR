@@ -163,6 +163,8 @@ if __name__ == "__main__":
 
     # linear eval. model
     model = torch.nn.Sequential(
+        torch.nn.Linear(args.n_features, args.n_features),
+        torch.nn.ReLU(),
         torch.nn.Linear(args.n_features, args.n_classes)
     )
     model = model.to(args.device)
