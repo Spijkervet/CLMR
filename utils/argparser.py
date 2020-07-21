@@ -6,9 +6,15 @@ def parse_args():
     parser = argparse.ArgumentParser(description="CLMR")
     config = yaml_config_hook("./config/config.yaml")
     for k, v in config.items():
-        parser.add_argument(f"--{k}", default=v, type=type(v))
+        typ = type(v)
+        if typ == bool:
+            typ = int
+        parser.add_argument(f"--{k}", default=v, type=typ)
+
 
     args = parser.parse_args()
+    print(args)
+    exit(0)
     return args
 
 def args_hparams(args):
