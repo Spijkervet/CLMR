@@ -1,4 +1,5 @@
 import torch
+import logging
 from collections import defaultdict
 
 class Solver:
@@ -18,7 +19,7 @@ class Solver:
                 loss = self.model(x_i, x_j)
 
                 if step > 0 and step % 20 == 0:
-                    print(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
+                    logging.info(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
             else:
                 x_i = x_i.to(
                     self.device
@@ -35,7 +36,7 @@ class Solver:
                 metrics["AP_tag/train"] += ap
 
                 if step > 0 and step % 20 == 0:
-                    print(
+                    logging.info(
                         f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}"
                     )
 
@@ -74,7 +75,7 @@ class Solver:
                     y = y.to(self.device)
                     loss = self.model(x_i, x_i)
                 if step > 0 and step % 10 == 0:
-                    print(
+                    logging.info(
                         f"Step [{step}/{len(loader)}]\t Validation/Test Loss: {loss.item()}"
                     )
 

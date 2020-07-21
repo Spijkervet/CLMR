@@ -1,9 +1,10 @@
+import sys
 import os
 import torch
 import torchvision
-import argparse
 import numpy as np
-from collections import defaultdict
+import logging
+
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -12,14 +13,14 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel
 
-
+# custom modules
 from data import get_dataset
 from model import load_encoder, load_optimizer, save_model
-from modules import SimCLR, SampleCNN59049, BYOL
+from modules import SimCLR, BYOL
 from solver import Solver
-from utils import eval_all, write_audio_tb, args_hparams, parse_args
-from validation import audio_latent_representations, vision_latent_representations
-from utils import parse_args
+from utils import LogFile, eval_all, write_audio_tb, parse_args, get_log_dir, write_args
+from validation import audio_latent_representations
+
 
 def main(gpu, args):
     args.rank = args.nr * args.gpus + gpu
@@ -39,27 +40,25 @@ def main(gpu, args):
         test_loader,
         test_dataset,
     ) = get_dataset(args, pretrain=True, download=args.download)
-    
-    
+
     encoder = load_encoder(args)
-    
+
     # context model
     # model = BYOL(encoder, args.audio_length) # new!
     model = SimCLR(args, encoder, args.n_features, args.projection_dim)
     model.apply(model.initialize)
     model = model.to(args.device)
-    print(model.summary())
+    logging.info(model.summary())
 
     if args.reload:
         model_fp = os.path.join(
             args.model_path,
             "{}_checkpoint_{}.pt".format(args.model_name, args.epoch_num),
         )
-        print(
+        logging.info(
             f"### RELOADING {args.model_name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###"
         )
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
-
 
     # optimizer / scheduler
     optimizer, scheduler = load_optimizer(args, model)
@@ -69,7 +68,7 @@ def main(gpu, args):
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DistributedDataParallel(model, device_ids=[gpu])
 
-    writer = SummaryWriter()
+    writer = SummaryWriter(log_dir=args.model_path)
     # save random init. model
     if not args.reload:
         args.current_epoch = "random"
@@ -109,7 +108,7 @@ def main(gpu, args):
             writer.add_scalar(k, v, epoch)
         writer.add_scalar("Misc/learning_rate", learning_rate, epoch)
 
-        print(
+        logging.info(
             f"Epoch [{epoch}/{args.epochs}]\t Loss: {metrics['Loss/train']}\t lr: {round(learning_rate, 5)}"
         )
 
@@ -118,7 +117,7 @@ def main(gpu, args):
             for k, v in metrics.items():
                 writer.add_scalar(k, v, epoch)
 
-            print(
+            logging.info(
                 f"[Test] Epoch [{epoch}/{args.epochs}]\t Test Loss: {metrics['Loss/test']}"
             )
 
@@ -137,17 +136,26 @@ if __name__ == "__main__":
     os.environ["MASTER_ADDR"] = "127.0.0.1"
     os.environ["MASTER_PORT"] = "5000"
 
-    if not os.path.exists(args.model_path):
-        os.makedirs(args.model_path)
-
+    args.model_path = get_log_dir("./logs", args.id)
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.num_gpus = torch.cuda.device_count()
     args.world_size = args.gpus * args.nodes
     args.global_step = 0
     args.current_epoch = 0
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(os.path.join(args.model_path, 'output.log')),
+            logging.StreamHandler()
+        ]
+    )
+
+    write_args(args)
+
     if args.nodes > 1:
-        print(
+        logging.info(
             f"Training with {args.nodes} nodes, waiting until all nodes join before starting training"
         )
         mp.spawn(main, args=(args,), nprocs=args.gpus, join=True)

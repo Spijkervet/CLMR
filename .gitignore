@@ -10,5 +10,5 @@ features.p
 *.pt
 
 logs/
-runs/
 save/
+logs/
