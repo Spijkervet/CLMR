@@ -13,8 +13,6 @@ def parse_args():
 
 
     args = parser.parse_args()
-    print(args)
-    exit(0)
     return args
 
 def args_hparams(args):
