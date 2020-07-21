@@ -89,7 +89,8 @@ class MSDDataset(Dataset):
     def __init__(self, args, split, pretrain, download=False, transform=None):
         if download:
             raise Exception("The Million Song Dataset is not publicly available")
-
+        
+        self.name = "million_song_dataset"
         self.split = split
         self.pretrain = pretrain
         self.transform = transform
@@ -176,6 +177,7 @@ class MSDDataset(Dataset):
         print(f"[{split} dataset ({args.dataset}_{self.sample_rate})]")
 
         super(MSDDataset, self).__init__(
+            self.name,
             self.split,
             self.sample_rate,
             self.audio_length,
