@@ -156,6 +156,7 @@ class AudioTransforms:
 
     def __init__(self, args):
         self.args = args
+        self.ablation = args.ablation
         sr = args.sample_rate
 
         self.train_transform = [
@@ -174,8 +175,8 @@ class AudioTransforms:
         self.test_transform = []
 
     def __call__(self, x, mean, std):
-        x0 = self.transform(x)
-        x1 = self.transform(x)
+        x0 = self.transform(x, 0)
+        x1 = self.transform(x, 1)
 
         # to PyTorch format (channels, samples)
         x0 = x0.reshape(1, -1)
@@ -187,7 +188,11 @@ class AudioTransforms:
         # x1 = torch.clamp(x1, min=-1, max=1)
         return x0, x1
 
-    def transform(self, x):
-        for t in self.train_transform:
-            x = t(x)
+    def transform(self, x, num):
+        # assymetric ablation
+        if self.ablation and num == 1:
+            x = self.train_transform[0](x)
+        else:
+            for t in self.train_transform:
+                x = t(x)
         return x

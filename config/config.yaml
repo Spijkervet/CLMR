@@ -3,8 +3,8 @@ id: 0 # Experiment ID
 nodes: 1
 gpus: 1 # I recommend always assigning 1 GPU to 1 node
 nr: 0 # machine nr. in node (0 -- nodes - 1)
-workers: 16
-
+workers: 8
+ablation: True
 
 ## dataset options
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
