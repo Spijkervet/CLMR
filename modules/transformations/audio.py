@@ -100,12 +100,8 @@ class PitchShift:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            pitches = [-2, -1, 1, 2]
+            pitches = [-7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7]
             n_steps = random.choice(pitches)
-            # time_stretch = [1.5, 1.25, 0.75, 0.5]
-            # stretch = time_stretch[pitches.index(n_steps)]
-
-            # audio = librosa.effects.time_stretch(audio, rate=stretch)
             audio = librosa.effects.pitch_shift(audio, sr=self.sr, n_steps=n_steps)
         return audio
 
@@ -169,7 +165,7 @@ class AudioTransforms:
                 sr=sr
             ),
             Delay(p=args.transforms_delay, sr=sr),
-            # PitchShift(p=0.25, sr=sr)
+            PitchShift(p=args.transforms_pitch, sr=sr)
             # Reverse(p=0.5, sr=sr),
         ]
         self.test_transform = []
