@@ -38,7 +38,7 @@ transforms_noise: 0.0
 transforms_gain: 0.0
 transforms_filters: 0.4
 transforms_delay: 0.3
-
+transforms_pitch: 0.3
 
 ## loss options
 optimizer: "Adam" # [Adam, LARS]
