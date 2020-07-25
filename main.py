@@ -70,7 +70,7 @@ def main(gpu, args):
     optimizer, scheduler = load_optimizer(args, model)
 
     if not args.supervised:
-        criterion = NT_Xent(args.batch_size, args.temperature, args.device)
+        criterion = NT_Xent(args.batch_size, args.temperature, args.device, args.world_size)
     else:
         criterion = torch.nn.BCEWithLogitsLoss()
 

@@ -1,7 +1,6 @@
 import torch
 import torchaudio
 import random
-import essentia
 import essentia.standard
 import librosa
 import numpy as np
