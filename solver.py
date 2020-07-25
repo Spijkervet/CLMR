@@ -3,9 +3,10 @@ import logging
 from collections import defaultdict
 
 class Solver:
-    def __init__(self, model, optimizer, writer):
+    def __init__(self, model, optimizer, criterion, writer):
         self.model = model
         self.optimizer = optimizer
+        self.criterion = criterion
         self.writer = writer
 
     def train(self, args, loader):
@@ -16,7 +17,8 @@ class Solver:
                 x_j = x_j.cuda(non_blocking=True)
 
                 # positive pair, with encoding
-                loss = self.model(x_i, x_j)
+                h_i, h_j, z_i, z_j = self.model(x_i, x_j)
+                loss = self.criterion(z_i, z_j)
 
                 if step > 0 and step % 20 == 0:
                     logging.info(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
@@ -67,7 +69,8 @@ class Solver:
 
                     # positive pair, with encoding
                     # loss = self.model(x_i, x_j)
-                    loss = self.model(x_i, x_j)
+                    h_i, h_j, z_i, z_j  = self.model(x_i, x_j)
+                    loss = self.criterion(z_i, z_j)
                 else:
                     x_i = x_i.to(
                         args.device

@@ -11,12 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 # distributed training
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from torch.nn.parallel import DistributedDataParallel
+from torch.nn.parallel import DistributedDataParallel, DataParallel
 
 # custom modules
 from data import get_dataset
 from model import load_encoder, load_optimizer, save_model
-from modules import SimCLR, BYOL
+from modules import SimCLR, BYOL, NT_Xent
+from modules.sync_batchnorm import convert_model
 from solver import Solver
 from utils import LogFile, eval_all, write_audio_tb, parse_args, get_log_dir, write_args
 from validation import audio_latent_representations
@@ -24,12 +25,17 @@ from validation import audio_latent_representations
 
 def main(gpu, args):
     args.rank = args.nr * args.gpus + gpu
+    
+    # dataparallel splits the data across the batch dimension
+    if args.dataparallel:
+        args.batch_size *= args.num_gpus
+
     if args.nodes > 1:
         dist.init_process_group("nccl", rank=args.rank, world_size=args.world_size)
+        torch.cuda.set_device(gpu)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    torch.cuda.set_device(gpu)
 
     # data loaders
     (
@@ -63,10 +69,20 @@ def main(gpu, args):
     # optimizer / scheduler
     optimizer, scheduler = load_optimizer(args, model)
 
+    if not args.supervised:
+        criterion = NT_Xent(args.batch_size, args.temperature, args.device)
+    else:
+        criterion = torch.nn.BCEWithLogitsLoss()
+
     # DDP
-    if args.nodes > 1:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model = DistributedDataParallel(model, device_ids=[gpu])
+    if args.dataparallel:
+        model = convert_model(model)
+        model = DataParallel(model)
+    else:
+        if args.nodes > 1:
+            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            model = DistributedDataParallel(model, device_ids=[gpu])
+    model = model.to(args.device)
 
     writer = SummaryWriter(log_dir=args.model_path)
     # save random init. model
@@ -79,7 +95,7 @@ def main(gpu, args):
 
     # start training
     args.current_epoch = args.start_epoch
-    solver = Solver(model, optimizer, writer)
+    solver = Solver(model, optimizer, criterion, writer)
     validate_idx = 1
     for epoch in range(args.start_epoch, args.epochs):
         if epoch % validate_idx == 0:
