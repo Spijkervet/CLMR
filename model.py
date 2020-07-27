@@ -1,6 +1,6 @@
 import os
 import torch
-from modules import SimCLR, SampleCNN59049, LARS, get_resnet, Identity
+from modules import SimCLR, SampleCNN, LARS, get_resnet, Identity
 from modules.cpc import CPCModel
 
 
@@ -62,8 +62,13 @@ def load_encoder(args, reload=False):
     # encoder
     if args.domain == "audio":
         if args.sample_rate == 22050:
-            encoder = SampleCNN59049(args)
-
+            strides = [3, 3, 3, 3, 3, 3, 3, 3, 3]
+        elif args.sample_rate == 16000:
+            strides = [3, 3, 3, 3, 3, 3, 5, 2, 2]
+        else:
+            raise NotImplementedError
+        
+        encoder = SampleCNN(args, strides)
         print(f"### {encoder.__class__.__name__} ###")
     elif args.domain == "scores":
         encoder = get_resnet(args.resnet, pretrained=False)  # resnet
