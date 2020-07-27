@@ -25,24 +25,30 @@ def inference(loader, encoder, device):
     return feature_vector, labels_vector
 
 
-def get_features(encoder, train_loader, test_loader, device):
+def get_features(encoder, train_loader, val_loader, test_loader, device):
     train_X, train_y = inference(train_loader, encoder, device)
+    val_X, val_y = inference(val_loader, encoder, device)
     test_X, test_y = inference(test_loader, encoder, device)
-    return train_X, train_y, test_X, test_y
+    return train_X, train_y, val_X, val_y, test_X, test_y
 
 
-def create_data_loaders_from_arrays(X_train, y_train, X_test, y_test, batch_size):
+def create_data_loaders_from_arrays(X_train, y_train, X_val, y_val, X_test, y_test, batch_size):
     train = torch.utils.data.TensorDataset(
         torch.from_numpy(X_train), torch.from_numpy(y_train)
     )
     train_loader = torch.utils.data.DataLoader(
         train, batch_size=batch_size, shuffle=False
     )
-
+    val = torch.utils.data.TensorDataset(
+        torch.from_numpy(X_val), torch.from_numpy(y_val)
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val, batch_size=batch_size, shuffle=False
+    )
     test = torch.utils.data.TensorDataset(
         torch.from_numpy(X_test), torch.from_numpy(y_test)
     )
     test_loader = torch.utils.data.DataLoader(
         test, batch_size=batch_size, shuffle=False
     )
-    return train_loader, test_loader
+    return train_loader, val_loader, test_loader
