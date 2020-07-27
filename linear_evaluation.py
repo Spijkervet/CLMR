@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 from collections import defaultdict
 import time
 import urllib.request
+import logging
+import json
 
 # TensorBoard
 from torch.utils.tensorboard import SummaryWriter
@@ -15,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 from data import get_dataset
 from model import load_encoder, save_model
 
-from utils import parse_args, args_hparams, random_undersample_balanced
+from utils import parse_args, args_hparams, random_undersample_balanced, get_log_dir
 from utils.eval import get_metrics, eval_all
 from features import get_features, create_data_loaders_from_arrays
 
@@ -71,14 +73,13 @@ def train(args, loader, encoder, model, criterion, optimizer, writer):
         metrics["AUC_tag/train"] += auc
         metrics["AP_tag/train"] += acc
         metrics["Loss/train"] += loss.item()
-            
-        
+
         writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
         writer.add_scalar("AP_tag/train_step", acc, args.global_step)
         writer.add_scalar("Loss/train_step", loss, args.global_step)
 
         if step > 0 and step % 100 == 0:
-            print(
+            logging.info(
                 f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}"
             )
 
@@ -126,18 +127,16 @@ def validate(args, loader, encoder, model, criterion, optimizer):
         metrics["Loss/test"] += loss.item()
 
         if step > 0 and step % 100 == 0:
-            print(
+            logging.info(
                 f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}"
             )
-
 
     # plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
     for k, v in metrics.items():
         metrics[k] /= len(loader)
-    
+
     model.train()
     return metrics
-
 
 
 if __name__ == "__main__":
@@ -162,15 +161,16 @@ if __name__ == "__main__":
     encoder = encoder.to(args.device)
 
     # linear eval. model
-    model = torch.nn.Sequential(
-        torch.nn.Linear(args.n_features, args.n_features),
-        torch.nn.ReLU(),
-        torch.nn.Linear(args.n_features, args.n_classes)
-    )
+    model = torch.nn.Sequential(torch.nn.Linear(args.n_features, args.n_classes),)
+    # model = torch.nn.Sequential(
+    #     torch.nn.Linear(args.n_features, args.n_features),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(args.n_features, args.n_classes)
+    # )
     model = model.to(args.device)
 
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.logistic_lr # , weight_decay=args.weight_decay
+        model.parameters(), lr=args.logistic_lr  # , weight_decay=args.weight_decay
     )
 
     # set criterion, e.g. gtzan has one label per segment, MTT has multiple
@@ -180,69 +180,125 @@ if __name__ == "__main__":
         criterion = torch.nn.BCEWithLogitsLoss()  # for tags
 
     # initialize TensorBoard
-    writer = SummaryWriter()
+    experiment_idx = int(args.model_path.split("/")[-1])
+    args.model_path = get_log_dir("results", experiment_idx)
+    writer = SummaryWriter(log_dir=args.model_path)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(os.path.join(args.model_path, "output.log")),
+            logging.StreamHandler(),
+        ],
+    )
 
     train_X = None
+    logging.info("Computing features...")
+    (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
+        encoder, train_loader, val_loader, test_loader, args.device
+    )
     # The Million Song Dataset is too large to fit in memory (of most machines)
-    if args.dataset != "msd":
-        if not os.path.exists("features.p"):
-            output = input("Download (0) or compute (1) features from pre-trained network? Type \"0\" or \"1\": ")
-            try:
-                # download
-                if int(output) == 0:
-                    urllib.request.urlretrieve("https://github.com/spijkervet/clmr", "features.p")
-                    with open("features.p", "rb") as f:
-                        (train_X, train_y, test_X, test_y) = pickle.load(f)
-                # compute
-                elif int(output) == 1:
-                    print("Computing features...")
-                    (train_X, train_y, test_X, test_y) = get_features(
-                        encoder, train_loader, test_loader, args.device
-                    )
-                else:
-                    raise Exception("Invalid option")
-            except Exception as e:
-                print(e)
-                exit(0)
+    # if args.dataset != "msd":
+    #     if not os.path.exists("features.p"):
+    #         output = input("Download (0) or compute (1) features from pre-trained network? Type \"0\" or \"1\": ")
+    #         try:
+    #             # download
+    #             if int(output) == 0:
+    #                 urllib.request.urlretrieve("https://github.com/spijkervet/clmr", "features.p")
+    #                 with open("features.p", "rb") as f:
+    #                     (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(f)
+    #             # compute
+    #             elif int(output) == 1:
+    #                 logging.info("Computing features...")
+    #                 (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
+    #                     encoder, train_loader, val_loader, test_loader, args.device
+    #                 )
+    #             else:
+    #                 raise Exception("Invalid option")
+    #         except Exception as e:
+    #             logging.info(e)
+    #             exit(0)
 
-            with open("features.p", "wb") as f:
-                pickle.dump((train_X, train_y, test_X, test_y), f)
-        else:
-            with open("features.p", "rb") as f:
-                (train_X, train_y, test_X, test_y) = pickle.load(f)
+    #         with open("features.p", "wb") as f:
+    #             pickle.dump((train_X, train_y, val_X, val_y, test_X, test_y), f)
+    #     else:
+    #         with open("features.p", "rb") as f:
+    #             (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(f)
 
-    _test_loader = test_loader # for final evaluation
     if train_X is not None:
-        train_loader, test_loader = create_data_loaders_from_arrays(
-            train_X, train_y, test_X, test_y, 2048 # batch size for logistic regression (pre-computed features)
+        train_loader, val_loader, _ = create_data_loaders_from_arrays(
+            train_X,
+            train_y,
+            val_X,
+            val_y,
+            test_X,
+            test_y,
+            2048,  # batch size for logistic regression (pre-computed features)
         )
 
     # start linear evaluation
     args.global_step = 0
     args.current_epoch = 0
+    last_model = None
+    last_auc = 0
+    last_ap = 0
+    early_stop = 0
     for epoch in range(args.logistic_epochs):
-        metrics = train(args, train_loader, encoder, model, criterion, optimizer, writer)
+        metrics = train(
+            args, train_loader, encoder, model, criterion, optimizer, writer
+        )
         for k, v in metrics.items():
             writer.add_scalar(k, v, epoch)
 
-        print(
+        logging.info(
             f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {metrics['Loss/train']}\t AUC_tag: {metrics['AUC_tag/train']}\tAP_tag: {metrics['AP_tag/train']}"
         )
-        
+
         # validate
-        metrics = validate(args, test_loader, encoder, model, criterion, optimizer)
+        metrics = validate(args, val_loader, encoder, model, criterion, optimizer)
         for k, v in metrics.items():
             writer.add_scalar(k, v, epoch)
 
-        save_model(args, model, optimizer, name="finetuner")
+        if metrics["AUC_tag/test"] < last_auc and metrics["AP_tag/test"] < last_ap:
+            last_model = model
+            early_stop += 1
+            logging.info(
+                "Early stop count: {}\t\t{} (best: {})\t {} (best: {})".format(
+                    early_stop,
+                    metrics["AUC_tag/test"],
+                    last_auc,
+                    metrics["AP_tag/test"],
+                    last_ap,
+                )
+            )
+        else:
+            last_auc = metrics["AUC_tag/test"]
+            last_ap = metrics["AP_tag/test"]
+            early_stop = 0
+
+        if early_stop >= 3:
+            logging.info("Early stopping...")
+            break
+        # save_model(args, model, optimizer, name="finetuner")
         args.current_epoch += 1
 
+    if last_model is None:
+        logging.info("No early stopping, using last model")
+        last_model = model
+
     # eval all
-    metrics = eval_all(args, _test_loader, encoder, model, writer, n_tracks=None)
-    print("### Final tag/clip ROC-AUC/PR-AUC scores ###")
+    metrics = eval_all(args, test_loader, encoder, last_model, writer, n_tracks=None)
+    logging.info("### Final tag/clip ROC-AUC/PR-AUC scores ###")
+    m = {}
     for k, v in metrics.items():
         if "hparams" in k:
-            print("[Test average AUC/AP]:", k, v)
+            logging.info(f"[Test average AUC/AP]: {k}, {v}")
+            m[k] = v
         else:
-            for tag, val in zip(_test_loader.dataset.tags, v):
-                print(f"[Test {k}]\t\t{tag}\t{val}")
+            for tag, val in zip(test_loader.dataset.tags, v):
+                logging.info(f"[Test {k}]\t\t{tag}\t{val}")
+                m[k + "/" + tag] = val
+
+    with open(os.path.join(args.model_path, "results.json"), "w") as f:
+        json.dump(m, f)

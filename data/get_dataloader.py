@@ -18,7 +18,7 @@ def get_audio_dataloader(args, pretrain=True, download=False):
 
     train_dataset = Dataset(args, split="train", pretrain=pretrain, download=download, transform=transforms)
 
-    val_dataset = Dataset(args, split="validation", pretrain=pretrain, transform=transforms)
+    val_dataset = Dataset(args, split="valid", pretrain=pretrain, transform=transforms)
 
     test_dataset = Dataset(args, split="test", pretrain=pretrain, transform=transforms)
     

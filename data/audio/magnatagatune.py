@@ -49,7 +49,7 @@ def get_dataset_stats(loader, tracks_list):
 class MTTDataset(Dataset):
 
     base_dir = "magnatagatune"
-    splits = ("train", "validation", "test")
+    splits = ("train", "valid", "test")
 
     def __init__(
         self, args, split, pretrain, download=False, transform=None,
@@ -86,7 +86,7 @@ class MTTDataset(Dataset):
 
         if split == "train":
             self.annotations_file = Path(mtt_processed_annot) / "train_gt_mtt.tsv"
-        elif split == "validation":
+        elif split == "valid":
             self.annotations_file = Path(mtt_processed_annot) / "val_gt_mtt.tsv"
         else:
             self.annotations_file = Path(mtt_processed_annot) / "test_gt_mtt.tsv"
@@ -114,7 +114,7 @@ class MTTDataset(Dataset):
             ]
 
         # reduce dataset to n%
-        # if pretrain and args.perc_train_data < 1.0 and train and not validation:  # only on train set
+        # if pretrain and args.perc_train_data < 1.0 and train and not valid:  # only on train set
         #     print("Train dataset size:", len(self.tracks_list))
         #     train_X_indices = np.array(
         #         [idx for idx in range(len(self.tracks_list))]
