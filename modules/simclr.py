@@ -3,7 +3,6 @@ import torch.nn as nn
 import torchvision
 from .nt_xent import NT_Xent
 from .model import Model
-from .sample_cnn_59049 import SampleCNN59049
 from .identity import Identity
 
 class SimCLR(Model):
