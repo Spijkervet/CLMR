@@ -5,6 +5,8 @@ import essentia.standard
 import librosa
 import numpy as np
 import audioop
+from torchaudio.transforms import Vol
+
 
 class RandomResizedCrop:
     def __init__(self, sr, n_samples):
@@ -33,23 +35,15 @@ class Noise:
     def __init__(self, sr, p=0.8):
         self.sr = sr
         self.p = p
+        self.snr = 80
 
     def __call__(self, audio):
         if random.random() < self.p:
-            audio = audio + (torch.FloatTensor(*audio.shape).normal_(0, 1) * 0.001)
-            # target_snr_db = random.randint(2, 10)  # signal-to-noise ratio
-            # gen gauss. noise std 2.5 == rms
-            # x = audio[0]
-            # sig_avg_watts = abs(x.mean())
-            # sig_avg_db = 10 * np.log10(sig_avg_watts)
-            # noise_avg_db = sig_avg_db - target_snr_db
-            # noise_avg_watts = 10 ** (noise_avg_db / 10)
-            # noise_volts = torch.empty(len(x)).normal_(
-            #     mean=0, std=np.sqrt(noise_avg_watts)
-            # )
-            # audio = x + noise_volts
-            # audio = audio.reshape(1, -1)
-
+            RMS_s = np.sqrt(np.mean(audio**2))
+            RMS_n = np.sqrt(RMS_s**2 / (pow(10, self.snr / 20)))
+            noise = np.random.normal(0, RMS_n, audio.shape[0])
+            audio = audio + noise
+            audio = np.clip(audio, -1, 1)
         return audio
 
 
@@ -84,11 +78,11 @@ class Gain:
         self.p = p
 
     def __call__(self, audio):
-        gain = random.randint(-6, 0)  # input was normalized to max(x)
         if random.random() < self.p:
-            pass
-            # vol = Vol(gain, gain_type="db")
-            # audio = vol(audio)
+            gain = random.randint(-20, -1)  # input was normalized to max(x)
+            audio = torch.from_numpy(audio)
+            audio = Vol(gain, gain_type="db")(audio)  # takes Tensor
+            audio = audio.numpy()
         return audio
 
 
@@ -116,15 +110,16 @@ class Reverse:
 
         return audio
 
+
 class Delay:
     def __init__(self, sr, p=0.5):
         self.sr = sr
         self.p = p
-        self.factor = 0.5 # volume factor of delay signal
+        self.factor = 0.5  # volume factor of delay signal
 
     def calc_offset(self, ms):
         return int(ms * (self.sr / 1000))
-        
+
     def __call__(self, audio):
         if random.random() < self.p:
             # delay between 0 - 500ms with 50ms intervals
@@ -133,14 +128,15 @@ class Delay:
 
             # calculate delay
             offset = self.calc_offset(ms)
-            beginning = [0.] * offset
+            beginning = [0.0] * offset
             end = audio[:-offset]
             delayed_signal = np.hstack((beginning, end))
-            delayed_signal = (delayed_signal * self.factor)
+            delayed_signal = delayed_signal * self.factor
             audio = (audio + delayed_signal) / 2
             audio = audio.astype(np.float32)
 
         return audio
+
 
 class AudioTransforms:
     """
@@ -157,12 +153,9 @@ class AudioTransforms:
         self.train_transform = [
             RandomResizedCrop(n_samples=args.audio_length, sr=sr),
             InvertSignal(p=args.transforms_polarity, sr=sr),
-            # Noise(p=args.transforms_noise, sr=sr),
-            # Gain(p=args.transforms_gain, sr=sr),
-            HighLowBandPass(
-                p=args.transforms_filters,
-                sr=sr
-            ),
+            Noise(p=args.transforms_noise, sr=sr),
+            Gain(p=args.transforms_gain, sr=sr),
+            HighLowBandPass(p=args.transforms_filters, sr=sr),
             Delay(p=args.transforms_delay, sr=sr),
             PitchShift(p=args.transforms_pitch, sr=sr)
             # Reverse(p=0.5, sr=sr),

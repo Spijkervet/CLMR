@@ -36,10 +36,13 @@ with requests.Session() as s:
     del host_experiment["gpu_nr"]
     del host_experiment["status"]
     del host_experiment["host"]
-    del host_experiment["roc_auc"]
-    del host_experiment["pr_auc"]
-    del host_experiment["roc_auc_mlp"]
-    del host_experiment["pr_auc_mlp"]
+    ks = []
+    for k in host_experiment.keys():
+        if "auc" in k:
+            ks.append(k)
+    for k in ks:
+        del host_experiment[k]
+        
     cmd = "CUDA_VISIBLE_DEVICES={} python main.py ".format(gpu_nr)
     cmd += " ".join(["--{} {}".format(k, v) for k, v in host_experiment.items()])
 
