@@ -65,6 +65,8 @@ def load_encoder(args, reload=False):
             strides = [3, 3, 3, 3, 3, 3, 3, 3, 3]
         elif args.sample_rate == 16000:
             strides = [3, 3, 3, 3, 3, 3, 5, 2, 2]
+        elif args.sample_rate == 8000:
+            strides = [3, 3, 3, 2, 2, 4, 4, 2, 2]
         else:
             raise NotImplementedError
         
