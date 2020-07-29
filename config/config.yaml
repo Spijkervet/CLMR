@@ -5,7 +5,7 @@ gpus: 1 # I recommend always assigning 1 GPU to 1 node
 nr: 0 # machine nr. in node (0 -- nodes - 1)
 workers: 8
 dataparallel: 0
-ablation: True
+ablation: False
 
 ## dataset options
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
