@@ -122,7 +122,7 @@ class Delay:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            # delay between 0 - 500ms with 50ms intervals
+            # delay between 200 - 500ms with 50ms intervals
             mss = np.arange(200, 500, 50)
             ms = random.choice(mss)
 
