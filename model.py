@@ -96,9 +96,14 @@ def load_encoder(args, reload=False):
         mapping = torch.load(model_fp, map_location=args.device.type)
         new_mapping = {}
         for m in mapping:
-            if "encoder" in m:
-                new_mapping[m.replace("encoder.", "")] = mapping[m]
-
+            if "conv" in m:
+                new_m = m.replace("encoder.", "").split(".")
+                conv_num = int(new_m[0].replace("conv", ""))
+                seq_m = "sequential.{}.{}.{}".format(conv_num-1, new_m[1], new_m[2])
+                new_mapping[seq_m] = mapping[m]
+            elif "encoder" in m:
+                new_m = m.replace("encoder.", "")
+                new_mapping[new_m] = mapping[m]
         encoder.load_state_dict(new_mapping, strict=True)
     return encoder
 
