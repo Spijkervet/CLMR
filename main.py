@@ -96,7 +96,7 @@ def main(gpu, args):
     # start training
     args.current_epoch = args.start_epoch
     solver = Solver(model, optimizer, criterion, writer)
-    validate_idx = 1
+    validate_idx = 50
     for epoch in range(args.start_epoch, args.epochs):
         if epoch % validate_idx == 0:
             audio_latent_representations(
