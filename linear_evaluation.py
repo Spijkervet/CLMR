@@ -279,7 +279,7 @@ if __name__ == "__main__":
             last_ap = metrics["AP_tag/test"]
             early_stop = 0
 
-        if early_stop >= 15:
+        if early_stop >= 3:
             logging.info("Early stopping...")
             break
         # save_model(args, model, optimizer, name="finetuner")
