@@ -2,9 +2,9 @@ import argparse
 import copy
 from .yaml_config_hook import yaml_config_hook
 
-def parse_args():
+def parse_args(config_file="./config/config.yaml"):
     parser = argparse.ArgumentParser(description="CLMR")
-    config = yaml_config_hook("./config/config.yaml")
+    config = yaml_config_hook(config_file)
     for k, v in config.items():
         typ = type(v)
         if typ == bool:
@@ -12,7 +12,7 @@ def parse_args():
         parser.add_argument(f"--{k}", default=v, type=typ)
 
 
-    args = parser.parse_args()
+    args = parser.parse_args([])
     return args
 
 def args_hparams(args):
