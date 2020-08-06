@@ -109,7 +109,7 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
             
             # average prediction of all segments
             pred_array.append(output.mean(axis=0).detach().cpu().numpy())
-            y_true.append(label.numpy())
+            y_true.append(label)
 
             if step % 1000 == 0:
                 print(f"[Test] Step [{step}/{n_tracks}]")
