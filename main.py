@@ -89,7 +89,12 @@ def main(args):
 
     # start training
     solver = Solver(model, optimizer, criterion, writer)
-    validate_idx = 10
+
+    if args.supervised:
+        validate_idx = 1
+    else:
+        validate_idx = 50
+
     args.current_epoch = args.start_epoch
     last_model = None
     last_auc = 0
