@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     args = parse_args()
+    args.world_size = 1
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.batch_size = args.logistic_batch_size
@@ -36,19 +37,21 @@ if __name__ == "__main__":
     encoder.eval()
     encoder = encoder.to(args.device)
 
-    model = torch.nn.Sequential(
-        torch.nn.Linear(args.n_features, args.n_classes)
-    )
+    model = None
+    if not args.supervised:
+        model = torch.nn.Sequential(
+            torch.nn.Linear(args.n_features, args.n_classes)
+        )
 
-    model.load_state_dict(
-        torch.load(
-            os.path.join(
-                args.finetune_model_path,
-                f"finetuner_checkpoint_{args.finetune_epoch_num}.pt",
+        model.load_state_dict(
+            torch.load(
+                os.path.join(
+                    args.finetune_model_path,
+                    f"finetuner_checkpoint_{args.finetune_epoch_num}.pt",
+                )
             )
         )
-    )
-    model = model.to(args.device)
+        model = model.to(args.device)
 
     # initialize TensorBoard
     writer = SummaryWriter()

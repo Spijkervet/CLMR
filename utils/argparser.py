@@ -11,8 +11,7 @@ def parse_args(config_file="./config/config.yaml"):
             typ = int
         parser.add_argument(f"--{k}", default=v, type=typ)
 
-
-    args = parser.parse_args([])
+    args = parser.parse_args()
     return args
 
 def args_hparams(args):
