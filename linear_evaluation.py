@@ -197,9 +197,9 @@ if __name__ == "__main__":
 
     train_X = None
     logging.info("Computing features...")
-    # (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
-    #     encoder, train_loader, val_loader, test_loader, args.device
-    # )
+    (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
+        encoder, train_loader, val_loader, test_loader, args.device
+    )
     # The Million Song Dataset is too large to fit in memory (of most machines)
     # if args.dataset != "msd":
     #     if not os.path.exists("features.p"):
@@ -279,7 +279,7 @@ if __name__ == "__main__":
             last_ap = metrics["AP_tag/test"]
             early_stop = 0
 
-        if early_stop >= 3:
+        if early_stop >= 15:
             logging.info("Early stopping...")
             break
         # save_model(args, model, optimizer, name="finetuner")
