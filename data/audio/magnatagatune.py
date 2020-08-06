@@ -182,6 +182,10 @@ class MTTDataset(Dataset):
             self.std,
         )
 
+        self.index = np.array(self.index)
+        self.track_index = {k: np.array(v) for k, v in self.track_index.items()}
+
+
 
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):

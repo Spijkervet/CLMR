@@ -22,12 +22,9 @@ def get_audio_dataloader(args, pretrain=True, download=False):
 
     test_dataset = Dataset(args, split="test", pretrain=pretrain, transform=transforms)
     
-    if args.nodes > 1:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(
-            train_dataset, num_replicas=args.world_size, rank=args.rank, shuffle=True
-        )
-    else:
-        train_sampler = None
+    train_sampler = torch.utils.data.distributed.DistributedSampler(
+        train_dataset, shuffle=True
+    )
     
 
     train_loader = torch.utils.data.DataLoader(
