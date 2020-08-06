@@ -20,7 +20,7 @@ class Solver:
                 h_i, h_j, z_i, z_j = self.model(x_i, x_j)
                 loss = self.criterion(z_i, z_j)
 
-                if step > 0 and step % 20 == 0:
+                if self.writer and step > 0 and step % 1 == 0:
                     logging.info(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
             else:
                 x_i = x_i.to(
@@ -37,7 +37,7 @@ class Solver:
                 metrics["AUC_tag/train"] += auc
                 metrics["AP_tag/train"] += ap
 
-                if step > 0 and step % 20 == 0:
+                if self.writer and step > 0 and step % 20 == 0:
                     logging.info(
                         f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}"
                     )
@@ -45,11 +45,12 @@ class Solver:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-
-            self.writer.add_scalar("Loss/train_step", loss.item(), args.global_step)
-            if args.supervised:
-                self.writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
-                self.writer.add_scalar("AP_tag/train_step", ap, args.global_step)
+            
+            if self.writer:
+                self.writer.add_scalar("Loss/train_step", loss.item(), args.global_step)
+                if args.supervised:
+                    self.writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
+                    self.writer.add_scalar("AP_tag/train_step", ap, args.global_step)
 
             metrics["Loss/train"] += loss.item()
             args.global_step += 1
@@ -77,7 +78,8 @@ class Solver:
                     )  # x_i and x_j are identital in supervised case (dataloader)
                     y = y.to(args.device)
                     loss = self.model(x_i, x_i)
-                if step > 0 and step % 10 == 0:
+
+                if self.writer and step > 0 and step % 10 == 0:
                     logging.info(
                         f"Step [{step}/{len(loader)}]\t Validation/Test Loss: {loss.item()}"
                     )

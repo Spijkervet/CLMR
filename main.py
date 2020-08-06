@@ -23,19 +23,8 @@ from utils import LogFile, eval_all, write_audio_tb, parse_args, get_log_dir, wr
 from validation import audio_latent_representations
 
 
-def main(gpu, args):
-    args.rank = args.nr * args.gpus + gpu
+def main(args):
     
-    # dataparallel splits the data across the batch dimension
-    if args.dataparallel:
-        args.batch_size *= args.num_gpus
-
-    if args.nodes > 1:
-        dist.init_process_group("nccl", rank=args.rank, world_size=args.world_size)
-        torch.cuda.set_device(gpu)
-
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
 
     # data loaders
     (
@@ -79,12 +68,19 @@ def main(gpu, args):
         model = convert_model(model)
         model = DataParallel(model)
     else:
-        if args.nodes > 1:
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DistributedDataParallel(model, device_ids=[gpu])
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model = DistributedDataParallel(model,
+                    device_ids=[args.local_rank],
+                    output_device=args.local_rank
+                )
     model = model.to(args.device)
 
-    writer = SummaryWriter(log_dir=args.model_path)
+    print("RANK", args.local_rank)
+    
+    writer = None
+    if args.is_master:
+        writer = SummaryWriter(log_dir=args.model_path)
+
     # save random init. model
     if not args.reload:
         args.current_epoch = "random"
@@ -98,46 +94,29 @@ def main(gpu, args):
     solver = Solver(model, optimizer, criterion, writer)
     validate_idx = 50
     for epoch in range(args.start_epoch, args.epochs):
-        if epoch % validate_idx == 0:
-            audio_latent_representations(
-                args,
-                train_loader.dataset,
-                model,
-                args.current_epoch,
-                args.global_step,
-                writer,
-                train=True,
-            )
-            audio_latent_representations(
-                args,
-                test_loader.dataset,
-                model,
-                args.current_epoch,
-                args.global_step,
-                writer,
-                train=False,
-            )
-
+        dist.barrier()
         learning_rate = optimizer.param_groups[0]["lr"]
         metrics = solver.train(args, train_loader)
-        for k, v in metrics.items():
-            writer.add_scalar(k, v, epoch)
-        writer.add_scalar("Misc/learning_rate", learning_rate, epoch)
 
-        logging.info(
-            f"Epoch [{epoch}/{args.epochs}]\t Loss: {metrics['Loss/train']}\t lr: {round(learning_rate, 5)}"
-        )
+        if args.is_master:
+            for k, v in metrics.items():
+                writer.add_scalar(k, v, epoch)
+            writer.add_scalar("Misc/learning_rate", learning_rate, epoch)
+            logging.info(
+                f"Epoch [{epoch}/{args.epochs}]\t Loss: {metrics['Loss/train']}\t lr: {round(learning_rate, 5)}"
+            )
 
         if epoch > 0 and epoch % validate_idx == 0:
             metrics = solver.validate(args, test_loader)
-            for k, v in metrics.items():
-                writer.add_scalar(k, v, epoch)
 
-            logging.info(
-                f"[Test] Epoch [{epoch}/{args.epochs}]\t Test Loss: {metrics['Loss/test']}"
-            )
+            if args.is_master:
+                for k, v in metrics.items():
+                    writer.add_scalar(k, v, epoch)
+                    logging.info(
+                        f"[Test] Epoch [{epoch}/{args.epochs}]\t Test Loss: {metrics['Loss/test']}"
+                    )
 
-        if epoch > 0 and epoch % args.checkpoint_epochs == 0:
+        if args.is_master and epoch > 0 and epoch % args.checkpoint_epochs == 0:
             save_model(args, model, optimizer, name=args.model_name)
 
         args.current_epoch += 1
@@ -148,16 +127,37 @@ def main(gpu, args):
 
 if __name__ == "__main__":
     args = parse_args()
-    # Master address for distributed data parallel
-    os.environ["MASTER_ADDR"] = "127.0.0.1"
-    os.environ["MASTER_PORT"] = "5000"
 
-    args.model_path = get_log_dir("./logs", args.id)
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    current_env = os.environ
+    args.world_size = int(current_env["WORLD_SIZE"])
+    print("World size", args.world_size)
+
+    # args.model_path = get_log_dir("./logs", args.id)
+    args.model_path = os.path.join("./logs", str(args.id))
+
     args.num_gpus = torch.cuda.device_count()
-    args.world_size = args.gpus * args.nodes
+
+    # dataparallel splits the data across the batch dimension
+    if args.dataparallel:
+        args.batch_size *= args.num_gpus
+        print(f"DP batch size: {args.batch_size}")
+
+    args.is_master = args.local_rank == 0
+
+    # set the device
+    # args.device = torch.cuda.device(args.local_rank)
+    args.device = torch.device(f"cuda:{args.local_rank}" if torch.cuda.is_available() else "cpu")
+    print("Device", args.device)
+
+    dist.init_process_group(backend='nccl', init_method='env://')
+    torch.cuda.set_device(args.local_rank)
+
+    torch.cuda.manual_seed_all(args.seed)
+    np.random.seed(args.seed)
+
     args.global_step = 0
     args.current_epoch = 0
+
 
     logging.basicConfig(
         level=logging.INFO,
@@ -169,11 +169,5 @@ if __name__ == "__main__":
     )
 
     write_args(args)
-
-    if args.nodes > 1:
-        logging.info(
-            f"Training with {args.nodes} nodes, waiting until all nodes join before starting training"
-        )
-        mp.spawn(main, args=(args,), nprocs=args.gpus, join=True)
-    else:
-        main(0, args)
+    print("Rank", args.local_rank)
+    main(args)
