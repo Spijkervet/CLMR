@@ -28,8 +28,12 @@ class Solver:
                     args.device
                 )  # x_i and x_j are identital in supervised case (dataloader)
                 y = y.to(args.device)
+        
+                if isinstance(self.model, torch.nn.DataParallel) or isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+                    h_i, _ = self.model.module.get_latent_representations(x_i)
+                else:
+                    h_i, _ = self.model.get_latent_representations(x_i)
 
-                h_i, _ = self.model.get_latent_representations(x_i)
                 loss = self.criterion(h_i, y)
 
                 auc, ap = get_metrics(
@@ -76,7 +80,11 @@ class Solver:
                     )  # x_i and x_j are identital in supervised case (dataloader)
                     y = y.to(args.device)
 
-                    h_i, _ = self.model.get_latent_representations(x_i)
+                    if isinstance(self.model, torch.nn.DataParallel) or isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+                        h_i, _ = self.model.module.get_latent_representations(x_i)
+                    else:
+                        h_i, _ = self.model.get_latent_representations(x_i)
+
                     loss = self.criterion(h_i, y)
 
                     auc, ap = get_metrics(

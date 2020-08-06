@@ -128,7 +128,7 @@ def save_model(args, model, optimizer, name="clmr"):
 
         # To save a DataParallel model generically, save the model.module.state_dict().
         # This way, you have the flexibility to load the model any way you want to any device you want.
-        if isinstance(model, torch.nn.DataParallel):
+        if isinstance(model, torch.nn.DataParallel) or isinstance(model, torch.nn.parallel.DistributedDataParallel):
             torch.save(model.module.state_dict(), out)
         else:
             torch.save(model.state_dict(), out)
