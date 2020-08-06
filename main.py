@@ -90,6 +90,10 @@ def main(args):
     solver = Solver(model, optimizer, criterion, writer)
     validate_idx = 50
     args.current_epoch = args.start_epoch
+    last_model = None
+    last_auc = 0
+    last_ap = 0
+    early_stop = 0
     for epoch in range(args.start_epoch, args.epochs):
         if args.world_size > 1:
             dist.barrier()
@@ -106,7 +110,26 @@ def main(args):
             )
 
         if epoch % validate_idx == 0:
-            metrics = solver.validate(args, test_loader)
+            metrics = solver.validate(args, val_loader)
+
+            # early stopping for supervised
+            if args.supervised:
+                if metrics["AUC_tag/test"] < last_auc and metrics["AP_tag/test"] < last_ap:
+                    last_model = model
+                    early_stop += 1
+                    logging.info(
+                        "Early stop count: {}\t\t{} (best: {})\t {} (best: {})".format(
+                            early_stop,
+                            metrics["AUC_tag/test"],
+                            last_auc,
+                            metrics["AP_tag/test"],
+                            last_ap,
+                        )
+                    )
+                else:
+                    last_auc = metrics["AUC_tag/test"]
+                    last_ap = metrics["AP_tag/test"]
+                    early_stop = 0
 
             if args.is_master:
                 for k, v in metrics.items():
@@ -117,9 +140,38 @@ def main(args):
             save_model(args, model, optimizer, name=args.model_name)
 
         args.current_epoch += 1
+        
+        if args.supervised and early_stop >= 3:
+            logging.info("Early stopping...")
+            break
+
+
+    save_model(args, model, optimizer, name=args.model_name)
+
+    if args.supervised:
+        if last_model is None:
+            logging.info("No early stopping, using last model")
+            last_model = model
+
+        # eval all
+        metrics = eval_all(
+            args, test_loader, encoder, last_model, writer, n_tracks=None
+        )
+        logging.info("### Final tag/clip ROC-AUC/PR-AUC scores ###")
+        m = {}
+        for k, v in metrics.items():
+            if "hparams" in k:
+                logging.info(f"[Test average AUC/AP]: {k}, {v}")
+                m[k] = v
+            else:
+                for tag, val in zip(test_loader.dataset.tags, v):
+                    logging.info(f"[Test {k}]\t\t{tag}\t{val}")
+                    m[k + "/" + tag] = val
+
+        with open(os.path.join(args.model_path, "results.json"), "w") as f:
+            json.dump(m, f)
 
     ## end training
-    save_model(args, model, optimizer, name=args.model_name)
 
 
 if __name__ == "__main__":
@@ -149,7 +201,10 @@ if __name__ == "__main__":
     # args.device = torch.device(f"cuda:{args.local_rank}" if torch.cuda.is_available() else "cpu")
     print("Device", args.device)
 
-    torch.cuda.set_device(args.local_rank)
+    print("Num devices", args.num_gpus)
+
+    if args.world_size > 1:
+        torch.cuda.set_device(args.local_rank)
 
     torch.cuda.manual_seed_all(args.seed)
     np.random.seed(args.seed)

@@ -54,6 +54,7 @@ class Solver:
             
             metrics["Loss/train"] += loss.item()
             args.global_step += 1
+            break
 
         for k, v in metrics.items():
             metrics[k] /= len(loader)
@@ -98,6 +99,7 @@ class Solver:
                         )
                         
                 metrics["Loss/test"] += loss.item()
+                break
 
         self.model.train()
         for k, v in metrics.items():
