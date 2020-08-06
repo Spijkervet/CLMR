@@ -24,7 +24,6 @@ from validation import audio_latent_representations
 
 
 def main(args):
-    
 
     # data loaders
     (
@@ -59,7 +58,9 @@ def main(args):
     optimizer, scheduler = load_optimizer(args, model)
 
     if not args.supervised:
-        criterion = NT_Xent(args.batch_size, args.temperature, args.device, args.world_size)
+        criterion = NT_Xent(
+            args.batch_size, args.temperature, args.device, args.world_size
+        )
     else:
         criterion = torch.nn.BCEWithLogitsLoss()
 
@@ -67,12 +68,11 @@ def main(args):
     if args.dataparallel:
         model = convert_model(model)
         model = DataParallel(model)
-    else:
+    elif args.world_size > 1:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model = DistributedDataParallel(model,
-                    device_ids=[args.local_rank],
-                    output_device=args.local_rank
-                )
+        model = DistributedDataParallel(
+            model, device_ids=[args.local_rank], output_device=args.local_rank
+        )
 
     writer = None
     if args.is_master:
@@ -87,11 +87,13 @@ def main(args):
         # write_audio_tb(args, train_loader, test_loader, writer)
 
     # start training
-    args.current_epoch = args.start_epoch
     solver = Solver(model, optimizer, criterion, writer)
     validate_idx = 50
+    args.current_epoch = args.start_epoch
     for epoch in range(args.start_epoch, args.epochs):
-        dist.barrier()
+        if args.world_size > 1:
+            dist.barrier()
+
         learning_rate = optimizer.param_groups[0]["lr"]
         metrics = solver.train(args, train_loader)
 
@@ -103,15 +105,13 @@ def main(args):
                 f"Epoch [{epoch}/{args.epochs}]\t Loss: {metrics['Loss/train']}\t lr: {round(learning_rate, 5)}"
             )
 
-        if epoch > 0 and epoch % validate_idx == 0:
+        if epoch % validate_idx == 0:
             metrics = solver.validate(args, test_loader)
 
             if args.is_master:
                 for k, v in metrics.items():
                     writer.add_scalar(k, v, epoch)
-                    logging.info(
-                        f"[Test] Epoch [{epoch}/{args.epochs}]\t Test Loss: {metrics['Loss/test']}"
-                    )
+                    logging.info(f"[Test] Epoch [{epoch}/{args.epochs}]\t {k}: {v}")
 
         if args.is_master and epoch > 0 and epoch % args.checkpoint_epochs == 0:
             save_model(args, model, optimizer, name=args.model_name)
@@ -125,18 +125,21 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
 
-    current_env = os.environ
-    args.world_size = int(current_env["WORLD_SIZE"])
-    print("World size", args.world_size)
+    if "WORLD_SIZE" not in os.environ.keys():
+        args.world_size = 1
+        args.model_path = get_log_dir("./logs", args.id)
+    else:
+        args.world_size = int(os.environ["WORLD_SIZE"])
+        dist.init_process_group(backend="nccl", init_method="env://")
+        args.model_path = os.path.join("./logs", str(args.id))
 
-    # args.model_path = get_log_dir("./logs", args.id)
-    args.model_path = os.path.join("./logs", str(args.id))
+    print("World size", args.world_size)
 
     args.num_gpus = torch.cuda.device_count()
 
     # dataparallel splits the data across the batch dimension
     if args.dataparallel:
-        args.batch_size *= args.num_gpus
+        # args.batch_size *= args.num_gpus
         print(f"DP batch size: {args.batch_size}")
 
     args.is_master = args.local_rank == 0
@@ -146,7 +149,6 @@ if __name__ == "__main__":
     # args.device = torch.device(f"cuda:{args.local_rank}" if torch.cuda.is_available() else "cpu")
     print("Device", args.device)
 
-    dist.init_process_group(backend='nccl', init_method='env://')
     torch.cuda.set_device(args.local_rank)
 
     torch.cuda.manual_seed_all(args.seed)
@@ -155,14 +157,13 @@ if __name__ == "__main__":
     args.global_step = 0
     args.current_epoch = 0
 
-
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(os.path.join(args.model_path, 'output.log')),
-            logging.StreamHandler()
-        ]
+            logging.FileHandler(os.path.join(args.model_path, "output.log")),
+            logging.StreamHandler(),
+        ],
     )
 
     write_args(args)

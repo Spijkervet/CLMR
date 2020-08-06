@@ -16,23 +16,29 @@ def get_audio_dataloader(args, pretrain=True, download=False):
     else:
         transforms = None
 
-    train_dataset = Dataset(args, split="train", pretrain=pretrain, download=download, transform=transforms)
+    train_dataset = Dataset(
+        args, split="train", pretrain=pretrain, download=download, transform=transforms
+    )
 
     val_dataset = Dataset(args, split="valid", pretrain=pretrain, transform=transforms)
 
     test_dataset = Dataset(args, split="test", pretrain=pretrain, transform=transforms)
-    
-    train_sampler = torch.utils.data.distributed.DistributedSampler(
-        train_dataset, shuffle=True
-    )
 
-    val_sampler = torch.utils.data.distributed.DistributedSampler(
-        val_dataset, shuffle=True
-    )
+    train_sampler = None
+    val_sampler = None
+    test_sampler = None
+    if args.world_size > 1:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            train_dataset, shuffle=True
+        )
 
-    test_sampler = torch.utils.data.distributed.DistributedSampler(
-        test_dataset, shuffle=False
-    )
+        val_sampler = torch.utils.data.distributed.DistributedSampler(
+            val_dataset, shuffle=True
+        )
+
+        test_sampler = torch.utils.data.distributed.DistributedSampler(
+            test_dataset, shuffle=False
+        )
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -41,7 +47,7 @@ def get_audio_dataloader(args, pretrain=True, download=False):
         drop_last=True,
         num_workers=args.workers,
         pin_memory=True,
-        sampler=train_sampler
+        sampler=train_sampler,
     )
 
     val_loader = torch.utils.data.DataLoader(
@@ -51,17 +57,17 @@ def get_audio_dataloader(args, pretrain=True, download=False):
         drop_last=True,
         num_workers=args.workers,
         pin_memory=True,
-        sampler=val_sampler
+        sampler=val_sampler,
     )
 
     test_loader = torch.utils.data.DataLoader(
         dataset=test_dataset,
         batch_size=args.batch_size,
-        shuffle=(test_sampler is None), # do not shuffle test set
+        shuffle=(test_sampler is None),  # do not shuffle test set
         drop_last=True,
         num_workers=args.workers,
         pin_memory=True,
-        sampler=test_sampler
+        sampler=test_sampler,
     )
 
     args.n_classes = train_dataset.num_tags

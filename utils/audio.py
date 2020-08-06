@@ -61,10 +61,11 @@ def write_audio_tb(args, train_loader, test_loader, writer, num_audio=5):
 
  
 def load_tracks(sample_rate, index):
-    audios = []
-    for _, _, _, fp, _ in tqdm(index):
-        audio, sr = process_wav(sample_rate, fp, False)
-        audios.append(audio)
+    audios = {}
+    for track_id, clip_id, segment, fp, _ in tqdm(index):
+        if segment == 0:
+            audio, sr = process_wav(sample_rate, fp, False)
+            audios["{}-{}".format(track_id, clip_id)] = audio
     return audios
 
 

@@ -12,6 +12,7 @@ import time
 from .dataset import Dataset
 from scripts.datasets.utils import write_statistics
 from utils import random_undersample_balanced
+from utils.audio import load_tracks, concat_tracks
 
 
 def load_id2gt(gt_file):
@@ -71,6 +72,7 @@ class MTTDataset(Dataset):
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
         self.load_ram = args.load_ram
+        self.supervised = args.supervised
 
         # MagnaTagATune has clips of 30s, of which the last is not a full |audio_length|
         self.num_segments = (30 * self.sample_rate) // self.audio_length - 1
@@ -103,9 +105,11 @@ class MTTDataset(Dataset):
         [ids, id2gt] = load_id2gt(self.annotations_file)
         self.id2audio_path = id2audio_path
 
-        self.index, self.track_index = self.indexer(ids, id2audio_path, id2gt, "magnatagatune")
+        self.index, self.track_index = self.indexer(
+            ids, id2audio_path, id2gt, "magnatagatune"
+        )
 
-        if self.pretrain:
+        if not self.supervised and self.pretrain:
             # we already load a full fragment of audio (with 10 segments)
             self.index = [
                 [track_id, clip_id, segment, fp, label]
@@ -138,33 +142,16 @@ class MTTDataset(Dataset):
         self.mean = None
         self.std = None
 
-        # stats_path = os.path.join(args.data_input_dir, "magnatagatune", f"statistics_{self.sample_rate}.csv")
-        # print(stats_path)
-        # if not os.path.exists(stats_path):
-        #     print(f"[{name} dataset]: Fetching dataset statistics (mean/std) for {version}_{self.sample_rate} version")
-        #     if train:
-        #         self.mean, self.std = get_dataset_stats(
-        #             self.loader, self.tracks_list
-        #         )
-        #         write_statistics(self.mean, self.std, len(self.tracks_list), stats_path)
-        #     else:
-        #         raise FileNotFoundError(
-        #             f"{stats_path} does not exist, no mean/std from train set"
-        #         )
-        # else:
-        #     with open(stats_path, "r") as f:
-        #         l = f.readlines()
-        #         stats = l[1].split(";")
-        #         self.mean = float(stats[0])
-        #         self.std = float(stats[1])
-
-        from utils.audio import load_tracks, concat_tracks
-        if self.pretrain and self.split == "train":
+        if not self.supervised and self.pretrain and self.split == "train":
             # track index contains track_ids matched with clip_ids, so filtering is easier
-            print("Concatenating tracks for pre-training (to avoid positive samples in the negative samples batch)")
-            
+            print(
+                "Concatenating tracks for pre-training (to avoid positive samples in the negative samples batch)"
+            )
+
             # new track_id filtered index (unique track_ids)
-            self.index = concat_tracks(args.sample_rate, self.audio_proc_dir, self.split, self.track_index)
+            self.index = concat_tracks(
+                args.sample_rate, self.audio_proc_dir, self.split, self.track_index
+            )
 
         if self.load_ram and self.pretrain and self.split == "train":
             print("Loading train data into memory for faster training")
@@ -182,18 +169,17 @@ class MTTDataset(Dataset):
             self.std,
         )
 
-        self.index = np.array(self.index)
-        self.track_index = {k: np.array(v) for k, v in self.track_index.items()}
-
-
+        # memory leak bug in DDP
+        if args.world_size > 1:
+            self.index = np.array(self.index)
+            self.track_index = {k: np.array(v) for k, v in self.track_index.items()}
 
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
         try:
-            # don't use this for now
             if self.load_ram and self.pretrain and self.split == "train":
-                audio = self.audios[idx]
+                audio = self.audios["{}-{}".format(track_id, clip_id)]
             else:
                 audio = self.get_audio(fp)
 
@@ -202,9 +188,8 @@ class MTTDataset(Dataset):
             return self.__getitem__(idx + 1)
 
         # only transform if unsupervised training
-        if self.pretrain and self.transform:
+        if not self.supervised and self.pretrain and self.transform:
             audio = self.transform(audio, self.mean, self.std)
-
         # elif self.model_name == "cpc":
         #     max_samples = audio.size(1)
         #     start_idx = random.randint(0, max_samples - self.audio_length)
@@ -212,10 +197,10 @@ class MTTDataset(Dataset):
         #     audio = self.normalise_audio(audio)
         #     audio = (audio, audio)
         else:
-            start_idx = segment * self.audio_length
+            start_idx = int(segment) * self.audio_length
             audio = audio[start_idx : start_idx + self.audio_length]
-            audio = audio.reshape(1, -1) # [channels, samples]
+            audio = audio.reshape(1, -1)  # [channels, samples]
             audio = (audio, audio)
 
-        return audio, label 
+        return audio, label
 
