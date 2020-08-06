@@ -35,7 +35,6 @@ class Dataset(TorchDataset):
         for clip_id in ids:
             fp = id2audio_path[clip_id]
             label = id2gt[clip_id]
-            label = torch.FloatTensor(label)
 
             if dataset == "magnatagatune":
                 track_id = "".join(Path(fp).stem.split("-")[:-2])

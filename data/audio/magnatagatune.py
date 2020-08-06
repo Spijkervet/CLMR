@@ -177,6 +177,7 @@ class MTTDataset(Dataset):
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
+        label = torch.FloatTensor(label)
         try:
             if self.load_ram and self.pretrain and self.split == "train":
                 audio = self.audios["{}-{}".format(track_id, clip_id)]
