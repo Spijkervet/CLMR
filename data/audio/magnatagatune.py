@@ -118,23 +118,23 @@ class MTTDataset(Dataset):
             ]
 
         # reduce dataset to n%
-        # if pretrain and args.perc_train_data < 1.0 and train and not valid:  # only on train set
-        #     print("Train dataset size:", len(self.tracks_list))
-        #     train_X_indices = np.array(
-        #         [idx for idx in range(len(self.tracks_list))]
-        #     ).reshape(-1, 1)
-        #     train_y = np.array([label.numpy() for _, _, label, _ in self.tracks_list])
-        #     train_X_indices, _ = random_undersample_balanced(
-        #         train_X_indices, train_y, args.perc_train_data
-        #     )
+        if pretrain and args.perc_train_data < 1.0 and split == "train":  # only on train set
+            print("Train dataset size:", len(self.index))
+            train_X_indices = np.array(
+                [idx for idx in range(len(self.index))]
+            ).reshape(-1, 1)
+            train_y = np.array([label.numpy() for _, _, _, _, label in self.index])
+            train_X_indices, _ = random_undersample_balanced(
+                train_X_indices, train_y, args.perc_train_data
+            )
 
-        #     new_tracks_list = []
-        #     for idx, (track_id, fp, label, segment) in enumerate(self.tracks_list):
-        #         if idx in train_X_indices:
-        #             new_tracks_list.append([track_id, fp, label, segment])
+            new_index = []
+            for idx, (track_id, clip_id, segment, fp, label) in enumerate(self.index):
+                if idx in train_X_indices:
+                    new_index.append([track_id, clip_id, segment, fp, label])
 
-        #     self.tracks_list = new_tracks_list
-        #     print("Undersampled train dataset size:", len(self.tracks_list))
+            self.index = new_index
+            print("Undersampled train dataset size:", len(self.index))
 
         # print(f"Num tracks: {len(self.tracks_list)}")
 
