@@ -68,6 +68,7 @@ def main(args):
     if args.dataparallel:
         model = convert_model(model)
         model = DataParallel(model)
+        model = model.to(args.device)
     elif args.world_size > 1:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DistributedDataParallel(

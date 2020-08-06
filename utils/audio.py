@@ -188,8 +188,9 @@ def concat_tracks(sample_rate, dir, split, track_index):
             audios = float_to_pcm(audios)
             write_wav(out_file, sample_rate, audios)
             concat_fps = []
-
-        new_index.append([track_id, 0, 0, out_file, 0])
+        
+        label_len = len(v[0][3])
+        new_index.append([track_id, 0, 0, out_file, [0]*label_len])
     return new_index
 
 
