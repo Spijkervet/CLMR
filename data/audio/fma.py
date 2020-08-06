@@ -12,9 +12,11 @@ import random
 
 import sklearn.preprocessing
 
-sys.path.append("../")
-from fma.utils import get_audio_path
-from fma.utils import load as load_fma
+try:
+    from fma.utils import get_audio_path
+    from fma.utils import load as load_fma
+except:
+    pass
 
 from scripts.datasets.utils import write_statistics
 
