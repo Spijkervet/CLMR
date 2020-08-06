@@ -123,7 +123,7 @@ class MTTDataset(Dataset):
             train_X_indices = np.array(
                 [idx for idx in range(len(self.index))]
             ).reshape(-1, 1)
-            train_y = np.array([label.numpy() for _, _, _, _, label in self.index])
+            train_y = np.array([label for _, _, _, _, label in self.index])
             train_X_indices, _ = random_undersample_balanced(
                 train_X_indices, train_y, args.perc_train_data
             )
