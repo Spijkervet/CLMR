@@ -88,7 +88,7 @@ def main(args):
 
     # start training
     solver = Solver(model, optimizer, criterion, writer)
-    validate_idx = 50
+    validate_idx = 10
     args.current_epoch = args.start_epoch
     last_model = None
     last_auc = 0
@@ -109,7 +109,7 @@ def main(args):
                 f"Epoch [{epoch}/{args.epochs}]\t Loss: {metrics['Loss/train']}\t lr: {round(learning_rate, 5)}"
             )
 
-        if epoch % validate_idx == 0:
+        if epoch > 0 and epoch % validate_idx == 0 or early_stop > 0:
             metrics = solver.validate(args, val_loader)
 
             # early stopping for supervised
@@ -184,6 +184,8 @@ if __name__ == "__main__":
         args.world_size = int(os.environ["WORLD_SIZE"])
         dist.init_process_group(backend="nccl", init_method="env://")
         args.model_path = os.path.join("./logs", str(args.id))
+        if not os.path.exists(args.model_path):
+            os.makedirs(args.model_path)
 
     print("World size", args.world_size)
 

@@ -9,5 +9,7 @@ python -m torch.distributed.launch \
         --nnodes=$NUM_NODES \
         --node_rank $NODE_RANK \
         main.py \
+        --id 32 \
         --workers 6 \
-        --supervised 1
+        --supervised 1 \
+        --epochs 1500
