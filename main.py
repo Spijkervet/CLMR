@@ -5,6 +5,7 @@ import torchvision
 import numpy as np
 import logging
 import json
+import time
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -101,6 +102,7 @@ def main(args):
     last_ap = 0
     early_stop = 0
     for epoch in range(args.start_epoch, args.epochs):
+        t0 = time.time()
         if args.world_size > 1:
             dist.barrier()
 
@@ -146,6 +148,7 @@ def main(args):
             save_model(args, model, optimizer, name=args.model_name)
 
         args.current_epoch += 1
+        print(f"Time: {time.time() - t0}")
         
         if args.supervised and early_stop >= 3:
             logging.info("Early stopping...")

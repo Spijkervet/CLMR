@@ -27,7 +27,7 @@ class InvertSignal:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            audio = audio * -1.0
+            audio = np.negative(audio) # considerably faster
         return audio
 
 
