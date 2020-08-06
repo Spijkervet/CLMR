@@ -26,7 +26,7 @@ def load_optimizer(args, model):
 
     scheduler = None
     if args.optimizer == "Adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)  # TODO: LARS
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  # TODO: LARS
     elif args.optimizer == "LARS":
         # optimized using LARS with linear learning rate scaling
         # (i.e. LearningRate = 0.3 × BatchSize/256) and weight decay of 10−6.
