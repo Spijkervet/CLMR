@@ -81,7 +81,10 @@ def load_encoder(args, reload=False):
         raise NotImplementedError
     
     args.n_features = list(encoder.children())[-1].in_features
-    encoder.fc = (Identity()) # TODO rewrite this
+
+    if not args.supervised:
+        encoder.fc = (Identity()) # TODO rewrite this
+        
     if reload:
         # reload model
         print(

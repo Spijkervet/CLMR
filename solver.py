@@ -1,6 +1,7 @@
 import torch
 import logging
 from collections import defaultdict
+from utils.eval import get_metrics
 
 class Solver:
     def __init__(self, model, optimizer, criterion, writer):
@@ -28,7 +29,8 @@ class Solver:
                 )  # x_i and x_j are identital in supervised case (dataloader)
                 y = y.to(args.device)
 
-                loss = self.model(x_i, x_i)
+                h_i, _ = self.model.get_latent_representations(x_i)
+                loss = self.criterion(h_i, y)
 
                 auc, ap = get_metrics(
                     args.domain, y.detach().cpu().numpy(), h_i.detach().cpu().numpy()
@@ -46,12 +48,6 @@ class Solver:
             loss.backward()
             self.optimizer.step()
             
-            if self.writer:
-                self.writer.add_scalar("Loss/train_step", loss.item(), args.global_step)
-                if args.supervised:
-                    self.writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
-                    self.writer.add_scalar("AP_tag/train_step", ap, args.global_step)
-
             metrics["Loss/train"] += loss.item()
             args.global_step += 1
 
@@ -72,18 +68,27 @@ class Solver:
                     # loss = self.model(x_i, x_j)
                     h_i, h_j, z_i, z_j  = self.model(x_i, x_j)
                     loss = self.criterion(z_i, z_j)
+                    if self.writer and step > 0 and step % 20 == 0:
+                        logging.info(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
                 else:
                     x_i = x_i.to(
                         args.device
                     )  # x_i and x_j are identital in supervised case (dataloader)
                     y = y.to(args.device)
-                    loss = self.model(x_i, x_i)
 
-                if self.writer and step > 0 and step % 10 == 0:
-                    logging.info(
-                        f"Step [{step}/{len(loader)}]\t Validation/Test Loss: {loss.item()}"
+                    h_i, _ = self.model.get_latent_representations(x_i)
+                    loss = self.criterion(h_i, y)
+
+                    auc, ap = get_metrics(
+                        args.domain, y.detach().cpu().numpy(), h_i.detach().cpu().numpy()
                     )
-
+                    metrics["AUC_tag/test"] += auc
+                    metrics["AP_tag/test"] += ap
+                    if self.writer and step > 0 and step % 20 == 0:
+                        logging.info(
+                            f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}"
+                        )
+                        
                 metrics["Loss/test"] += loss.item()
 
         self.model.train()
