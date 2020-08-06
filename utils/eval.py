@@ -138,9 +138,11 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
 
     figure = plt.figure()
     plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
-    writer.add_figure(
-        "Class_distribution/test_all", figure, global_step=args.current_epoch
-    )
+
+    if writer:
+        writer.add_figure(
+            "Class_distribution/test_all", figure, global_step=args.current_epoch
+        )
 
     encoder.train()
     if model:
