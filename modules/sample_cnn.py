@@ -14,7 +14,8 @@ class SampleCNN(Model):
             nn.BatchNorm1d(128),
             nn.ReLU()
         )]
-
+        
+        # CLMR
         self.hidden = [
             [128, 128],
             [128, 128],
@@ -26,6 +27,20 @@ class SampleCNN(Model):
             [256, 256],
             [256, 512],
         ]
+        
+        # CLMR-large
+        # self.hidden = [
+        #     [128, 128],
+        #     [128, 128],
+        #     [128, 256],
+        #     [256, 256],
+        #     [256, 256],
+        #     [256, 512],
+        #     [512, 512],
+        #     [512, 512],
+        #     [512, 1024],
+        # ]
+
         assert len(self.hidden) == len(self.strides), "Number of hidden layers and strides are not equal"
         for stride, (h_in, h_out) in zip(self.strides, self.hidden):
             self.sequential.append(
@@ -45,6 +60,15 @@ class SampleCNN(Model):
                 nn.ReLU(),
             )
         )
+
+        # CLMR-large
+        # self.sequential.append(
+        #     nn.Sequential(
+        #         nn.Conv1d(1024, 1024, kernel_size=3, stride=1, padding=1),
+        #         nn.BatchNorm1d(1024),
+        #         nn.ReLU(),
+        #     )
+        # )
 
         self.sequential = nn.Sequential(*self.sequential)
 

@@ -25,7 +25,6 @@ def get_audio_dataloader(args, pretrain=True, download=False):
     train_sampler = torch.utils.data.distributed.DistributedSampler(
         train_dataset, shuffle=True
     )
-    
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -34,6 +33,7 @@ def get_audio_dataloader(args, pretrain=True, download=False):
         drop_last=True,
         num_workers=args.workers,
         pin_memory=True,
+        sampler=train_sampler
     )
 
     val_loader = torch.utils.data.DataLoader(

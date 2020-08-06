@@ -73,10 +73,7 @@ def main(args):
                     device_ids=[args.local_rank],
                     output_device=args.local_rank
                 )
-    model = model.to(args.device)
 
-    print("RANK", args.local_rank)
-    
     writer = None
     if args.is_master:
         writer = SummaryWriter(log_dir=args.model_path)
@@ -145,8 +142,8 @@ if __name__ == "__main__":
     args.is_master = args.local_rank == 0
 
     # set the device
-    # args.device = torch.cuda.device(args.local_rank)
-    args.device = torch.device(f"cuda:{args.local_rank}" if torch.cuda.is_available() else "cpu")
+    args.device = torch.device(args.local_rank)
+    # args.device = torch.device(f"cuda:{args.local_rank}" if torch.cuda.is_available() else "cpu")
     print("Device", args.device)
 
     dist.init_process_group(backend='nccl', init_method='env://')
@@ -169,5 +166,4 @@ if __name__ == "__main__":
     )
 
     write_args(args)
-    print("Rank", args.local_rank)
     main(args)
