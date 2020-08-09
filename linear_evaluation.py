@@ -144,6 +144,7 @@ if __name__ == "__main__":
 
     args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args.batch_size = args.logistic_batch_size
+    args.world_size = 1
 
     # Get the data loaders, without a train sampler and without pre-training (this is linear evaluation)
     (

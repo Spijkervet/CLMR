@@ -63,9 +63,10 @@ def write_audio_tb(args, train_loader, test_loader, writer, num_audio=5):
 def load_tracks(sample_rate, index):
     audios = {}
     for track_id, clip_id, segment, fp, _ in tqdm(index):
-        if segment == 0:
+        key = "{}-{}".format(track_id, clip_id)
+        if key not in audios.keys():
             audio, sr = process_wav(sample_rate, fp, False)
-            audios["{}-{}".format(track_id, clip_id)] = audio
+            audios[key] = audio
     return audios
 
 
@@ -93,7 +94,7 @@ def write_wav(filename, sample_rate, data):
 
 def process_wav(desired_sample_rate, filename, use_ulaw):
     audio, sr = read_wav(filename)
-    audio = ensure_mono(audio)
+    # audio = ensure_mono(audio)
     audio = wav_to_float(audio)
     if use_ulaw:
         audio = ulaw(audio)

@@ -78,9 +78,6 @@ class Dataset(TorchDataset):
     def get_full_size_audio(self, fp):
         audio = self.get_audio(fp)
 
-        # normalise audio
-        # audio = self.normalise_audio(audio)
-
         # split into equally sized tensors of self.audio_length
         audio = torch.from_numpy(audio).reshape(1, -1)
         batch = torch.split(audio, self.audio_length, dim=1)
