@@ -6,7 +6,7 @@ import librosa
 import numpy as np
 import audioop
 from torchaudio.transforms import Vol
-
+import augment
 
 class RandomResizedCrop:
     def __init__(self, sr, n_samples):
@@ -27,7 +27,7 @@ class InvertSignal:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            audio = np.negative(audio) # considerably faster
+            audio = np.negative(audio)  # considerably faster
         return audio
 
 
@@ -39,9 +39,9 @@ class Noise:
 
     def __call__(self, audio):
         if random.random() < self.p:
-            RMS_s = np.sqrt(np.mean(audio**2))
-            RMS_n = np.sqrt(RMS_s**2 / (pow(10, self.snr / 20)))
-            noise = np.random.normal(0, RMS_n, audio.shape[0]).astype('float32')
+            RMS_s = np.sqrt(np.mean(audio ** 2))
+            RMS_n = np.sqrt(RMS_s ** 2 / (pow(10, self.snr / 20)))
+            noise = np.random.normal(0, RMS_n, audio.shape[0]).astype("float32")
             audio = audio + noise
             audio = np.clip(audio, -1, 1)
         return audio
@@ -86,16 +86,36 @@ class Gain:
         return audio
 
 
-class PitchShift:
-    def __init__(self, sr, p=0.5):
+class RandomPitchShift:
+    def __init__(self, audio_length, sr, p=0.5):
+        self.audio_length = audio_length
         self.sr = sr
         self.p = p
+        self.n_steps = lambda: random.randint(-700, 700)
+        self.effect_chain = (
+            augment.EffectChain().pitch(self.n_steps).rate(self.sr)
+        )
+        self.src_info = {"rate": self.sr}
+        self.target_info = {
+            "channels": 1,
+            "length": self.audio_length,
+            "rate": self.sr,
+        }
 
     def __call__(self, audio):
         if random.random() < self.p:
-            pitches = [-7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7]
-            n_steps = random.choice(pitches)
-            audio = librosa.effects.pitch_shift(audio, sr=self.sr, n_steps=n_steps)
+            audio = torch.from_numpy(audio)
+
+            y = self.effect_chain.apply(
+                audio, src_info=self.src_info, target_info=self.target_info
+            )
+
+            # sox might misbehave sometimes by giving nan/inf if sequences are too short (or silent)
+            # and the effect chain includes eg `pitch`
+            if torch.isnan(y).any() or torch.isinf(y).any():
+                return audio.clone()
+
+            audio = y.numpy()
         return audio
 
 
@@ -157,8 +177,9 @@ class AudioTransforms:
             Gain(p=args.transforms_gain, sr=sr),
             HighLowBandPass(p=args.transforms_filters, sr=sr),
             Delay(p=args.transforms_delay, sr=sr),
-            PitchShift(p=args.transforms_pitch, sr=sr)
-            # Reverse(p=0.5, sr=sr),
+            RandomPitchShift(
+                audio_length=args.audio_length, p=args.transforms_pitch, sr=sr
+            ),
         ]
         self.test_transform = []
 
@@ -169,11 +190,6 @@ class AudioTransforms:
         # to PyTorch format (channels, samples)
         x0 = x0.reshape(1, -1)
         x1 = x1.reshape(1, -1)
-
-        # clamp the values again between [-1, 1], in case any
-        # unwanted transformations went to [-inf, inf]
-        # x0 = torch.clamp(x0, min=-1, max=1)
-        # x1 = torch.clamp(x1, min=-1, max=1)
         return x0, x1
 
     def transform(self, x, num):
