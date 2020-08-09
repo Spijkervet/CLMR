@@ -135,7 +135,7 @@ class Delay:
     def __init__(self, sr, p=0.5):
         self.sr = sr
         self.p = p
-        self.factor = 0.5  # volume factor of delay signal
+        self.factor = 0.2  # volume factor of delay signal
 
     def calc_offset(self, ms):
         return int(ms * (self.sr / 1000))
@@ -157,6 +157,33 @@ class Delay:
 
         return audio
 
+
+class Reverb:
+    def __init__(self, sr, p=0.5):
+        self.sr = sr
+        self.p = p
+        self.reverberance = lambda: random.randint(1, 100) # 0 - 100
+        self.dumping_factor = lambda: random.randint(1, 100) # 0 - 100
+        self.room_size = lambda: random.randint(1, 100) # 0 - 100
+        self.effect_chain = (
+            augment.EffectChain().reverb(self.reverberance, self.dumping_factor, self.room_size).channels(1)
+        )
+        self.src_info = {"rate": self.sr}
+        self.target_info = {
+            "channels": 1,
+            "rate": self.sr,
+        }
+
+    def __call__(self, audio):
+        if random.random() < self.p:
+            audio = torch.from_numpy(audio)
+            y = self.effect_chain.apply(
+                audio, src_info=self.src_info, target_info=self.target_info
+            )
+            audio = y.numpy()
+
+
+        return audio
 
 class AudioTransforms:
     """
@@ -180,6 +207,9 @@ class AudioTransforms:
             RandomPitchShift(
                 audio_length=args.audio_length, p=args.transforms_pitch, sr=sr
             ),
+            Reverb(
+                p=args.transforms_reverb, sr=sr
+            )
         ]
         self.test_transform = []
 
