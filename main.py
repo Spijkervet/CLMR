@@ -106,6 +106,26 @@ def main(args):
         if args.world_size > 1:
             dist.barrier()
 
+        if epoch % validate_idx == 0:
+            audio_latent_representations(
+                args,
+                train_loader.dataset,
+                model,
+                args.current_epoch,
+                args.global_step,
+                writer,
+                train=True,
+            )
+            audio_latent_representations(
+                args,
+                test_loader.dataset,
+                model,
+                args.current_epoch,
+                args.global_step,
+                writer,
+                train=False,
+            )
+
         learning_rate = optimizer.param_groups[0]["lr"]
         metrics = solver.train(args, train_loader)
 

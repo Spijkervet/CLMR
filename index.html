@@ -34,7 +34,6 @@
         #loading {
             display: none;
         }
-
     </style>
     <link rel="stylesheet" , href="//cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css" />
     <link rel="stylesheet" , href="//cdn.datatables.net/autofill/2.3.5/css/autoFill.dataTables.min.css" />
@@ -49,9 +48,15 @@
         <input type="text" name="featurenum" id="featurenum" value="0,100,200,300,400,500"><br><br>
 
         <h3>Finetuned linear classifier</h3>
-        <label>Tags (for finetuned linear classifier)</label><br>
-        <div id="toggleTabs">
+        <label>MagnaTagATune Tags</label><br>
+        <div id="mtt_tabs">
         </div>
+        <br/>
+
+        <label>Million Song Dataset Tags</label><br>
+        <div id="msd_tabs">
+        </div>
+
 
         <input type="submit" value="Submit">
     </form>
@@ -70,7 +75,26 @@
     <script src="//cdn.datatables.net/autofill/2.3.5/js/dataTables.autoFill.min.js"></script>
     <script>
 
-        var cols = [
+
+        function createTabs(cols, id) {
+            var tabs = document.getElementById(id);
+            for (var idx = 0; idx < magnatagatune_cols.length; idx++) {
+                var tab = document.createElement("input");
+                tab.type = "checkbox"
+                tab.dataset.column = idx
+                tab.name = cols[idx]
+                tab.value = cols[idx]
+                tabs.appendChild(tab);
+
+                var tab = document.createElement("label");
+                tab.for = cols[idx]
+                tab.innerHTML = cols[idx]
+                tabs.appendChild(tab);
+            }
+        }
+        
+
+        var magnatagatune_cols = [
             'guitar',
             'classical',
             'slow',
@@ -122,22 +146,63 @@
             'female voice',
             'choral'
         ]
-        var tabs = document.getElementById("toggleTabs");
-        for (var idx = 0; idx < cols.length; idx++) {
-            var tab = document.createElement("input");
-            tab.type = "checkbox"
-            tab.dataset.column = idx
-            tab.name = cols[idx]
-            tab.value = cols[idx]
-            tabs.appendChild(tab);
 
-            var tab = document.createElement("label");
-            tab.for = cols[idx]
-            tab.innerHTML = cols[idx]
-            tabs.appendChild(tab);
+        msd_cols = [
+            'rock',
+            'pop',
+            'alternative',
+            'indie',
+            'electronic',
+            'female vocalists',
+            'dance',
+            '00s',
+            'alternative rock',
+            'jazz',
+            'beautiful',
+            'metal',
+            'chillout',
+            'male vocalists',
+            'classic rock',
+            'soul',
+            'indie rock',
+            'Mellow',
+            'electronica',
+            '80s',
+            'folk',
+            '90s',
+            'chill',
+            'instrumental',
+            'punk',
+            'oldies',
+            'blues',
+            'hard rock',
+            'ambient',
+            'acoustic',
+            'experimental',
+            'female vocalist',
+            'guitar',
+            'Hip-Hop',
+            '70s',
+            'party',
+            'country',
+            'easy listening',
+            'sexy',
+            'catchy',
+            'funk',
+            'electro',
+            'heavy metal',
+            'Progressive rock',
+            '60s',
+            'rnb',
+            'indie pop',
+            'sad',
+            'House',
+            'happy',
+        ]
 
+        createTabs(magnatagatune_cols, "mtt_tabs");
+        createTabs(msd_cols, "msd_tabs");
 
-        }
 
         $("#parameters").on("submit", function (e) {
 
@@ -145,7 +210,7 @@
 
             var $inputs = $('#parameters :input[type="text"]');
             var values = {};
-            $inputs.each(function() {
+            $inputs.each(function () {
                 values[this.name] = $(this).val();
             });
 
@@ -153,7 +218,7 @@
             $('input[type="checkbox"]:checked').each(function () {
                 checkbox.push($(this).val());
             });
-            
+
             var featurenum = values["featurenum"]
             featurenum = featurenum.split(",")
             checkbox.push(...featurenum)
@@ -161,7 +226,7 @@
             $("#loading").show();
             let table = document.querySelector("table");
             table.innerHTML = "<table></table>"
-            
+
             fetch("predictions.json")
                 .then(response => response.json())
                 .then(json => {
@@ -169,9 +234,9 @@
                     valid_keys = ["idx", "audio", "track_id", "clip_id", "segment", "labels"]
                     valid_keys.push(...checkbox)
                     console.log(valid_keys)
-                    for(var idx = 0; idx < json.length; idx += 1) {
-                        Object.keys(json[idx]).forEach(function(itm){
-                            if(!valid_keys.includes(itm)) delete json[idx][itm];
+                    for (var idx = 0; idx < json.length; idx += 1) {
+                        Object.keys(json[idx]).forEach(function (itm) {
+                            if (!valid_keys.includes(itm)) delete json[idx][itm];
                         });
                     }
 
