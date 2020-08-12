@@ -1,3 +1,25 @@
+#!/bin/sh
+. ~/miniconda3/etc/profile.d/conda.sh
+conda activate clmr
+
+python linear_evaluation.py --dataset magnatagatune --model_path /storage/jspijkervet/logs/42 --epoch_num 500 --logistic_epochs 500 --logistic_lr 0.0001
+python linear_evaluation.py --dataset magnatagatune --model_path /storage/jspijkervet/logs/43 --epoch_num 500 --logistic_epochs 500 --logistic_lr 0.0001
+
+# python main.py --id 34 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.01 --load_ram 1 --workers 6 --dataparallel 1
+# python main.py --id 35 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.02 --load_ram 1 --workers 6 --dataparallel 1
+# python main.py --id 36 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.05 --load_ram 1 --workers 6 --dataparallel 1
+# python main.py --id 37 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.1 --load_ram 1 --workers 6 --dataparallel 1
+# python main.py --id 38 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.2 --load_ram 1 --workers 6 --dataparallel 1
+# python main.py --id 39 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.5 --load_ram 1 --workers 6 --dataparallel 1
+# python main.py --id 40 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 1.0 --load_ram 1 --workers 6 --dataparallel 1
+# python main.py --id 42 --model_name clmr --supervised 0 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0.5 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --transforms_reverb 0.4 --learning_rate 0.0003 --logistic_lr 0.0001 --perc_train_data 1 --load_ram 1 --workers 6 --dataparallel 1 --ablation 1
+# python main.py --id 43 --model_name clmr --supervised 0 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0.5 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --transforms_reverb 0.8 --learning_rate 0.0003 --logistic_lr 0.0001 --perc_train_data 1 --load_ram 1 --workers 6 --dataparallel 1 --ablation 1
+
+
+
+exit
+
+
 export NUM_NODES=1
 export NUM_GPUS_PER_NODE=2
 export NODE_RANK=0
