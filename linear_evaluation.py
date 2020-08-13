@@ -10,6 +10,7 @@ import time
 import urllib.request
 import logging
 import json
+import copy
 
 # TensorBoard
 from torch.utils.tensorboard import SummaryWriter
@@ -173,7 +174,7 @@ if __name__ == "__main__":
     model = model.to(args.device)
 
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.logistic_lr  # , weight_decay=args.weight_decay
+        model.parameters(), lr=args.logistic_lr, weight_decay=args.weight_decay
     )
 
     # set criterion, e.g. gtzan has one label per segment, MTT has multiple
@@ -264,7 +265,7 @@ if __name__ == "__main__":
             writer.add_scalar(k, v, epoch)
 
         if metrics["AUC_tag/test"] < last_auc and metrics["AP_tag/test"] < last_ap:
-            last_model = model
+            last_model = copy.deepcopy(model)
             early_stop += 1
             logging.info(
                 "Early stop count: {}\t\t{} (best: {})\t {} (best: {})".format(
@@ -283,12 +284,13 @@ if __name__ == "__main__":
         if early_stop >= 15:
             logging.info("Early stopping...")
             break
-        # save_model(args, model, optimizer, name="finetuner")
         args.current_epoch += 1
 
     if last_model is None:
         logging.info("No early stopping, using last model")
         last_model = model
+
+    save_model(args, last_model, optimizer, name="finetuner")
 
     # eval all
     metrics = eval_all(args, test_loader, encoder, last_model, writer, n_tracks=None)

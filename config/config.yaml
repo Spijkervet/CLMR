@@ -26,7 +26,7 @@ seed: 42 # sacred handles automatic seeding when passed in the config
 batch_size: 48 # for audio, 256 for images
 start_epoch: 0
 epochs: 2000
-checkpoint_epochs: 10
+checkpoint_epochs: 100
 
 
 ## audio

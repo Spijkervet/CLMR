@@ -118,7 +118,7 @@ class MTTDataset(Dataset):
             ]
 
         # reduce dataset to n%
-        if pretrain and args.perc_train_data < 1.0 and split == "train":  # only on train set
+        if args.perc_train_data < 1.0 and split == "train":  # only on train set
             print("Train dataset size:", len(self.index))
             train_X_indices = np.array(
                 [idx for idx in range(len(self.index))]
@@ -133,8 +133,9 @@ class MTTDataset(Dataset):
                 if idx in train_X_indices:
                     new_index.append([track_id, clip_id, segment, fp, label])
 
+
             self.index = new_index
-            print("Undersampled train dataset size:", len(self.index))
+            print("Undersampled train dataset size:", len(self.index), len(self.track_index))
 
         # print(f"Num tracks: {len(self.tracks_list)}")
 
