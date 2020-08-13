@@ -1,0 +1,332 @@
+<html>
+
+<head>
+
+    <style>
+        table {
+            margin: 0 auto;
+            width: 100%;
+            clear: both;
+            border-collapse: collapse;
+            table-layout: fixed;
+            word-wrap: break-word;
+            text-align: center;
+        }
+
+        a {
+            display: block;
+            margin: 4px;
+        }
+
+        audio {
+            width: 250px;
+        }
+
+        #toggleTabs {
+            display: flex;
+            width: 90%;
+            height: 100px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            margin-bottom: 50px;
+        }
+
+        #loading {
+            display: none;
+        }
+    </style>
+    <link rel="stylesheet" , href="//cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" , href="//cdn.datatables.net/autofill/2.3.5/css/autoFill.dataTables.min.css" />
+</head>
+
+<body>
+    <h1>CLMR Listening Experiment</h1>
+
+    <form id="parameters">
+        <h3>Encoder</h3>
+        <label for="featurenum">Feature number (0 - 511 hidden layers), comma seperated for multiple:</label>
+        <input type="text" name="featurenum" id="featurenum" value="0,100,200,300,400,500"><br><br>
+
+        <h3>Finetuned linear classifier</h3>
+        <label>MagnaTagATune Tags</label><br>
+        <div id="mtt_tabs">
+        </div>
+        <br/>
+
+        <label>Million Song Dataset Tags</label><br>
+        <div id="msd_tabs">
+        </div>
+
+
+        <input type="submit" value="Submit">
+    </form>
+
+
+    <div id="loading">
+        Loading table...
+    </div>
+
+    <table id="songtable">
+    </table>
+
+    <!-- <script src="https://www.kryogenix.org/code/browser/sorttable/sorttable.js"></script> -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="//cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+    <script src="//cdn.datatables.net/autofill/2.3.5/js/dataTables.autoFill.min.js"></script>
+    <script>
+
+
+        function createTabs(cols, id) {
+            var tabs = document.getElementById(id);
+            for (var idx = 0; idx < magnatagatune_cols.length; idx++) {
+                var tab = document.createElement("input");
+                tab.type = "checkbox"
+                tab.dataset.column = idx
+                tab.name = cols[idx]
+                tab.value = cols[idx]
+                tabs.appendChild(tab);
+
+                var tab = document.createElement("label");
+                tab.for = cols[idx]
+                tab.innerHTML = cols[idx]
+                tabs.appendChild(tab);
+            }
+        }
+        
+
+        var magnatagatune_cols = [
+            'guitar',
+            'classical',
+            'slow',
+            'techno',
+            'strings',
+            'drums',
+            'electronic',
+            'rock',
+            'fast',
+            'piano',
+            'ambient',
+            'beat',
+            'violin',
+            'vocal',
+            'synth',
+            'female',
+            'indian',
+            'opera',
+            'male',
+            'singing',
+            'vocals',
+            'no vocals',
+            'harpsichord',
+            'loud',
+            'quiet',
+            'flute',
+            'woman',
+            'male vocal',
+            'no vocal',
+            'pop',
+            'soft',
+            'sitar',
+            'solo',
+            'man',
+            'classic',
+            'choir',
+            'voice',
+            'new age',
+            'dance',
+            'male voice',
+            'female vocal',
+            'beats',
+            'harp',
+            'cello',
+            'no voice',
+            'weird',
+            'country',
+            'metal',
+            'female voice',
+            'choral'
+        ]
+
+        msd_cols = [
+            'rock',
+            'pop',
+            'alternative',
+            'indie',
+            'electronic',
+            'female vocalists',
+            'dance',
+            '00s',
+            'alternative rock',
+            'jazz',
+            'beautiful',
+            'metal',
+            'chillout',
+            'male vocalists',
+            'classic rock',
+            'soul',
+            'indie rock',
+            'Mellow',
+            'electronica',
+            '80s',
+            'folk',
+            '90s',
+            'chill',
+            'instrumental',
+            'punk',
+            'oldies',
+            'blues',
+            'hard rock',
+            'ambient',
+            'acoustic',
+            'experimental',
+            'female vocalist',
+            'guitar',
+            'Hip-Hop',
+            '70s',
+            'party',
+            'country',
+            'easy listening',
+            'sexy',
+            'catchy',
+            'funk',
+            'electro',
+            'heavy metal',
+            'Progressive rock',
+            '60s',
+            'rnb',
+            'indie pop',
+            'sad',
+            'House',
+            'happy',
+        ]
+
+        createTabs(magnatagatune_cols, "mtt_tabs");
+        createTabs(msd_cols, "msd_tabs");
+
+
+        $("#parameters").on("submit", function (e) {
+
+            e.preventDefault();
+
+            var $inputs = $('#parameters :input[type="text"]');
+            var values = {};
+            $inputs.each(function () {
+                values[this.name] = $(this).val();
+            });
+
+            var checkbox = [];
+            $('input[type="checkbox"]:checked').each(function () {
+                checkbox.push($(this).val());
+            });
+
+            var featurenum = values["featurenum"]
+            featurenum = featurenum.split(",")
+            checkbox.push(...featurenum)
+
+            $("#loading").show();
+            let table = document.querySelector("table");
+            table.innerHTML = "<table></table>"
+
+            fetch("predictions.json")
+                .then(response => response.json())
+                .then(json => {
+
+                    valid_keys = ["idx", "audio", "track_id", "clip_id", "segment", "labels"]
+                    valid_keys.push(...checkbox)
+                    console.log(valid_keys)
+                    for (var idx = 0; idx < json.length; idx += 1) {
+                        Object.keys(json[idx]).forEach(function (itm) {
+                            if (!valid_keys.includes(itm)) delete json[idx][itm];
+                        });
+                    }
+
+                    function ChangeColor(audio) {
+                        this.style.background = 'orange';
+                        this.style.color = 'black';
+                        console.log(audio)
+                    }
+
+                    function ChangeColorBack(elementid) {
+                        this.style.background = 'black';
+                        this.style.color = 'white';
+                    }
+
+                    function generateTableHead(table, data) {
+                        let thead = table.createTHead();
+                        let row = thead.insertRow();
+                        for (let key of data) {
+                            let th = document.createElement("th");
+                            let text = document.createTextNode(key);
+                            th.appendChild(text);
+                            row.appendChild(th);
+                        }
+                    }
+
+                    function generateTable(table, data) {
+                        var tbody = document.createElement('tbody');
+                        for (let element of data) {
+                            let row = document.createElement('tr');
+                            for (key in element) {
+                                let cell = document.createElement('td')
+                                if (key == "audio") {
+                                    let filepath = element[key]
+                                    var audio = document.createElement('audio');
+                                    audio.id = filepath;
+                                    audio.controls = 'controls';
+                                    audio.src = filepath;
+                                    audio.type = 'audio/mpeg';
+                                    audio.preload = "none"
+                                    cell.appendChild(audio);
+
+                                }
+                                else {
+                                    let text = document.createTextNode(element[key]);
+                                    cell.appendChild(text);
+                                }
+                                row.appendChild(cell);
+                            }
+                            tbody.appendChild(row);
+
+                            $(row).on("mouseover", function () {
+                                let filepath = element["audio"]
+                                let audio = document.getElementById(filepath)
+                                audio.play()
+                            })
+
+                            $(row).on("mouseleave", function () {
+                                let filepath = element["audio"]
+                                let audio = document.getElementById(filepath)
+                                audio.pause();
+                                audio.currentTime = 0;
+                            })
+                        }
+                        table.appendChild(tbody)
+                    }
+
+                    if ($.fn.DataTable.isDataTable("#songtable")) {
+                        $('#songtable').DataTable().clear().destroy();
+                        $("#songtable").innerHTML = "<table></table>"
+                    }
+
+                    var table = document.querySelector("table");
+                    var data = Object.keys(json[0]);
+                    generateTableHead(table, data);
+                    generateTable(table, json);
+
+
+                    $(document).ready(function () {
+                        var table = $('#songtable').DataTable({
+                            // "destroy": true
+                        });
+
+                        $("#loading").hide()
+                    });
+                    // sorttable.makeSortable(document.getElementById("songtable"));
+
+                });
+        })
+
+    </script>
+</body>
+
+</html>

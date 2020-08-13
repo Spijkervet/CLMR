@@ -13,9 +13,9 @@ def label_to_tag(list_of_tags, label):
 def get_log_dir(root_dir, idx):
     log_dir = os.path.join(root_dir, str(idx))
     now = datetime.now()
-    if not os.path.exists(log_dir):
-        # log_dir = os.path.join(root_dir, "{}-{}".format(idx, now.strftime("%b%d_%H_%M-%S")))
-        os.makedirs(log_dir)
+    if os.path.exists(log_dir):
+        log_dir = os.path.join(root_dir, "{}-{}".format(idx, now.strftime("%b%d_%H_%M-%S")))
+    os.makedirs(log_dir)
     return log_dir
 
 
