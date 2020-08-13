@@ -129,14 +129,12 @@ class MTTDataset(Dataset):
             )
 
             new_index = []
-            new_track_index = defaultdict(list)
             for idx, (track_id, clip_id, segment, fp, label) in enumerate(self.index):
                 if idx in train_X_indices:
                     new_index.append([track_id, clip_id, segment, fp, label])
 
 
             self.index = new_index
-            self.track_index = new_track_index
             print("Undersampled train dataset size:", len(self.index), len(self.track_index))
 
         # print(f"Num tracks: {len(self.tracks_list)}")

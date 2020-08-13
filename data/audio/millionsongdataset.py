@@ -10,6 +10,7 @@ from tqdm import tqdm
 from scripts.datasets.utils import write_statistics
 from utils import random_undersample_balanced
 from tqdm import tqdm
+from utils.audio import load_tracks, concat_tracks
 
 import random
 
@@ -96,6 +97,8 @@ class MSDDataset(Dataset):
         self.transform = transform
         self.sample_rate = args.sample_rate
         self.audio_length = args.audio_length
+        self.supervised = args.supervised
+        self.load_ram = args.load_ram
 
         # Million Song Dataset has clips of 30s, of which the last is not a full |audio_length|
         self.num_segments = (30 * self.sample_rate) // self.audio_length - 1
@@ -121,13 +124,10 @@ class MSDDataset(Dataset):
 
         if split == "train":
             self.annotations_file = Path(msd_processed_annot) / "train_gt_msd.tsv"
-            split = "Train"
-        elif split == "validation":
+        elif split == "valid":
             self.annotations_file = Path(msd_processed_annot) / "val_gt_msd.tsv"
-            split = "Validation"
         else:
             self.annotations_file = Path(msd_processed_annot) / "test_gt_msd.tsv"
-            split = "Test"
 
         self.msd_to_7d = pickle.load(
             open(Path(msd_processed_annot) / "MSD_id_to_7D_id.pkl", "rb")
@@ -147,32 +147,37 @@ class MSDDataset(Dataset):
         self.index, self.track_index = self.indexer(ids, id2audio_path, id2gt, dataset="million_song_dataset")
         
         # we already load a full fragment of audio, and then select a segment from all N segments)
-        if self.pretrain:
+        if not self.supervised and self.pretrain:
             self.index = [
                 [track_id, clip_id, segment, fp, label]
                 for track_id, clip_id, segment, fp, label in self.index
                 if segment == 0
             ]
 
-        # from utils.audio import preprocess_tracks
-        # preprocess_tracks(self.sample_rate, self.audio_raw_dir, self.audio_proc_dir, self.split, self.track_index, id2audio_path)
-
+        
         # reduce dataset to n%
-        # if args.perc_train_data < 1.0 and (train or validation): # only on train set
-        #     print("Train dataset size:", len(self.tracks_list))
-        #     train_X_indices = np.array([idx for idx in range(len(self.tracks_list))]).reshape(-1, 1)
-        #     train_y = np.array([label.numpy() for _, _, label, _ in self.tracks_list])
-        #     train_X_indices, _ = random_undersample_balanced(train_X_indices, train_y, args.perc_train_data)
+        if args.perc_train_data < 1.0 and split == "train":  # only on train set
+            print("Train dataset size:", len(self.index))
+            train_X_indices = np.array(
+                [idx for idx in range(len(self.index))]
+            ).reshape(-1, 1)
+            train_y = np.array([label for _, _, _, _, label in self.index])
+            train_X_indices, _ = random_undersample_balanced(
+                train_X_indices, train_y, args.perc_train_data
+            )
 
-        #     new_tracks_list = []
-        #     for idx, (track_id, fp, label, segment) in enumerate(self.tracks_list):
-        #         if idx in train_X_indices:
-        #             new_tracks_list.append([track_id, fp, label, segment])
+            new_index = []
+            for idx, (track_id, clip_id, segment, fp, label) in enumerate(self.index):
+                if idx in train_X_indices:
+                    new_index.append([track_id, clip_id, segment, fp, label])
 
-        #     self.tracks_list = new_tracks_list
-        #     print("Undersampled train dataset size:", len(self.tracks_list))
+            self.index = new_index
+            print("Undersampled train dataset size:", len(self.index), len(self.track_index))
 
-        # print(f"Num tracks: {len(self.tracks_list)}")
+        
+        if self.load_ram and self.pretrain and self.split == "train":
+            print("Loading train data into memory for faster training")
+            self.audios = load_tracks(args.sample_rate, self.index)
 
         print(f"[{split} dataset ({args.dataset}_{self.sample_rate})]")
 
@@ -191,6 +196,7 @@ class MSDDataset(Dataset):
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, index):
         track_id, clip_id, segment, fp, label = self.tracks_list[index]
+        label = torch.FloatTensor(label)
 
         try:
             audio = self.get_audio(fp)
@@ -199,7 +205,7 @@ class MSDDataset(Dataset):
             return self.__getitem__(index + 1)
 
         # only transform if unsupervised training
-        if self.pretrain and self.transform:
+        if not self.supervised and self.pretrain and self.transform:
             audio = self.transform(audio, self.mean, self.std)
         # elif self.model_name == "cpc":
         #     max_samples = audio.size(1)
@@ -207,7 +213,7 @@ class MSDDataset(Dataset):
         #     audio = audio[:, start_idx : start_idx + self.audio_length]
         #     audio = (audio, audio)
         else:
-            start_idx = segment * self.audio_length
+            start_idx = int(segment) * self.audio_length
             audio = audio[start_idx : start_idx + self.audio_length]
             audio = audio.reshape(1, -1) # [channels, samples]
             audio = (audio, audio)
