@@ -178,8 +178,10 @@ class MTTDataset(Dataset):
     # get one segment (==59049 samples) and its 50-d label
     def __getitem__(self, idx):
         track_id, clip_id, segment, fp, label = self.index[idx]
-        clip_id, segment, fp, label = random.choice(self.track_index[track_id])
-        # fp = os.path.splitext(fp)[0] + "-" + str(segment) + ".wav"
+
+        ## for faster i/o
+        # clip_id, segment, fp, label = random.choice(self.track_index[track_id])
+        ## fp = os.path.splitext(fp)[0] + "-" + str(segment) + ".wav"
 
         label = torch.FloatTensor(label)
         try:
