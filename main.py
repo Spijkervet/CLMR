@@ -67,7 +67,8 @@ def main(args):
 
     # DDP
     if args.dataparallel:
-        model = convert_model(model)
+        if not args.supervised:
+            model = convert_model(model)
         model = DataParallel(model)
         model = model.to(args.device)
     elif args.world_size > 1:
@@ -94,7 +95,7 @@ def main(args):
     if args.supervised:
         validate_idx = 1
     else:
-        validate_idx = 50
+        validate_idx = 5
 
     args.current_epoch = args.start_epoch
     last_model = None

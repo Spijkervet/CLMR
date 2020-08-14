@@ -101,10 +101,10 @@
 			lineOut.volume = 0.4;
 
 			
-			var json = $.getJSON({'url': "/data.json", 'async': false});  
+			var json = $.getJSON({'url': "/validation/visualisation/data.json", 'async': false});  
 			data = JSON.parse(json.responseText);
 			var copy = json;
-			console.log(data)
+			// console.log(data)
 
 			function getData(method, feature, a, b) {
 				var key;
@@ -118,7 +118,7 @@
 
 				// only tsne for now
 				key = "tsne"
-				console.log(key)
+				// console.log(key)
 				return data[key];
 			}
 
@@ -218,7 +218,7 @@
 
 			function generatePointCloudGeometry(data) {
 
-				console.log(data)
+				// console.log(data)
 
 				var geometry = new THREE.BufferGeometry();
 				var positions = generatePositionsFromData(data);
@@ -227,7 +227,7 @@
 				var color = new THREE.Color();
 				for (var i = 0; i < data.length; ++i) {
 
-					console.log(labelColors[i])
+					// console.log(labelColors[i])
 
 					color.setHSL(0.8, .8, .5);
 					colors[3 * i] = labelColors[i][0]; // color.r;
@@ -422,7 +422,7 @@
 						// var playPromise = sound.play();
 
 						// load a sound and play it immediatly
-						let file = "audio/" + filepath;
+						let file = "/" + filepath;
 					    WebAudiox.loadBuffer(context, file, function(buffer) {
 					        // init AudioBufferSourceNode
 					        var source  = context.createBufferSource();

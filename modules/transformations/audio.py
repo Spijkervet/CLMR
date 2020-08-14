@@ -220,6 +220,8 @@ class AudioTransforms:
         # to PyTorch format (channels, samples)
         x0 = x0.reshape(1, -1)
         x1 = x1.reshape(1, -1)
+        x0 = torch.from_numpy(x0)
+        x1 = torch.from_numpy(x1)
         return x0, x1
 
     def transform(self, x, num):
