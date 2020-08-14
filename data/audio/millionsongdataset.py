@@ -203,7 +203,7 @@ class MSDDataset(Dataset):
         except Exception as e:
             print(f"Skipped {track_id, fp}, could not load audio: {e}")
             return self.__getitem__(index + 1)
-
+            
         # only transform if unsupervised training
         if not self.supervised and self.pretrain and self.transform:
             audio = self.transform(audio, self.mean, self.std)
@@ -216,6 +216,7 @@ class MSDDataset(Dataset):
             start_idx = int(segment) * self.audio_length
             audio = audio[start_idx : start_idx + self.audio_length]
             audio = audio.reshape(1, -1) # [channels, samples]
+            audio = torch.from_numpy(audio)
             audio = (audio, audio)
 
         return audio, label
