@@ -47,7 +47,7 @@ def load_optimizer(args, model):
 
     if args.reload:
         optim_fp = os.path.join(
-            args.model_path,
+            args.reload_path,
             "{}_checkpoint_{}_optim.pt".format(args.model_name, args.epoch_num),
         )
         print(

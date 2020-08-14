@@ -2,6 +2,7 @@ import torch
 import logging
 from collections import defaultdict
 from utils.eval import get_metrics
+import time
 
 class Solver:
     def __init__(self, model, optimizer, criterion, writer):
@@ -12,17 +13,20 @@ class Solver:
 
     def train(self, args, loader):
         metrics = defaultdict(float)
+        avg_time = 0
         for step, ((x_i, x_j), y) in enumerate(loader):
+            t0 = time.time()
             if not args.supervised:
-                x_i = x_i.cuda(non_blocking=True)
-                x_j = x_j.cuda(non_blocking=True)
+                x_i = x_i.to(args.device)
+                x_j = x_j.to(args.device)
 
                 # positive pair, with encoding
                 h_i, h_j, z_i, z_j = self.model(x_i, x_j)
                 loss = self.criterion(z_i, z_j)
 
-                if self.writer and step > 0 and step % 1 == 0:
-                    logging.info(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}")
+                if self.writer and step > 0 and step % 100 == 0:
+                    logging.info(f"Step [{step}/{len(loader)}]\t Loss: {loss.item()} Time: {avg_time / step}")
+                    self.writer.add_scalar("Loss/train_step", loss, args.global_step)
             else:
                 x_i = x_i.to(
                     args.device
@@ -45,7 +49,7 @@ class Solver:
 
                 if self.writer and step > 0 and step % 20 == 0:
                     logging.info(
-                        f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}"
+                        f"Step [{step}/{len(loader)}]\t Loss: {loss.item()}\t AUC: {auc}\t AP: {ap}\t Time: {avg_time / step}"
                     )
 
             self.optimizer.zero_grad()
@@ -53,6 +57,8 @@ class Solver:
             self.optimizer.step()
             
             metrics["Loss/train"] += loss.item()
+
+            avg_time += (time.time() - t0)
             args.global_step += 1
 
         for k, v in metrics.items():
