@@ -47,13 +47,14 @@ def main(args):
 
     if args.reload:
         model_fp = os.path.join(
-            args.model_path,
+            args.reload_path,
             "{}_checkpoint_{}.pt".format(args.model_name, args.epoch_num),
         )
         logging.info(
             f"### RELOADING {args.model_name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###"
         )
         model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
+        args.start_epoch = args.epoch_num
 
     # optimizer / scheduler
     optimizer, scheduler = load_optimizer(args, model)
@@ -95,7 +96,7 @@ def main(args):
     if args.supervised:
         validate_idx = 1
     else:
-        validate_idx = 5
+        validate_idx = 50
 
     args.current_epoch = args.start_epoch
     last_model = None
@@ -206,6 +207,7 @@ def main(args):
 
 if __name__ == "__main__":
     args = parse_args()
+    args.reload_path = args.model_path
 
     if "WORLD_SIZE" not in os.environ.keys():
         args.world_size = 1

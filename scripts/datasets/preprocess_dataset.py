@@ -60,10 +60,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.domain = "audio"
+    args.supervised = True
     args.batch_size = 64
     args.workers = 0  # number of threads in CPU
     args.load_ram = False # do not load data into memory for processing
     args.nodes = 1
+    args.perc_train_data = 1.0
+    args.world_size = 1
 
     from data import get_dataset
 
