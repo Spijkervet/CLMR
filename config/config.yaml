@@ -45,6 +45,7 @@ transforms_reverb: 0.6
 
 ## loss options
 optimizer: "Adam" # [Adam, LARS]
+warmup_epochs: 30
 learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
 weight_decay: 1.0e-4
 temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
