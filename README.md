@@ -1,7 +1,7 @@
 # Contrastive Learning of Musical Representations
 PyTorch implementation of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne (2020). We adapt SimCLR to the raw audio domain and contribute a pipeline of audio augmentations and encoder suited for pre-training on unlabeled, raw (musical) audio data. We evaluate the performance of the self-supervised learned representations on the task of music classification. 
 
-Despite unsupervised, contrastive pre-training and fine-tuning on the music classification task using *linear* classifier, we achieve competitive results relative to fully supervised training. 
+Despite unsupervised, contrastive pre-training and fine-tuning on the music classification task using *linear* classifier, we achieve state-of-the-art results on the MTAT dataset relative to fully supervised training. 
 
 <div align="center">
   <img width="50%" alt="CLMR model" src="https://github.com/Spijkervet/CLMR/blob/master/media/clmr_model.png?raw=true">
@@ -42,10 +42,10 @@ python main.py --dataset magnatagatune --download 1
 ### MagnaTagATune
 | Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
 | ------------- | ------------- | ------------- | ------------- | ------------- |
-| SampleCNN / CLMR | 48 / 1550 | Linear Classifier | 87.71 | 34.27 |
-SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  88.47 | **34.96** |
+| SampleCNN / CLMR | 48 / 1550 | Linear Classifier | **88.49** | **35.37** |
+SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  **89.25** | **35.89** |
 | [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | 88.56 | 34.38 |
-| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | **89.05** | 34.92 |
+| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | 89.05 | 34.92 |
 
 ### Million Song Dataset
 *Million Song Dataset experiments will follow soon*
@@ -57,6 +57,13 @@ SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  88.47 | **34.96** |
 | ------------- | ------------- | ------------- | ------------- | -------------
 [SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/1.0-l/finetuner_checkpoint_20.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
+## Web interfaces
+### Latent listening
+```
+python3 -m web.latent_listening.get_predictions
+python3 -m http.server
+Navigate to: localhost:8000/web/latent_listening
+```
 
 ## Usage
 
