@@ -106,7 +106,7 @@ class MTTDataset(Dataset):
         self.id2audio_path = id2audio_path
 
         self.index, self.track_index = self.indexer(
-            ids, id2audio_path, id2gt, "magnatagatune"
+            ids, id2audio_path, id2gt, "magnatagatune", onepos=args.onepos
         )
 
         if not self.supervised and self.pretrain:
@@ -143,6 +143,11 @@ class MTTDataset(Dataset):
         self.mean = None
         self.std = None
 
+        # remove tracks if they do not contain a label:
+        if args.onepos:
+            self.index = [[track_id, clip_id, segment, fp, label] for track_id, clip_id, segment, fp, label in self.index if sum(label) != 0]
+            print(split, len(self.index))
+            
         if not self.supervised and self.pretrain and self.split == "train":
             # track index contains track_ids matched with clip_ids, so filtering is easier
             print(

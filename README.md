@@ -57,6 +57,13 @@ SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  **89.25** | **35.89
 | ------------- | ------------- | ------------- | ------------- | -------------
 [SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/1.0-l/finetuner_checkpoint_20.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
+## Web interfaces
+### Latent listening
+```
+python3 -m web.latent_listening.get_predictions
+python3 -m http.server
+Navigate to: localhost:8000/web/latent_listening
+```
 
 ## Usage
 

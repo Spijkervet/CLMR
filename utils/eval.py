@@ -72,7 +72,6 @@ def eval_all(args, loader, encoder, model, writer, n_tracks=None):
     predicted_classes = torch.zeros(args.n_classes).to(args.device)
     pred_array = []
     y_true = []
-    id_array = []
 
     # sub-sample if n_tracks is not none, else eval whole dataset
     if n_tracks:
