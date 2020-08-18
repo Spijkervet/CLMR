@@ -83,3 +83,5 @@ perc_train_data: 1.0
 
 ## inference
 audio_url: ""
+
+onepos: False

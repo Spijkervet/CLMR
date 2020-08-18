@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block title %}Index{% endblock %}
+{% block head %}
+<!-- HEAD css / scripts -->
+{% endblock %}
+{% block content %}
+
+<div class="container">
+    <div>
+        <h1>CLMR Music Tagger</h1>
+
+        <h5>Online interface of Contrastive Learning of Musical Representations by J. Spijkervet and J.A. Burgoyne
+            (2020).
+        </h5>
+
+        <p>
+            We pre-train a using a task-agnostic, self-supervised objective on unlabeled, raw (musical) audio data.
+        </p>
+        <p>
+            We then fine-tune a <i>linear</i> classifier on the task of
+            automatic music tagging and evaluate the performance.
+        </p>
+        <p>
+            Despite unsupervised, contrastive pre-training and fine-tuning on the music classification task using linear
+            classifier, we achieve state-of-the-art results on the MTAT dataset relative to fully supervised training.
+        </p>
+
+    </div>
+    <div class="jumbotron">
+        <form id="tagForm" , action='{{ url_for("predict") }}'>
+            <div class="form-group">
+                <label for="youtubeLink">YouTube link</label>
+                <input type="text" class="form-control" id="youtubeLink" , name="youtubeLink">
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+
+    <div>
+        <div id="player"></div>
+    </div>
+    <div>
+        <img id="taggramImage" class="img-fluid" src="" />
+    </div>
+    <div>
+        <canvas id="myChart" width="400" height="400"></canvas>
+    </div>
+
+</div>
+
+<!-- BODY css / scripts -->
+{% endblock %}
