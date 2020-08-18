@@ -103,6 +103,8 @@ def main(args):
     last_auc = 0
     last_ap = 0
     early_stop = 0
+    initial_lr = optimizer.param_groups[0]["lr"]
+    warmup_lr = [idx*initial_lr/args.warmup_epochs for idx in range(1, args.warmup_epochs+1)]
     for epoch in range(args.start_epoch, args.epochs):
         t0 = time.time()
         if args.world_size > 1:
@@ -127,7 +129,13 @@ def main(args):
                 writer,
                 train=False,
             )
-
+        
+        if args.optimizer == "LARS":
+            if epoch < args.warmup_epochs:
+                optimizer.param_groups[0]["lr"] = warmup_lr[epoch]
+            elif epoch == args.warmup_epochs:
+                optimizer.param_groups[0]["lr"] = initial_lr
+        
         learning_rate = optimizer.param_groups[0]["lr"]
         metrics = solver.train(args, train_loader)
 
@@ -168,6 +176,9 @@ def main(args):
 
         if args.is_master and epoch > 0 and epoch % args.checkpoint_epochs == 0:
             save_model(args, model, optimizer, name=args.model_name)
+        
+        if args.is_master and args.optimizer == "LARS" and args.current_epoch >= args.warmup_epochs:
+            scheduler.step()
 
         args.current_epoch += 1
         print(f"Time: {time.time() - t0}")

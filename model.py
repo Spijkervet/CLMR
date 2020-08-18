@@ -1,5 +1,6 @@
 import os
 import torch
+import numpy as np
 from modules import SimCLR, SampleCNN, LARS, get_resnet, Identity
 from modules.cpc import CPCModel
 
@@ -28,13 +29,15 @@ def load_optimizer(args, model):
     if args.optimizer == "Adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  # TODO: LARS
     elif args.optimizer == "LARS":
-        # optimized using LARS with linear learning rate scaling
-        # (i.e. LearningRate = 0.3 × BatchSize/256) and weight decay of 10−6.
-        learning_rate = 0.3 * args.batch_size / 256
+        ## optimized using LARS with linear learning rate scaling
+        ## linear lr scaling
+        # learning_rate = 0.3 * args.batch_size / 256
+        ## sqrt learning rate scaling
+        learning_rate = 0.075 * np.sqrt(args.batch_size)
         optimizer = LARS(
             model.parameters(),
             lr=learning_rate,
-            weight_decay=args.weight_decay,
+            weight_decay=0.000001,
             exclude_from_weight_decay=["batch_normalization", "bias"],
         )
 
