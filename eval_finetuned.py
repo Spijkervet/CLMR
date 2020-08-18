@@ -11,8 +11,6 @@ from model import load_encoder
 
 from utils import yaml_config_hook, parse_args
 from utils.eval import eval_all
-from utils.youtube import download_yt
-from scripts.datasets.resample import resample
 
 import matplotlib.pyplot as plt
 

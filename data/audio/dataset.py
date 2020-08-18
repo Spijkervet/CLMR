@@ -26,7 +26,7 @@ class Dataset(TorchDataset):
         print(f"[{self.name} {self.split}]: Loaded {len(self.tracks_list)} audio segments")
 
 
-    def indexer(self, ids, id2audio_path, id2gt, dataset):
+    def indexer(self, ids, id2audio_path, id2gt, dataset, onepos=False):
         index = []
         tmp = []
         track_index = defaultdict(list)
