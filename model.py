@@ -60,7 +60,7 @@ def load_optimizer(args, model):
 
 def load_encoder(args, reload=False):
     # encoder
-    if args.domain == "audio":
+    if args.encoder == "samplecnn":
         if args.sample_rate == 22050:
             strides = [3, 3, 3, 3, 3, 3, 3, 3, 3]
         elif args.sample_rate == 16000:
@@ -72,9 +72,9 @@ def load_encoder(args, reload=False):
         
         encoder = SampleCNN(args, strides)
         print(f"### {encoder.__class__.__name__} ###")
-    elif args.domain == "scores":
-        encoder = get_resnet(args.resnet, pretrained=False)  # resnet
-        encoder.conv1 = nn.Conv2d(
+    elif "resnet" in args.encoder:
+        encoder = get_resnet(args.encoder, pretrained=False)  # resnet
+        encoder.conv1 = torch.nn.Conv2d(
             args.image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
         )
     else:

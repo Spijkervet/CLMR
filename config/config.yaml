@@ -8,6 +8,9 @@ dataparallel: 0
 ablation: False
 backprop_encoder: False
 
+encoder: "resnet18"
+image_channels: 1
+
 ## dataset options
 dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
 data_input_dir: "./datasets" # [audio: [datasets/audio] vision: [datasets/vision]
