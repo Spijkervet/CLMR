@@ -85,7 +85,7 @@ def get_dataset_stats(loader, tracks_list):
 
 class MSDDataset(Dataset):
 
-    base_dir = "million_song_dataset"
+    base_dir = "msd"
 
     def __init__(self, args, split, pretrain, download=False, transform=None):
         if download:
@@ -108,7 +108,7 @@ class MSDDataset(Dataset):
 
         dir_name = f"processed_{args.sample_rate}"
         self.audio_dir = os.path.join(
-            args.data_input_dir, "million_song_dataset", dir_name
+            args.data_input_dir, "msd", dir_name
         )
         self.audio_proc_dir = os.path.join(
             args.data_input_dir, self.base_dir, "processed"
@@ -119,7 +119,7 @@ class MSDDataset(Dataset):
         )
 
         msd_processed_annot = Path(
-            args.data_input_dir, "million_song_dataset", "processed_annotations"
+            args.data_input_dir, "msd", "processed_annotations"
         )
 
         if split == "train":
