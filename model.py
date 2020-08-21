@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from modules import SimCLR, SampleCNN, LARS, get_resnet, Identity
 from modules.cpc import CPCModel
+from modules.shortchunk_cnn import ShortChunkCNN_Res
 
 
 def cpc_model(args):
@@ -27,7 +28,9 @@ def load_optimizer(args, model):
 
     scheduler = None
     if args.optimizer == "Adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  # TODO: LARS
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=args.learning_rate
+        )  # TODO: LARS
     elif args.optimizer == "LARS":
         ## optimized using LARS with linear learning rate scaling
         ## linear lr scaling
@@ -72,22 +75,28 @@ def load_encoder(args, reload=False):
             strides = [3, 3, 3, 2, 2, 4, 4, 2, 2]
         else:
             raise NotImplementedError
-        
+
         encoder = SampleCNN(args, strides)
-        print(f"### {encoder.__class__.__name__} ###")
-    elif "resnet" in args.encoder:
-        encoder = get_resnet(args.encoder, pretrained=False)  # resnet
-        encoder.conv1 = torch.nn.Conv2d(
-            args.image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
+        args.n_features = list(encoder.children())[-1].in_features
+    elif args.encoder == "shortchunk_cnn":
+        encoder = ShortChunkCNN_Res(
+            n_channels=128,
+            sample_rate=args.sample_rate,
+            n_fft=512,
+            f_min=0.0,
+            f_max=args.sample_rate / 2,
+            n_mels=128,
+            n_class=50,
         )
+        args.n_features = 512
     else:
         raise NotImplementedError
-    
-    args.n_features = list(encoder.children())[-1].in_features
+
+    print(f"### {encoder.__class__.__name__} ###")
 
     if not args.supervised:
-        encoder.fc = (Identity()) # TODO rewrite this
-        
+        encoder.fc = Identity()  # TODO rewrite this
+
     if reload:
         # reload model
         print(
@@ -101,16 +110,23 @@ def load_encoder(args, reload=False):
         # tmp workaround
         mapping = torch.load(model_fp, map_location=args.device.type)
         new_mapping = {}
-        for m in mapping:
-            if "conv" in m:
-                new_m = m.replace("encoder.", "").split(".")
-                conv_num = int(new_m[0].replace("conv", ""))
-                seq_m = "sequential.{}.{}.{}".format(conv_num-1, new_m[1], new_m[2])
-                new_mapping[seq_m] = mapping[m]
-            elif "encoder" in m:
-                new_m = m.replace("encoder.", "")
-                new_mapping[new_m] = mapping[m]
-        encoder.load_state_dict(new_mapping, strict=True)
+        if args.encoder == "samplecnn":
+            for m in mapping:
+                if "conv" in m:
+                    new_m = m.replace("encoder.", "").split(".")
+                    conv_num = int(new_m[0].replace("conv", ""))
+                    seq_m = "sequential.{}.{}.{}".format(conv_num - 1, new_m[1], new_m[2])
+                    new_mapping[seq_m] = mapping[m]
+                elif "encoder" in m:
+                    new_m = m.replace("encoder.", "")
+                    new_mapping[new_m] = mapping[m]
+        else:
+            for m in mapping:
+                if "encoder" in m:
+                    new_m = m.replace("encoder.", "")
+                    new_mapping[new_m] = mapping[m]
+        mapping = new_mapping
+        encoder.load_state_dict(mapping, strict=True)
     return encoder
 
 
@@ -119,7 +135,7 @@ def save_model(args, model, optimizer, name="clmr"):
 
         if not os.path.exists(args.model_path):
             os.makedirs(args.model_path)
-            
+
         out = os.path.join(
             args.model_path, "{}_checkpoint_{}.pt".format(name, args.current_epoch)
         )
@@ -131,7 +147,9 @@ def save_model(args, model, optimizer, name="clmr"):
 
         # To save a DataParallel model generically, save the model.module.state_dict().
         # This way, you have the flexibility to load the model any way you want to any device you want.
-        if isinstance(model, torch.nn.DataParallel) or isinstance(model, torch.nn.parallel.DistributedDataParallel):
+        if isinstance(model, torch.nn.DataParallel) or isinstance(
+            model, torch.nn.parallel.DistributedDataParallel
+        ):
             torch.save(model.module.state_dict(), out)
         else:
             torch.save(model.state_dict(), out)

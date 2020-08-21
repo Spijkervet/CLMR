@@ -6,3 +6,4 @@ from .sample_cnn import SampleCNN
 from .byol import BYOL
 from .resnet import get_resnet
 from .identity import Identity
+from .finetuner import FineTuner

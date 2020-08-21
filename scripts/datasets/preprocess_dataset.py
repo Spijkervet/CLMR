@@ -67,6 +67,7 @@ if __name__ == "__main__":
     args.nodes = 1
     args.perc_train_data = 1.0
     args.world_size = 1
+    args.onepos = False
 
     from data import get_dataset
 

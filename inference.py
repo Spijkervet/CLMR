@@ -8,6 +8,38 @@ from model import load_encoder
 from scripts.datasets.resample import resample
 from utils import parse_args, download_yt
 
+def save_taggram(yt_audio, title, sr, audio_length, taggram, tags, fp):
+    taggram = np.array(taggram)
+
+    ## global figure settings
+    plt.rcParams["figure.figsize"] = (20, 10)  # set size of the figures
+    fontsize = 12  # set figures font size
+    in_length = yt_audio.shape[1] / sr
+
+    ## figure
+    fig, ax = plt.subplots()
+    ax.title.set_text(title)
+    ax.title.set_fontsize(fontsize)
+    ax.set_xlabel("(seconds)", fontsize=fontsize)
+
+    ## y-axis
+    tags = tags
+    y_pos = np.arange(len(tags))
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(tags, fontsize=fontsize - 1)
+
+    ## x-axis
+    x_pos = np.arange(0, taggram.shape[0], 10)
+    ax.set_xticks(x_pos)
+    x_label = [int(x * (audio_length / sr)) for x in x_pos]
+    ax.set_xticklabels(x_label, fontsize=fontsize)
+
+    plt.imshow(taggram.T, interpolation=None, aspect="auto")
+    plt.tight_layout()
+    plt.savefig(fp)
+    print("Saving taggram in taggram.png...")
+    
+
 if __name__ == "__main__":
     args = parse_args("./config/config.yaml")
 
@@ -53,16 +85,14 @@ if __name__ == "__main__":
     args.current_epoch = 0
 
     print("Downloading and converting YouTube video...")
-    download_yt(args.audio_url, tmp_input_file, args.sample_rate)
+    video_title, video_id = download_yt(args.audio_url, tmp_input_file, args.sample_rate)
 
     conv_fn = f"{tmp_input_file}_{args.sample_rate}"
     resample(tmp_input_file, conv_fn, args.sample_rate)
 
     yt_audio = train_dataset.get_audio(conv_fn)
-    yt_audio = torch.from_numpy(yt_audio).reshape(1, -1)  # numpy to torch tensor
-
-    # to mono
-    yt_audio = yt_audio.mean(axis=0).reshape(1, -1)
+    yt_audio = yt_audio.mean(axis=1).reshape(1, -1) # to mono
+    yt_audio = torch.from_numpy(yt_audio)
 
     # split into equally sized tensors of args.audio_length
     chunks = torch.split(yt_audio, args.audio_length, dim=1)
@@ -89,33 +119,8 @@ if __name__ == "__main__":
             output = output.squeeze(0)  # remove batch dim
             taggram.append(output.cpu().detach().numpy())
 
-    taggram = np.array(taggram)
+    print("Cleaning up mp3...")
+    os.remove(tmp_input_file)
+    os.remove(conv_fn)
 
-    ## global figure settings
-    plt.rcParams["figure.figsize"] = (20, 10)  # set size of the figures
-    fontsize = 12  # set figures font size
-    in_length = yt_audio.shape[1] / args.sample_rate
-
-    ## figure
-    fig, ax = plt.subplots()
-    ax.title.set_text("Taggram")
-    ax.title.set_fontsize(fontsize)
-    ax.set_xlabel("(seconds)", fontsize=fontsize)
-
-    ## y-axis
-    tags = train_dataset.tags
-    y_pos = np.arange(len(tags))
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(tags, fontsize=fontsize - 1)
-
-    ## x-axis
-    x_pos = np.arange(0, taggram.shape[0], 10)
-    ax.set_xticks(x_pos)
-    x_label = [int(x * (args.audio_length / args.sample_rate)) for x in x_pos]
-    ax.set_xticklabels(x_label, fontsize=fontsize)
-
-    plt.imshow(taggram.T, interpolation=None, aspect="auto")
-    plt.tight_layout()
-    plt.savefig("taggram.png")
-    print("Saving taggram in taggram.png...")
-    plt.show()
+    save_taggram(yt_audio, video_title, args.sample_rate, args.audio_length, taggram, train_dataset.tags, "taggram.png")
