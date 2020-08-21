@@ -15,6 +15,9 @@ import copy
 # TensorBoard
 from torch.utils.tensorboard import SummaryWriter
 
+# DP
+from torch.nn.parallel import DataParallel
+
 from data import get_dataset
 from model import load_encoder, save_model
 
@@ -177,6 +180,11 @@ if __name__ == "__main__":
         model.parameters(), lr=args.logistic_lr, weight_decay=args.weight_decay
     )
 
+    if args.dataparallel:
+        model = DataParallel(model)
+        model = model.to(args.device)
+
+
     # set criterion, e.g. gtzan has one label per segment, MTT has multiple
     if args.dataset in ["gtzan"]:
         criterion = torch.nn.CrossEntropyLoss()
@@ -198,10 +206,12 @@ if __name__ == "__main__":
     )
 
     train_X = None
-    logging.info("Computing features...")
-    (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
-        encoder, train_loader, val_loader, test_loader, args.device
-    )
+    if args.dataset == "magnatagatune" or args.perc_train_data <= 0.1:
+        logging.info("Computing features...")
+        (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
+            encoder, train_loader, val_loader, test_loader, args.device
+        )
+
     # The Million Song Dataset is too large to fit in memory (of most machines)
     # if args.dataset != "msd":
     #     if not os.path.exists("features.p"):
@@ -281,7 +291,7 @@ if __name__ == "__main__":
             last_ap = metrics["AP_tag/test"]
             early_stop = 0
 
-        if early_stop >= 15:
+        if early_stop >= 5:
             logging.info("Early stopping...")
             break
         args.current_epoch += 1

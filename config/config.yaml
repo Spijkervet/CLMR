@@ -8,7 +8,7 @@ dataparallel: 0
 ablation: False
 backprop_encoder: False
 
-encoder: "resnet18"
+encoder: "samplecnn"
 image_channels: 1
 
 ## dataset options

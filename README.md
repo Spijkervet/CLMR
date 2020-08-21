@@ -58,11 +58,33 @@ SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  **89.25** | **35.89
 [SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/1.0-l/finetuner_checkpoint_20.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
 ## Web interfaces
+
+### Tagger Interface
+Assuming the pre-trained models are downloaded in the project's root folder:
+```
+python -m web.tagger.app \                                                                                                      ~/git/clmr
+    --model_path=. \
+    --epoch_num=1550 \
+    --finetune_model_path=. \
+    --finetune_epoch_num=20
+```
+
 ### Latent listening
 ```
 python3 -m web.latent_listening.get_predictions
 python3 -m http.server
 Navigate to: localhost:8000/web/latent_listening
+```
+
+## Inference
+This command performs inference using a pre-trained encoder using CLMR (task-agnostic) and a fine-tuned linear classifier on the task of music classification. It will predict the tags corresponding to the song "Bohemian Rhapsody" by Queen, and yield ROC-AUC/ROC-AP scores and a taggram for the entire song:
+```
+python inference.py \
+    --audio_url="https://www.youtube.com/watch?v=fJ9rUzIMcZQ" \
+    --model_path=. \
+    --epoch_num=1550 \
+    --finetune_model_path=. \
+    --finetune_epoch_num=20
 ```
 
 ## Usage
@@ -123,17 +145,6 @@ The configuration of training can be found in: `config/config.yaml`. I personall
 To view results in TensorBoard, run:
 ```
 tensorboard --logdir ./runs
-```
-
-## Inference
-This command performs inference using a pre-trained encoder using CLMR (task-agnostic) and a fine-tuned linear classifier on the task of music classification. It will predict the tags corresponding to the song "Bohemian Rhapsody" by Queen, and yield ROC-AUC/ROC-AP scores and a taggram for the entire song:
-```
-python inference.py \
-    --audio_url="https://www.youtube.com/watch?v=fJ9rUzIMcZQ" \
-    --model_path=. \
-    --epoch_num=1550 \
-    --finetune_model_path=. \
-    --finetune_epoch_num=20
 ```
 
 #### Dependencies

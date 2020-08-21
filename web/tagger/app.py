@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from data import get_dataset
 from model import load_encoder
 from scripts.datasets.resample import resample
-from utils import parse_args, download_yt
+from utils import parse_args, download_yt, process_wav
 from inference import save_taggram
 import base64
 
@@ -18,15 +18,8 @@ args.world_size = 1
 args.supervised = False
 args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# data loaders
-(
-    train_loader,
-    train_dataset,
-    val_loader,
-    val_dataset,
-    test_loader,
-    test_dataset,
-) = get_dataset(args, pretrain=True, download=args.download)
+tags = ['guitar', 'classical', 'slow', 'techno', 'strings', 'drums', 'electronic', 'rock', 'fast', 'piano', 'ambient', 'beat', 'violin', 'vocal', 'synth', 'female', 'indian', 'opera', 'male', 'singing', 'vocals', 'no vocals', 'harpsichord', 'loud', 'quiet', 'flute', 'woman', 'male vocal', 'no vocal', 'pop', 'soft', 'sitar', 'solo', 'man', 'classic', 'choir', 'voice', 'new age', 'dance', 'male voice', 'female vocal', 'beats', 'harp', 'cello', 'no voice', 'weird', 'country', 'metal', 'female voice', 'choral']
+args.n_classes = len(tags)
 
 # load pre-trained encoder
 encoder = load_encoder(args, reload=True)
@@ -68,7 +61,7 @@ def predict():
         print("Resampling...")
         resample(tmp_input_file, conv_fn, args.sample_rate)
 
-        yt_audio = train_dataset.get_audio(conv_fn)
+        yt_audio, _ = process_wav(args.sample_rate, conv_fn, False)
 
         # to mono
         yt_audio = yt_audio.mean(axis=1).reshape(1, -1)
@@ -86,10 +79,6 @@ def predict():
             for idx, x in enumerate(chunks):
                 x = x.to(args.device)
 
-                # normalise
-                if train_dataset.mean:
-                    x = train_dataset.normalise_audio(x)
-
                 # add batch dim
                 x = x.unsqueeze(0)
                 h = encoder(x)
@@ -106,11 +95,11 @@ def predict():
 
         fn = "{}_taggram.png".format(base64.b64encode(video_title.encode("ascii")))
         taggram_fp = os.path.join(app.static_folder, "images", fn)
-        save_taggram(yt_audio, video_title, args.sample_rate, args.audio_length, taggram, train_dataset.tags, taggram_fp)
+        save_taggram(yt_audio, video_title, args.sample_rate, args.audio_length, taggram, tags, taggram_fp)
 
         taggram = np.array(taggram)
         scores = {}
-        for score, tag in zip(taggram.mean(axis=0), train_dataset.tags):
+        for score, tag in zip(taggram.mean(axis=0), tags):
             scores[tag] = score
         
         scores = {k: v for k, v in sorted(scores.items(), key=lambda x: x[1], reverse=True)}
@@ -136,4 +125,4 @@ def main():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

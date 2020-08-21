@@ -12,3 +12,8 @@ features.p
 logs/
 save/
 logs/
+results/
+*.zip
+save*/
+runs/
+pretrained_models/
