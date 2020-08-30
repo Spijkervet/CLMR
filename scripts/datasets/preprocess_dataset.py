@@ -1,3 +1,5 @@
+import faulthandler; faulthandler.enable()
+
 import os
 import numpy as np
 import argparse
@@ -14,8 +16,7 @@ def chunk(lst, n):
     return list(zip(*[iter(lst)] * n))
 
 
-def process(split, data_input_dir, sample_rate, track_id, clip_id, segment):
-    fp = train_dataset.id2audio_path[clip_id]
+def process(split, data_input_dir, sample_rate, track_id, clip_id, segment, fp):
     src_path = os.path.join(audio_dir, fp)
     target_dir = os.path.join(data_input_dir, base_dir, "processed", split)
 
@@ -35,11 +36,11 @@ def process_dataset(split, dataset, data_input_dir, sample_rate):
 
     print("Processing all tracks (this may take a while)")
     p = multiprocessing.Pool()
-    for track_id, clip_id, segment, _, _ in dataset.index:
+    for track_id, clip_id, segment, fp, _ in dataset.index:
         if segment == 0:
             p.apply_async(
                 process,
-                args=[split, data_input_dir, sample_rate, track_id, clip_id, segment],
+                args=[split, data_input_dir, sample_rate, track_id, clip_id, segment, fp],
             )
 
     p.close()

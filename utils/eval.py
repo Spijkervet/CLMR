@@ -2,7 +2,7 @@ import torch
 import torchaudio
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score
+from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score, f1_score
 
 
 def get_metrics(domain, y, output):
@@ -63,6 +63,14 @@ def average_precision(y_targets, y_preds):
         # acc = accuracy_score(y.argmax(1).detach().cpu().numpy(), output.argmax(1).detach().cpu().numpy())
     return np.array(ap)
 
+def get_f1_score(y, output):
+    f1 = []
+    for i, j in zip(y, output):
+        try:
+            f1.append(f1_score(i, j))
+        except:
+            pass
+    return np.array(f1).mean()
 
 def eval_all(args, loader, encoder, model, writer, n_tracks=None):
     encoder.eval()

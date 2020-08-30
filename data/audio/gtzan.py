@@ -11,7 +11,6 @@ from scripts.datasets.utils import write_statistics
 import random
 
 # much faster loading
-import soundfile as sf
 from scipy.io import wavfile
 
 

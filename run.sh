@@ -2,8 +2,17 @@
 . ~/miniconda3/etc/profile.d/conda.sh
 conda activate clmr
 
-python linear_evaluation.py --dataset magnatagatune --model_path /storage/jspijkervet/logs/42 --epoch_num 500 --logistic_epochs 500 --logistic_lr 0.0001
-python linear_evaluation.py --dataset magnatagatune --model_path /storage/jspijkervet/logs/43 --epoch_num 500 --logistic_epochs 500 --logistic_lr 0.0001
+python main.py --id 58 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset msd --epochs 500 --batch_size 96 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --transforms_reverb 0 --learning_rate 0.0001 --logistic_lr 0.0001 --checkpoint_epochs 1 --perc_train_data 1.0 --dataparallel 1 --workers 10
+exit
+
+# CUDA_VISIBLE_DEVICES=0 python main.py --id 52 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset msd --epochs 500 --batch_size 96 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --transforms_reverb 0 --learning_rate 0.0001 --logistic_lr 0.0001 --checkpoint_epochs 1 --perc_train_data 0.01
+# CUDA_VISIBLE_DEVICES=0 python main.py --id 54 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset msd --epochs 500 --batch_size 96 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --transforms_reverb 0 --learning_rate 0.0001 --logistic_lr 0.0001 --checkpoint_epochs 1 --perc_train_data 0.05
+# CUDA_VISIBLE_DEVICES=0 python main.py --id 56 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset msd --epochs 500 --batch_size 96 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --transforms_reverb 0 --learning_rate 0.0001 --logistic_lr 0.0001 --checkpoint_epochs 1 --perc_train_data 0.2
+
+exit
+
+# python linear_evaluation.py --dataset magnatagatune --model_path /storage/jspijkervet/logs/42 --epoch_num 500 --logistic_epochs 500 --logistic_lr 0.0001
+# python linear_evaluation.py --dataset magnatagatune --model_path /storage/jspijkervet/logs/43 --epoch_num 500 --logistic_epochs 500 --logistic_lr 0.0001
 
 # python main.py --id 34 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.01 --load_ram 1 --workers 6 --dataparallel 1
 # python main.py --id 35 --model_name clmr --supervised 1 --backprop_encoder 0 --dataset magnatagatune --epochs 500 --batch_size 48 --audio_length 59049 --sample_rate 22050 --projector_layers 2 --projection_dim 128 --temperature 0 --transforms_polarity 0 --transforms_noise 0 --transforms_gain 0 --transforms_filters 0 --transforms_delay 0 --transforms_pitch 0 --learning_rate 0.0001 --logistic_lr 0.0001 --perc_train_data 0.02 --load_ram 1 --workers 6 --dataparallel 1

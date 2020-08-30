@@ -22,7 +22,7 @@ from data import get_dataset
 from model import load_encoder, save_model
 
 from utils import parse_args, args_hparams, random_undersample_balanced, get_log_dir
-from utils.eval import get_metrics, eval_all
+from utils.eval import get_metrics, get_f1_score, eval_all
 from features import get_features, create_data_loaders_from_arrays
 
 
@@ -65,17 +65,22 @@ def train(args, loader, encoder, model, criterion, optimizer, writer):
 
         predicted_classes = get_predicted_classes(output, predicted_classes)
 
+        auc = 0
+        acc = 0
+        f1 = 0
         if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
             auc, acc = get_metrics(
                 args.domain, y.detach().cpu().numpy(), output.detach().cpu().numpy()
             )
+        elif args.dataset == "birdsong":
+            f1 = get_f1_score(y.detach().cpu().numpy(), output.detach().cpu().numpy())
         else:
             predictions = output.argmax(1).detach()
-            auc = 0
             acc = (predictions == y).sum().item() / y.shape[0]
 
         metrics["AUC_tag/train"] += auc
         metrics["AP_tag/train"] += acc
+        metrics["F1/train"] += f1
         metrics["Loss/train"] += loss.item()
 
         writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
@@ -84,7 +89,7 @@ def train(args, loader, encoder, model, criterion, optimizer, writer):
 
         if step > 0 and step % 100 == 0:
             logging.info(
-                f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}"
+                f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}\tF1: {f1}"
             )
 
         args.global_step += 1
@@ -116,18 +121,23 @@ def validate(args, loader, encoder, model, criterion, optimizer):
 
         loss = criterion(output, y)
         predicted_classes = get_predicted_classes(output, predicted_classes)
-
+        
+        auc = 0
+        acc = 0
+        f1 = 0
         if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
             auc, acc = get_metrics(
                 args.domain, y.detach().cpu().numpy(), output.detach().cpu().numpy()
             )
+        elif args.dataset == "birdsong":
+            f1 = get_f1_score(y.detach().cpu().numpy(), output.detach().cpu().numpy())
         else:
             predictions = output.argmax(1).detach()
-            auc = 0
             acc = (predictions == y).sum().item() / y.shape[0]
 
         metrics["AUC_tag/test"] += auc
         metrics["AP_tag/test"] += acc
+        metrics["F1/test"] += f1
         metrics["Loss/test"] += loss.item()
 
         if step > 0 and step % 100 == 0:
