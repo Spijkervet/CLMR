@@ -2,7 +2,6 @@ import torch
 import torchaudio
 import random
 import essentia.standard
-import librosa
 import numpy as np
 import audioop
 from torchaudio.transforms import Vol

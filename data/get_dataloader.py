@@ -60,15 +60,16 @@ def get_audio_dataloader(args, pretrain=True, download=False):
         sampler=val_sampler,
     )
 
-    test_loader = torch.utils.data.DataLoader(
-        dataset=test_dataset,
-        batch_size=args.batch_size,
-        shuffle=(test_sampler is None),  # do not shuffle test set
-        drop_last=True,
-        num_workers=args.workers,
-        pin_memory=True,
-        sampler=test_sampler,
-    )
+    # test_loader = torch.utils.data.DataLoader(
+    #     dataset=test_dataset,
+    #     batch_size=args.batch_size,
+    #     shuffle=(test_sampler is None),  # do not shuffle test set
+    #     drop_last=True,
+    #     num_workers=args.workers,
+    #     pin_memory=True,
+    #     sampler=test_sampler,
+    # )
+    test_loader = None
 
     args.n_classes = train_dataset.num_tags
     return (
