@@ -60,12 +60,12 @@ class Dataset(TorchDataset):
 
     def get_audio(self, fp):
         audio, sr = self.loader(fp)
-        # max_samples = audio.shape[0]
+        max_samples = audio.shape[0]
         # if sr != self.sample_rate:
         #     raise Exception("Sample rate is not consistent throughout the dataset")
 
-        # if max_samples - self.audio_length <= 0:
-        #     raise Exception("Max samples exceeds number of samples in crop")
+        if max_samples - self.audio_length <= 0:
+            raise Exception("Max samples exceeds number of samples in crop")
 
         # if np.isnan(audio).any():
         #     raise Exception("Audio contains NaN values")

@@ -12,6 +12,8 @@ def resample(source, target, sample_rate):
             "-y",
             "-i",
             source,
+            "-ac",
+            "1", # to mono
             "-ar",
             str(sample_rate),
             "-f",

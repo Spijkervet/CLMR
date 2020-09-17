@@ -40,14 +40,14 @@ sample_rate: 22050
 ## audio transformations
 transforms_polarity: 0.8
 transforms_noise: 0.0
-transforms_gain: 0.0
+transforms_gain: 0.3
 transforms_filters: 0.8
 transforms_delay: 0.3
-transforms_pitch: 0.8
+transforms_pitch: 0.6
 transforms_reverb: 0.6
 
 ## loss options
-optimizer: "Adam" # [Adam, LARS]
+optimizer: "LARS" # [Adam, LARS]
 warmup_epochs: 30
 learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
 weight_decay: 1.0e-4

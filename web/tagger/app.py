@@ -54,66 +54,61 @@ def predict():
     video_link = request.form.get('youtubeLink')
     d = {}
 
-    try:
-        print("Downloading and converting YouTube video...")
-        video_title, video_id = download_yt(video_link, tmp_input_file, args.sample_rate)
-        conv_fn = f"{tmp_input_file}_{args.sample_rate}.wav"
-        print("Resampling...")
-        resample(tmp_input_file, conv_fn, args.sample_rate)
+    print("Downloading and converting YouTube video...")
+    video_title, video_id = download_yt(video_link, tmp_input_file, args.sample_rate)
+    conv_fn = f"{tmp_input_file}_{args.sample_rate}.wav"
+    print("Resampling...")
+    resample(tmp_input_file, conv_fn, args.sample_rate)
 
-        yt_audio, _ = process_wav(args.sample_rate, conv_fn, False)
+    yt_audio, _ = process_wav(args.sample_rate, conv_fn, False)
 
-        # to mono
-        yt_audio = yt_audio.mean(axis=1).reshape(1, -1)
-        yt_audio = torch.from_numpy(yt_audio)  # numpy to torch tensor
+    # to mono
+    # yt_audio = yt_audio.mean(axis=1)
+    yt_audio = yt_audio.reshape(1, -1)
+    yt_audio = torch.from_numpy(yt_audio)  # numpy to torch tensor
 
-        # split into equally sized tensors of args.audio_length
-        chunks = torch.split(yt_audio, args.audio_length, dim=1)
-        chunks = chunks[
-            :-1
-        ]  # remove last one, since it's not a complete segment of audio_length
+    # split into equally sized tensors of args.audio_length
+    chunks = torch.split(yt_audio, args.audio_length, dim=1)
+    chunks = chunks[
+        :-1
+    ]  # remove last one, since it's not a complete segment of audio_length
 
-        print("Starting inference...")
-        with torch.no_grad():
-            taggram = []
-            for idx, x in enumerate(chunks):
-                x = x.to(args.device)
+    print("Starting inference...")
+    with torch.no_grad():
+        taggram = []
+        for idx, x in enumerate(chunks):
+            x = x.to(args.device)
 
-                # add batch dim
-                x = x.unsqueeze(0)
-                h = encoder(x)
+            # add batch dim
+            x = x.unsqueeze(0)
+            h = encoder(x)
 
-                output = finetuned_head(h)
-                output = torch.nn.functional.softmax(output, dim=1)
-                output = output.squeeze(0)  # remove batch dim
-                taggram.append(output.cpu().detach().numpy())
-        
-        print("Cleaning up mp3...")
-        os.remove(tmp_input_file)
-        os.remove(conv_fn)
+            output = finetuned_head(h)
+            output = torch.nn.functional.softmax(output, dim=1)
+            output = output.squeeze(0)  # remove batch dim
+            taggram.append(output.cpu().detach().numpy())
+    
+    print("Cleaning up mp3...")
+    os.remove(tmp_input_file)
+    os.remove(conv_fn)
 
+    fn = "{}_taggram.png".format(base64.b64encode(video_title.encode("utf-8")))
+    taggram_fp = os.path.join(app.static_folder, "images", fn)
+    save_taggram(yt_audio, video_title, args.sample_rate, args.audio_length, taggram, tags, taggram_fp)
 
-        fn = "{}_taggram.png".format(base64.b64encode(video_title.encode("ascii")))
-        taggram_fp = os.path.join(app.static_folder, "images", fn)
-        save_taggram(yt_audio, video_title, args.sample_rate, args.audio_length, taggram, tags, taggram_fp)
-
-        taggram = np.array(taggram)
-        scores = {}
-        for score, tag in zip(taggram.mean(axis=0), tags):
-            scores[tag] = score
-        
-        scores = {k: v for k, v in sorted(scores.items(), key=lambda x: x[1], reverse=True)}
-        d["scores"] = [float(s) for s in scores.values()]
-        d["tags"] = [str(t) for t in scores.keys()]
-        d["image"] = fn
-        d["video_title"] = video_title
-        d["video_link"] = video_link
-        d["video_id"] = video_id
-        error = ""
-    except Exception as e:
-        print(e)
-        error = e
-        pass
+    taggram = np.array(taggram)
+    scores = {}
+    for score, tag in zip(taggram.mean(axis=0), tags):
+        scores[tag] = score
+    
+    scores = {k: v for k, v in sorted(scores.items(), key=lambda x: x[1], reverse=True)}
+    d["scores"] = [float(s) for s in scores.values()]
+    d["tags"] = [str(t) for t in scores.keys()]
+    d["image"] = fn
+    d["video_title"] = video_title
+    d["video_link"] = video_link
+    d["video_id"] = video_id
+    error = ""
 
     d["error"] = str(error)
     return jsonify(d)
