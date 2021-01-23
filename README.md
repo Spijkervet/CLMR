@@ -129,13 +129,13 @@ python main.py --dataset magnatagatune --download 1
 ### Linear evaluation
 To test a trained model, make sure to set the `model_path` variable in the `config/config.yaml` to the folder containing the saved pre-trained model (e.g. `./save`). Set the `epoch_num` to the epoch number you want to load the checkpoints from (e.g. `40`).
 ```
-python -m testing.logistic_regression
+python linear_evaluation.py
 ```
 
-E.g., you can first download the pre-traind model from the table above, move it to the folder containing this repository, and use:
+E.g., you can first download the pre-trained model from the table above, move it to the folder containing this repository, and use:
 or in place:
 ```
-python -m testing.logistic_regression --model_path=./ --epoch_num=1550
+python linear_evaluation.py --model_path=./ --epoch_num=1550
 ```
 
 ## Configuration
