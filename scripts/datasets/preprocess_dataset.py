@@ -38,10 +38,12 @@ def process_dataset(split, dataset, data_input_dir, sample_rate):
     p = multiprocessing.Pool()
     for track_id, clip_id, segment, fp, _ in dataset.index:
         if segment == 0:
-            p.apply_async(
-                process,
-                args=[split, data_input_dir, sample_rate, track_id, clip_id, segment, fp],
-            )
+            unproc_fp = dataset.id2audio_path[clip_id]
+            process(split, data_input_dir, sample_rate, track_id, clip_id, segment, unproc_fp)
+            # p.apply_async(
+            #     process,
+            #     args=[split, data_input_dir, sample_rate, track_id, clip_id, segment, unproc_fp],
+            # )
 
     p.close()
     p.join()

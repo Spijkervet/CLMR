@@ -58,7 +58,7 @@ if __name__ == "__main__":
         val_dataset,
         test_loader,
         test_dataset,
-    ) = get_dataset(args, pretrain=True, download=args.download)
+    ) = get_dataset(args, pretrain=False, download=args.download)
 
     # load pre-trained encoder
     encoder = load_encoder(args, reload=True)
@@ -76,7 +76,8 @@ if __name__ == "__main__":
                 os.path.join(
                     args.finetune_model_path,
                     f"finetuner_checkpoint_{args.finetune_epoch_num}.pt",
-                )
+                ),
+             map_location=args.device
             )
         )
         finetuned_head = finetuned_head.to(args.device)
@@ -90,9 +91,9 @@ if __name__ == "__main__":
     conv_fn = f"{tmp_input_file}_{args.sample_rate}"
     resample(tmp_input_file, conv_fn, args.sample_rate)
 
-    yt_audio = train_dataset.get_audio(conv_fn)
-    yt_audio = yt_audio.mean(axis=1).reshape(1, -1) # to mono
+    yt_audio = process_wav(args.sample_rate, conv_fn, False)
     yt_audio = torch.from_numpy(yt_audio)
+    yt_audio = yt_audio.reshape(1, -1) # to mono
 
     # split into equally sized tensors of args.audio_length
     chunks = torch.split(yt_audio, args.audio_length, dim=1)

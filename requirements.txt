@@ -1,7 +1,6 @@
 torch
 torchvision
 tensorboard
-essentia
 seaborn
 PyYAML
 opencv-python

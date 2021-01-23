@@ -1,7 +1,11 @@
 import torch
 import torchaudio
 import random
-import essentia.standard
+try:
+    import essentia.standard
+except Exception as e:
+    print("Essentia not found")
+    
 import numpy as np
 import audioop
 from torchaudio.transforms import Vol
