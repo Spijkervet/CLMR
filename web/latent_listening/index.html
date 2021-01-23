@@ -43,6 +43,11 @@
     <h1>CLMR Listening Experiment</h1>
 
     <form id="parameters">
+        <h3>Dataset</h3>
+        <select id="dataset">
+            <option value="magnatagatune">MagnaTagATune</option>
+            <option value="msd">Million Song Dataset</option>
+        </select>
         <h3>Encoder</h3>
         <label for="featurenum">Feature number (0 - 511 hidden layers), comma seperated for multiple:</label>
         <input type="text" name="featurenum" id="featurenum" value="0,100,200,300,400,500"><br><br>
@@ -219,6 +224,8 @@
                 checkbox.push($(this).val());
             });
 
+            var dataset = $('#dataset').val();
+
             var featurenum = values["featurenum"]
             featurenum = featurenum.split(",")
             checkbox.push(...featurenum)
@@ -227,7 +234,7 @@
             let table = document.querySelector("table");
             table.innerHTML = "<table></table>"
 
-            fetch("predictions.json")
+            fetch("predictions_" + dataset + ".json")
                 .then(response => response.json())
                 .then(json => {
 
