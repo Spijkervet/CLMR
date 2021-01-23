@@ -66,10 +66,10 @@ dropout: 0.5
 
 
 ## reload options
-model_path: "./logs/0" # set to the directory containing `checkpoint_##.pt` 
-epoch_num: 0 # set to checkpoint number
-finetune_model_path: "./logs/0"
-finetune_epoch_num: ""
+model_path: "./logs/66" # set to the directory containing `checkpoint_##.pt` 
+epoch_num: 10000 # set to checkpoint number
+finetune_model_path: "./results/66-Dec27_17_43-21"
+finetune_epoch_num: 200
 reload: False
 
 

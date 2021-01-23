@@ -19,3 +19,4 @@ runs/
 pretrained_models/
 /web/tagger/static/images/*
 /web/latent_listening/datasets
+.DS_Store

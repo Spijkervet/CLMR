@@ -3,7 +3,10 @@ import os
 import torchaudio
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
+
+import matplotlib
+matplotlib.use("Agg")
+
 from data import get_dataset
 from model import load_encoder
 from scripts.datasets.resample import resample
@@ -29,9 +32,7 @@ encoder = encoder.to(args.device)
 model = None
 if not args.supervised:
     finetuned_head = torch.nn.Sequential(
-        torch.nn.Linear(args.n_features, args.n_features),
-        torch.nn.ReLU(),
-        torch.nn.Linear(args.n_features, args.n_classes)
+        torch.nn.Linear(args.n_features, args.n_classes),
     )
 
     finetuned_head.load_state_dict(
@@ -39,7 +40,8 @@ if not args.supervised:
             os.path.join(
                 args.finetune_model_path,
                 f"finetuner_checkpoint_{args.finetune_epoch_num}.pt",
-            )
+            ),
+            map_location=args.device
         )
     )
     finetuned_head = finetuned_head.to(args.device)
@@ -61,9 +63,6 @@ def predict():
     resample(tmp_input_file, conv_fn, args.sample_rate)
 
     yt_audio, _ = process_wav(args.sample_rate, conv_fn, False)
-
-    # to mono
-    # yt_audio = yt_audio.mean(axis=1)
     yt_audio = yt_audio.reshape(1, -1)
     yt_audio = torch.from_numpy(yt_audio)  # numpy to torch tensor
 
@@ -93,7 +92,7 @@ def predict():
     os.remove(conv_fn)
 
     fn = "{}_taggram.png".format(base64.b64encode(video_title.encode("utf-8")))
-    taggram_fp = os.path.join(app.static_folder, "images", fn)
+    taggram_fp = os.path.join(image_path, fn)
     save_taggram(yt_audio, video_title, args.sample_rate, args.audio_length, taggram, tags, taggram_fp)
 
     taggram = np.array(taggram)
@@ -120,4 +119,7 @@ def main():
 
 
 if __name__ == "__main__":
+    image_path =  os.path.join(app.static_folder, "images")
+    if not os.path.exists(image_path):
+        os.makedirs(image_path)
     app.run()

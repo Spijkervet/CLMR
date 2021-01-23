@@ -12,7 +12,8 @@ if __name__ == "__main__":
     args.world_size = 1
     args.supervised = False
     args.dataset = "magnatagatune"
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    args.device = torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu")
 
     args.model_path = "./logs/66"
     args.epoch_num = 10000
@@ -27,7 +28,7 @@ if __name__ == "__main__":
         val_dataset,
         test_loader,
         test_dataset,
-    ) = get_dataset(args, pretrain=True, download=args.download)
+    ) = get_dataset(args, pretrain=False, download=args.download)
 
     # load pre-trained encoder
     encoder = load_encoder(args, reload=True)
@@ -45,7 +46,8 @@ if __name__ == "__main__":
                 os.path.join(
                     args.finetune_model_path,
                     f"finetuner_checkpoint_{args.finetune_epoch_num}.pt",
-                )
+                ),
+                map_location=torch.device('cpu')
             )
         )
         finetuned_head = finetuned_head.to(args.device)
@@ -54,10 +56,9 @@ if __name__ == "__main__":
 
     args.current_epoch = args.epoch_num
 
-
     tag_classes = defaultdict(list)
     predictions = []
-    n = 10 # add every n
+    n = 10  # add every n
     with torch.no_grad():
         for step, (track_id, clip_id, segment, fp, label) in enumerate(test_dataset.index):
             if step % n == 0:
@@ -68,10 +69,12 @@ if __name__ == "__main__":
                 output = torch.nn.functional.softmax(output, dim=1)
 
                 h = h.mean(dim=0)
-                output = output.mean(dim=0) # take mean predictions of whole track, i.e., over batch dim.
-                predictions.append([output.cpu().numpy().tolist(), h.cpu().numpy().tolist(), track_id, clip_id, segment, fp, label])
+                # take mean predictions of whole track, i.e., over batch dim.
+                output = output.mean(dim=0)
+                predictions.append([output.cpu().numpy().tolist(), h.cpu(
+                ).numpy().tolist(), track_id, clip_id, segment, fp, label])
 
-    #             print(step, "/", len(test_dataset))        
+    #             print(step, "/", len(test_dataset))
 
     # for website
     ds = []
@@ -96,7 +99,7 @@ if __name__ == "__main__":
             d[ix] = p
 
         d["track_id"] = a[2]
-        d["clip_id"]= a[3]
+        d["clip_id"] = a[3]
         d["segment"] = a[4]
 
         d["labels"] = []
