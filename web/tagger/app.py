@@ -19,7 +19,7 @@ tmp_input_file = "yt.mp3"
 args = parse_args("./config/config.yaml")
 args.world_size = 1
 args.supervised = False
-args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+args.device = torch.device("cpu") #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 tags = ['guitar', 'classical', 'slow', 'techno', 'strings', 'drums', 'electronic', 'rock', 'fast', 'piano', 'ambient', 'beat', 'violin', 'vocal', 'synth', 'female', 'indian', 'opera', 'male', 'singing', 'vocals', 'no vocals', 'harpsichord', 'loud', 'quiet', 'flute', 'woman', 'male vocal', 'no vocal', 'pop', 'soft', 'sitar', 'solo', 'man', 'classic', 'choir', 'voice', 'new age', 'dance', 'male voice', 'female vocal', 'beats', 'harp', 'cello', 'no voice', 'weird', 'country', 'metal', 'female voice', 'choral']
 args.n_classes = len(tags)
@@ -101,6 +101,7 @@ def predict():
         scores[tag] = score
     
     scores = {k: v for k, v in sorted(scores.items(), key=lambda x: x[1], reverse=True)}
+    d["taggram"] = taggram.tolist()
     d["scores"] = [float(s) for s in scores.values()]
     d["tags"] = [str(t) for t in scores.keys()]
     d["image"] = fn
@@ -122,4 +123,4 @@ if __name__ == "__main__":
     image_path =  os.path.join(app.static_folder, "images")
     if not os.path.exists(image_path):
         os.makedirs(image_path)
-    app.run()
+    app.run(debug=True)

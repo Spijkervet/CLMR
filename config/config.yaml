@@ -76,7 +76,7 @@ reload: False
 ## linear evaluation options
 mlp: False # use one extra hidden layer
 logistic_batch_size: 48
-logistic_epochs: 10
+logistic_epochs: 50
 logistic_lr: 0.001
 reload_logreg: False
 

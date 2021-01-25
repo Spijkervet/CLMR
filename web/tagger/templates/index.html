@@ -14,19 +14,20 @@
         </h5>
 
         <p>
-            We pre-train a using a task-agnostic, self-supervised objective on unlabeled, raw (musical) audio data.
+            We pre-train a SampleCNN encoder using a task-agnostic, self-supervised objective on unlabeled, raw
+            waveforms of musical audio.
         </p>
         <p>
             We then fine-tune a <i>linear</i> classifier on the task of
             automatic music tagging and evaluate the performance.
         </p>
         <p>
-            Despite unsupervised, contrastive pre-training and fine-tuning on the music classification task using linear
-            classifier, we achieve state-of-the-art results on the MTAT dataset relative to fully supervised training.
+            Despite task-agnostic pre-training and fine-tuning on the music classification task using a linear
+            classifier, we achieve state-of-the-art results on the MagnaTagATune dataset.
         </p>
 
     </div>
-    <div class="jumbotron">
+    <div>
         <form id="tagForm" , action='{{ url_for("predict") }}'>
             <div class="form-group">
                 <label for="youtubeLink">YouTube link</label>
@@ -36,15 +37,21 @@
         </form>
     </div>
 
-    <div>
-        <div id="player"></div>
+    <div class="d-flex flex-row">
+        <div id="player" class="p-2"></div>
+        <div id="tagPlayer" class="p-2">
+            <canvas id="tagChart" width="400" height="400"></canvas>
+        </div>
     </div>
+
+    <div class="p-2">
+        <canvas id="myChart" width="400" height="400"></canvas>
+    </div>
+
     <div>
         <img id="taggramImage" class="img-fluid" src="" />
     </div>
-    <div>
-        <canvas id="myChart" width="400" height="400"></canvas>
-    </div>
+
 
 </div>
 
