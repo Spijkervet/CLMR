@@ -1,7 +1,7 @@
 // 2. This code loads the IFrame Player API code asynchronously.
 var tag = document.createElement('script');
 var taggram = null;
-var tags = null;
+var taggram_tags = null;
 var sample_rate = 22050;
 var audio_length = 59049;
 var player;
@@ -54,7 +54,7 @@ function checkVideoTime() {
     var sorted_tags = [];
     for(var i = 0; i < current_taggram.length; i++) {
       var tag_score = current_taggram[i];
-      var tag_label = tags[i];
+      var tag_label = taggram_tags[i];
       sorted_tags.push({tag: tag_label, score: tag_score});
     }
 
@@ -64,6 +64,9 @@ function checkVideoTime() {
 
     var top_n = 10;
     sorted_tags = sorted_tags.slice(0, top_n);
+
+    console.log("LOG");
+    console.log()
 
     var new_scores = sorted_tags.map(a => a.score);
     var new_tags = sorted_tags.map(a => a.tag);
@@ -133,9 +136,9 @@ $("#tagForm").submit(function (e) {
       $("#player").show()
 
       taggram = data["taggram"]
-      tags = data["tags"];
+      taggram_tags = data["taggram_tags"];
 
-
+      var tags = data["tags"];
       var ctx = document.getElementById('tagChart').getContext('2d');
       tagChart = new Chart(ctx, {
         type: 'horizontalBar',

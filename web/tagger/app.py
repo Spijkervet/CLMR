@@ -3,7 +3,7 @@ import os
 import torchaudio
 import torch
 import numpy as np
-
+import uuid
 import matplotlib
 matplotlib.use("Agg")
 
@@ -91,7 +91,7 @@ def predict():
     os.remove(tmp_input_file)
     os.remove(conv_fn)
 
-    fn = "{}_taggram.png".format(base64.b64encode(video_title.encode("utf-8")))
+    fn = "{}_taggram.png".format(str(uuid.uuid4()))
     taggram_fp = os.path.join(image_path, fn)
     save_taggram(yt_audio, video_title, args.sample_rate, args.audio_length, taggram, tags, taggram_fp)
 
@@ -102,6 +102,7 @@ def predict():
     
     scores = {k: v for k, v in sorted(scores.items(), key=lambda x: x[1], reverse=True)}
     d["taggram"] = taggram.tolist()
+    d["taggram_tags"] = tags
     d["scores"] = [float(s) for s in scores.values()]
     d["tags"] = [str(t) for t in scores.keys()]
     d["image"] = fn
@@ -123,4 +124,4 @@ if __name__ == "__main__":
     image_path =  os.path.join(app.static_folder, "images")
     if not os.path.exists(image_path):
         os.makedirs(image_path)
-    app.run(debug=True)
+    app.run()
