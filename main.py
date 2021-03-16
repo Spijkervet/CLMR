@@ -1,270 +1,229 @@
-import sys
 import os
+import argparse
 import torch
-import torchvision
-import numpy as np
-import logging
-import json
-import time
+import torchaudio
+from torch.utils.data import DataLoader
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import TensorBoardLogger
+from tqdm import tqdm
+from sklearn import metrics
 
-from torch.utils.tensorboard import SummaryWriter
+# Audio Augmentations
+from audio_augmentations import (
+    RandomApply,
+    Compose,
+    ComposeMany,
+    RandomResizedCrop,
+    PolarityInversion,
+    Noise,
+    Gain,
+    HighLowPass,
+    Delay,
+    PitchShift,
+    Reverb,
+)
 
-# distributed training
-import torch.distributed as dist
-import torch.multiprocessing as mp
-from torch.nn.parallel import DistributedDataParallel, DataParallel
+# SimCLR
+from simclr.modules.resnet import get_resnet
 
-# custom modules
-from data import get_dataset
-from model import load_encoder, load_optimizer, save_model
-from modules import SimCLR, BYOL, NT_Xent
-from modules.sync_batchnorm import convert_model
-from solver import Solver
-from utils import LogFile, eval_all, write_audio_tb, parse_args, get_log_dir, write_args
-from validation import audio_latent_representations
-
-
-def main(args):
-
-    # data loaders
-    (
-        train_loader,
-        train_dataset,
-        val_loader,
-        val_dataset,
-        test_loader,
-        test_dataset,
-    ) = get_dataset(args, pretrain=True, download=args.download)
-
-    encoder = load_encoder(args)
-
-    # context model
-    # model = BYOL(encoder, args.audio_length) # new!
-    model = SimCLR(args, encoder, args.n_features, args.projection_dim)
-    model.apply(model.initialize)
-    model = model.to(args.device)
-    logging.info(model.summary())
-
-    if args.reload:
-        model_fp = os.path.join(
-            args.reload_path,
-            "{}_checkpoint_{}.pt".format(args.model_name, args.epoch_num),
-        )
-        logging.info(
-            f"### RELOADING {args.model_name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###"
-        )
-        model.load_state_dict(torch.load(model_fp, map_location=args.device.type))
-        args.start_epoch = args.epoch_num
-
-    # optimizer / scheduler
-    optimizer, scheduler = load_optimizer(args, model)
-
-    if not args.supervised:
-        criterion = NT_Xent(
-            args.batch_size, args.temperature, args.device, args.world_size
-        )
-    else:
-        criterion = torch.nn.BCEWithLogitsLoss()
-
-    # DDP
-    if args.dataparallel:
-        if not args.supervised:
-            model = convert_model(model)
-        model = DataParallel(model)
-        model = model.to(args.device)
-    elif args.world_size > 1:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model = DistributedDataParallel(
-            model, device_ids=[args.local_rank], output_device=args.local_rank
-        )
-
-    writer = None
-    if args.is_master:
-        writer = SummaryWriter(log_dir=args.model_path)
-
-    # save random init. model
-    if not args.reload:
-        args.current_epoch = "random"
-        save_model(args, model, optimizer, args.model_name)
-
-        # write a few audio files to TensorBoard for comparison
-        # write_audio_tb(args, train_loader, test_loader, writer)
-
-    # start training
-    solver = Solver(model, optimizer, criterion, writer)
-
-    if args.supervised:
-        validate_idx = 1
-    else:
-        validate_idx = 50
-
-    args.current_epoch = args.start_epoch
-    last_model = None
-    last_auc = 0
-    last_ap = 0
-    early_stop = 0
-    initial_lr = optimizer.param_groups[0]["lr"]
-    warmup_lr = [idx*initial_lr/args.warmup_epochs for idx in range(1, args.warmup_epochs+1)]
-    for epoch in range(args.start_epoch, args.epochs):
-        t0 = time.time()
-        if args.world_size > 1:
-            dist.barrier()
-
-        # if epoch % validate_idx == 0:
-        #     audio_latent_representations(
-        #         args,
-        #         train_loader.dataset,
-        #         model,
-        #         args.current_epoch,
-        #         args.global_step,
-        #         writer,
-        #         train=True,
-        #     )
-        #     audio_latent_representations(
-        #         args,
-        #         test_loader.dataset,
-        #         model,
-        #         args.current_epoch,
-        #         args.global_step,
-        #         writer,
-        #         train=False,
-        #     )
-        
-        if args.optimizer == "LARS":
-            if epoch < args.warmup_epochs:
-                optimizer.param_groups[0]["lr"] = warmup_lr[epoch]
-            elif epoch == args.warmup_epochs:
-                optimizer.param_groups[0]["lr"] = initial_lr
-        
-        learning_rate = optimizer.param_groups[0]["lr"]
-        metrics = solver.train(args, train_loader)
-
-        if args.is_master:
-            for k, v in metrics.items():
-                writer.add_scalar(k, v, epoch)
-            writer.add_scalar("Misc/learning_rate", learning_rate, epoch)
-            logging.info(
-                f"Epoch [{epoch}/{args.epochs}]\t Loss: {metrics['Loss/train']}\t lr: {round(learning_rate, 5)}"
-            )
-
-        if epoch > 0 and epoch % validate_idx == 0 or early_stop > 0:
-            metrics = solver.validate(args, val_loader)
-
-            # early stopping for supervised
-            if args.supervised:
-                if metrics["AUC_tag/test"] < last_auc and metrics["AP_tag/test"] < last_ap:
-                    last_model = model
-                    early_stop += 1
-                    logging.info(
-                        "Early stop count: {}\t\t{} (best: {})\t {} (best: {})".format(
-                            early_stop,
-                            metrics["AUC_tag/test"],
-                            last_auc,
-                            metrics["AP_tag/test"],
-                            last_ap,
-                        )
-                    )
-                else:
-                    last_auc = metrics["AUC_tag/test"]
-                    last_ap = metrics["AP_tag/test"]
-                    early_stop = 0
-
-            if args.is_master:
-                for k, v in metrics.items():
-                    writer.add_scalar(k, v, epoch)
-                    logging.info(f"[Test] Epoch [{epoch}/{args.epochs}]\t {k}: {v}")
-
-        if args.is_master and epoch > 0 and epoch % args.checkpoint_epochs == 0:
-            save_model(args, model, optimizer, name=args.model_name)
-        
-        if args.is_master and args.optimizer == "LARS" and args.current_epoch >= args.warmup_epochs:
-            scheduler.step()
-
-        args.current_epoch += 1
-        print(f"Time: {time.time() - t0}")
-        
-        if args.supervised and early_stop >= 3:
-            logging.info("Early stopping...")
-            break
-
-
-    save_model(args, model, optimizer, name=args.model_name)
-
-    if args.supervised:
-        if last_model is None:
-            logging.info("No early stopping, using last model")
-            last_model = model
-
-        # eval all
-        metrics = eval_all(
-            args, test_loader, encoder, last_model, writer, n_tracks=None
-        )
-        logging.info("### Final tag/clip ROC-AUC/PR-AUC scores ###")
-        m = {}
-        for k, v in metrics.items():
-            if "hparams" in k:
-                logging.info(f"[Test average AUC/AP]: {k}, {v}")
-                m[k] = v
-            else:
-                for tag, val in zip(test_loader.dataset.tags, v):
-                    logging.info(f"[Test {k}]\t\t{tag}\t{val}")
-                    m[k + "/" + tag] = val
-
-        with open(os.path.join(args.model_path, "results.json"), "w") as f:
-            json.dump(m, f)
-
-    ## end training
+from callback import PlotSpectogramCallback
+from datasets import get_dataset
+from data import ContrastiveDataset
+from modules.sample_cnn import SampleCNN
+from modules.shortchunk_cnn import ShortChunkCNN_Res
+from model import ContrastiveLearning, SupervisedBaseline
+from utils import yaml_config_hook
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    args.reload_path = args.model_path
 
-    if "WORLD_SIZE" not in os.environ.keys():
-        args.world_size = 1
-        args.model_path = get_log_dir("./logs", args.id)
+    parser = argparse.ArgumentParser(description="SimCLR")
+
+    config = yaml_config_hook("./config/config.yaml")
+    for k, v in config.items():
+        parser.add_argument(f"--{k}", default=v, type=type(v))
+
+    args = parser.parse_args()
+
+    # ------------
+    # data augmentations
+    # ------------
+    if args.supervised:
+        train_transform = [RandomResizedCrop(n_samples=args.audio_length)]
+        num_augmented_samples = 1
     else:
-        args.world_size = int(os.environ["WORLD_SIZE"])
-        dist.init_process_group(backend="nccl", init_method="env://")
-        args.model_path = os.path.join("./logs", str(args.id))
-        if not os.path.exists(args.model_path):
-            os.makedirs(args.model_path)
+        train_transform = [
+            RandomResizedCrop(n_samples=args.audio_length),
+            RandomApply([PolarityInversion()], p=args.transforms_polarity),
+            RandomApply([Noise()], p=args.transforms_noise),
+            RandomApply([Gain()], p=args.transforms_gain),
+            RandomApply([HighLowPass(sample_rate=args.sample_rate)], p=args.transforms_filters),
+            RandomApply([Delay(sample_rate=args.sample_rate)], p=args.transforms_delay),
+            RandomApply([PitchShift(
+                n_samples=args.audio_length,
+                sample_rate=args.sample_rate,
+            )], p=args.transforms_pitch),
+            RandomApply([Reverb(sample_rate=args.sample_rate)], p=args.transforms_reverb)
+        ]
+        num_augmented_samples = 2
 
-    print("World size", args.world_size)
+    spec_transform = []
+    if not args.time_domain:
+        n_fft = 512
+        f_min = 0.0
+        f_max = 8000.0
+        n_mels = 128
+        stype = "power"  # magnitude
+        top_db = None  # f_max
 
-    args.num_gpus = torch.cuda.device_count()
+        spec_transform = [
+            torchaudio.transforms.MelSpectrogram(
+                sample_rate=args.sample_rate,
+                n_fft=n_fft,
+                n_mels=n_mels,
+                f_min=f_min,
+                f_max=f_max,
+            ),
+            torchaudio.transforms.AmplitudeToDB(stype=stype, top_db=top_db),
+        ]
+        train_transform.extend(spec_transform)
 
-    # dataparallel splits the data across the batch dimension
-    if args.dataparallel:
-        # args.batch_size *= args.num_gpus
-        print(f"DP batch size: {args.batch_size}")
-
-    args.is_master = args.local_rank == 0
-
-    # set the device
-    args.device = torch.device(args.local_rank)
-    # args.device = torch.device(f"cuda:{args.local_rank}" if torch.cuda.is_available() else "cpu")
-    print("Device", args.device)
-
-    print("Num devices", args.num_gpus)
-
-    if args.world_size > 1:
-        torch.cuda.set_device(args.local_rank)
-
-    torch.cuda.manual_seed_all(args.seed)
-    np.random.seed(args.seed)
-
-    args.global_step = 0
-    args.current_epoch = 0
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(os.path.join(args.model_path, "output.log")),
-            logging.StreamHandler(),
-        ],
+    # ------------
+    # dataloaders
+    # ------------
+    train_dataset = get_dataset(args.dataset, args.dataset_dir, subset="train")
+    valid_dataset = get_dataset(args.dataset, args.dataset_dir, subset="valid")
+    test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
+    contrastive_train_dataset = ContrastiveDataset(
+        train_dataset,
+        input_shape=(1, args.audio_length),
+        transform=ComposeMany(
+            train_transform, num_augmented_samples=num_augmented_samples
+        ),
     )
 
-    write_args(args)
-    main(args)
+    contrastive_valid_dataset = ContrastiveDataset(
+        valid_dataset,
+        input_shape=(1, args.audio_length),
+        transform=ComposeMany(
+            train_transform, num_augmented_samples=num_augmented_samples
+        ),
+    )
+
+    train_loader = DataLoader(
+        contrastive_train_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        drop_last=True,
+        shuffle=True
+    )
+
+    valid_loader = DataLoader(
+        contrastive_valid_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        drop_last=True,
+        shuffle=False
+    )
+
+    # ------------
+    # encoder
+    # ------------
+    if args.time_domain:
+        encoder = SampleCNN(
+            strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
+            supervised=args.supervised,
+            out_dim=train_dataset.n_classes,
+        )
+    else:
+        encoder = ShortChunkCNN_Res(n_channels=128, n_classes=train_dataset.n_classes)
+        # encoder = get_resnet(args.resnet)
+        # encoder.conv1 = torch.nn.Conv2d(
+        #     1, 64, kernel_size=7, stride=2, padding=3, bias=False
+        # )
+
+    # ------------
+    # model
+    # ------------
+    args.accelerator = "dp"
+    if args.supervised:
+        l = SupervisedBaseline(args, encoder, output_dim=train_dataset.n_classes)
+    else:
+        l = ContrastiveLearning(args, encoder)
+
+    logger = TensorBoardLogger("runs", name="CLMRv2-{}".format(args.dataset))
+    if args.checkpoint_path:
+        l = l.load_from_checkpoint(
+            args.checkpoint_path, encoder=encoder, output_dim=train_dataset.n_classes
+        )
+
+    else:
+        # ------------
+        # training
+        # ------------
+
+        if args.supervised:
+            early_stopping = EarlyStopping(monitor='Valid/loss', patience=20)
+        else:
+            early_stopping = None
+
+        trainer = Trainer.from_argparse_args(
+            args,
+            callbacks=[PlotSpectogramCallback()],
+            logger=logger,
+            sync_batchnorm=True,
+            max_epochs=args.epochs,
+            log_every_n_steps=10,
+            check_val_every_n_epoch=1,
+            accelerator=args.accelerator
+        )
+        trainer.fit(l, train_loader, valid_loader)
+
+
+    if args.supervised:
+        if len(spec_transform):
+            transform = Compose(spec_transform)
+        else:
+            transform = None
+
+        contrastive_test_dataset = ContrastiveDataset(
+            test_dataset,
+            input_shape=(1, args.audio_length),
+            transform=Compose(spec_transform),
+        )
+
+        est_array = []
+        gt_array = []
+        l = l.to("cuda:0")
+        l.eval()
+        with torch.no_grad():
+            for idx in tqdm(range(len(contrastive_test_dataset))):
+                _, label = contrastive_test_dataset[idx]
+                batch = contrastive_test_dataset.concat_clip(idx, args.audio_length)
+                batch = batch.to("cuda:0")
+                output = l.encoder(batch)
+                output = torch.nn.functional.softmax(output)
+                output = output.mean(dim=0).argmax().item()
+                est_array.append(output)
+                gt_array.append(label)
+
+
+        if args.dataset in ["magnatagatune"]:
+            est_array = torch.stack(est_array, dim=0).cpu().numpy()
+            gt_array = torch.stack(gt_array, dim=0).cpu().numpy()
+            roc_aucs = metrics.roc_auc_score(gt_array, est_array, average="macro")
+            pr_aucs = metrics.average_precision_score(gt_array, est_array, average="macro")
+            print("ROC-AUC:", roc_aucs)
+            print("PR-AUC:", pr_aucs)
+
+        # l.logger.experiment.add_scalar("Test/roc_auc", roc_aucs, args.epochs)
+        # l.logger.experiment.add_scalar("Test/pr_auc", pr_aucs, args.epochs)
+
+        accuracy = metrics.accuracy_score(gt_array, est_array)
+        print("ACCURACY:", accuracy)
+
+        # precision = metrics.precision_score(gt_array, est_array)
+        # print("Precision:", precision)
+        

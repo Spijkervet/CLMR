@@ -1,328 +1,196 @@
-import torch
-import argparse
 import os
-import numpy as np
-import pickle
-from matplotlib import pyplot as plt
-from collections import defaultdict
-import time
-import urllib.request
-import logging
-import json
-import copy
+import argparse
+import torch
+import torchaudio
+from torch.utils.data import DataLoader
+import pytorch_lightning as pl
+from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import TensorBoardLogger
+from tqdm import tqdm
+from sklearn import metrics
 
-# TensorBoard
-from torch.utils.tensorboard import SummaryWriter
+from audio_augmentations import Compose, RandomResizedCrop
 
-# DP
-from torch.nn.parallel import DataParallel
+# SimCLR
+from simclr.modules.resnet import get_resnet
+from simclr.modules.transformations import TransformsSimCLR
+from simclr.modules.sync_batchnorm import convert_model
 
-from data import get_dataset
-from model import load_encoder, save_model
-
-from utils import parse_args, args_hparams, random_undersample_balanced, get_log_dir
-from utils.eval import get_metrics, get_f1_score, eval_all
-from features import get_features, create_data_loaders_from_arrays
-
-
-def get_predicted_classes(output, predicted_classes):
-    predictions = output.argmax(1).detach()
-    classes, counts = torch.unique(predictions, return_counts=True)
-    predicted_classes[classes] += counts.float()
-    return predicted_classes
-
-
-def plot_predicted_classes(predicted_classes, epoch, writer, train):
-    train_test = "train" if train else "test"
-    figure = plt.figure()
-    plt.bar(range(predicted_classes.size(0)), predicted_classes.cpu().numpy())
-    writer.add_figure(f"Class_distribution/{train_test}", figure, global_step=epoch)
-
-
-def train(args, loader, encoder, model, criterion, optimizer, writer):
-    predicted_classes = torch.zeros(args.n_classes).to(args.device)
-    metrics = defaultdict(float)
-    for step, (x, y) in enumerate(loader):
-        # if len(x) contains the two x_i, x_j, we did not pre-compute features
-        if len(x) == 2:
-            x = x[0]
-            x = x.to(args.device)
-            with torch.no_grad():
-                x = encoder(x)
-        else:
-            x = x.to(args.device)
-
-        y = y.to(args.device)
-
-        output = model(x)
-
-        loss = criterion(output, y)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        predicted_classes = get_predicted_classes(output, predicted_classes)
-
-        auc = 0
-        acc = 0
-        f1 = 0
-        if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
-            auc, acc = get_metrics(
-                args.domain, y.detach().cpu().numpy(), output.detach().cpu().numpy()
-            )
-        elif args.dataset == "birdsong":
-            f1 = get_f1_score(y.detach().cpu().numpy(), output.detach().cpu().numpy())
-        else:
-            predictions = output.argmax(1).detach()
-            acc = (predictions == y).sum().item() / y.shape[0]
-
-        metrics["AUC_tag/train"] += auc
-        metrics["AP_tag/train"] += acc
-        metrics["F1/train"] += f1
-        metrics["Loss/train"] += loss.item()
-
-        writer.add_scalar("AUC_tag/train_step", auc, args.global_step)
-        writer.add_scalar("AP_tag/train_step", acc, args.global_step)
-        writer.add_scalar("Loss/train_step", loss, args.global_step)
-
-        if step > 0 and step % 100 == 0:
-            logging.info(
-                f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}\tF1: {f1}"
-            )
-
-        args.global_step += 1
-
-    # plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
-    for k, v in metrics.items():
-        metrics[k] /= len(loader)
-    return metrics
-
-
-def validate(args, loader, encoder, model, criterion, optimizer):
-    model.eval()
-    predicted_classes = torch.zeros(args.n_classes).to(args.device)
-    metrics = defaultdict(float)
-    for step, (x, y) in enumerate(loader):
-        # if len(x), we did not pre-compute features
-        if len(x) == 2:
-            x = x[0]
-            x = x.to(args.device)
-            with torch.no_grad():
-                x = encoder(x)
-        else:
-            x = x.to(args.device)
-
-        y = y.to(args.device)
-
-        with torch.no_grad():
-            output = model(x)
-
-        loss = criterion(output, y)
-        predicted_classes = get_predicted_classes(output, predicted_classes)
-        
-        auc = 0
-        acc = 0
-        f1 = 0
-        if args.task == "tags" and args.dataset in ["magnatagatune", "msd"]:
-            auc, acc = get_metrics(
-                args.domain, y.detach().cpu().numpy(), output.detach().cpu().numpy()
-            )
-        elif args.dataset == "birdsong":
-            f1 = get_f1_score(y.detach().cpu().numpy(), output.detach().cpu().numpy())
-        else:
-            predictions = output.argmax(1).detach()
-            acc = (predictions == y).sum().item() / y.shape[0]
-
-        metrics["AUC_tag/test"] += auc
-        metrics["AP_tag/test"] += acc
-        metrics["F1/test"] += f1
-        metrics["Loss/test"] += loss.item()
-
-        if step > 0 and step % 100 == 0:
-            logging.info(
-                f"[{step}/{len(loader)}]:\tLoss: {loss.item()}\tAUC_tag: {auc}\tAP_tag: {acc}"
-            )
-
-    # plot_predicted_classes(predicted_classes, args.current_epoch, writer, train=True)
-    for k, v in metrics.items():
-        metrics[k] /= len(loader)
-
-    model.train()
-    return metrics
+from callback import PlotSpectogramCallback
+from datasets import get_dataset
+from data import ContrastiveDataset
+from modules.sample_cnn import SampleCNN
+from modules.shortchunk_cnn import ShortChunkCNN_Res
+from model import ContrastiveLearning, LinearEvaluation
+from utils import yaml_config_hook
 
 
 if __name__ == "__main__":
-    args = parse_args()
 
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    args.batch_size = args.logistic_batch_size
-    args.world_size = 1
+    parser = argparse.ArgumentParser(description="SimCLR")
 
-    # Get the data loaders, without a train sampler and without pre-training (this is linear evaluation)
-    (
-        train_loader,
+    config = yaml_config_hook("./config/config.yaml")
+    for k, v in config.items():
+        parser.add_argument(f"--{k}", default=v, type=type(v))
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.checkpoint_path):
+        raise FileNotFoundError("That checkpoint does not exist")
+
+    train_transform = [RandomResizedCrop(n_samples=args.audio_length)]
+    spec_transform = []
+    if not args.time_domain:
+        n_fft = 512
+        f_min = 0.0
+        f_max = 8000.0
+        n_mels = 128
+        stype = "power"  # magnitude
+        top_db = None  # f_max
+
+        spec_transform = [
+            torchaudio.transforms.MelSpectrogram(
+                sample_rate=args.sample_rate,
+                n_fft=n_fft,
+                n_mels=n_mels,
+                f_min=f_min,
+                f_max=f_max,
+            ),
+            torchaudio.transforms.AmplitudeToDB(stype=stype, top_db=top_db),
+        ]
+        train_transform.extend(spec_transform)
+
+    # ------------
+    # dataloaders
+    # ------------
+    train_dataset = get_dataset(args.dataset, args.dataset_dir, subset="train")
+    test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
+
+    contrastive_train_dataset = ContrastiveDataset(
         train_dataset,
-        val_loader,
-        val_dataset,
-        test_loader,
+        input_shape=(1, args.audio_length),
+        transform=Compose(train_transform),
+    )
+
+    contrastive_test_dataset = ContrastiveDataset(
+        train_dataset,
+        input_shape=(1, args.audio_length),
+        transform=Compose(train_transform),
+    )
+
+    train_loader = DataLoader(
+        contrastive_train_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        drop_last=True,
+        shuffle=True,
+    )
+
+    test_loader = DataLoader(
+        contrastive_test_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        drop_last=True,
+        shuffle=False,
+    )
+
+    # ------------
+    # encoder
+    # ------------
+    if args.time_domain:
+        encoder = SampleCNN(
+            strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
+            supervised=args.supervised,
+            out_dim=train_dataset.n_classes,
+        )
+    else:
+        encoder = ShortChunkCNN_Res(n_channels=128, n_classes=train_dataset.n_classes)
+        # encoder = get_resnet(args.resnet)
+        # encoder.conv1 = torch.nn.Conv2d(
+        #     1, 64, kernel_size=7, stride=2, padding=3, bias=False
+        # )
+
+    n_features = encoder.fc.in_features  # get dimensions of last fully-connected layer
+    
+    cl = ContrastiveLearning.load_from_checkpoint(
+        args.checkpoint_path, args=args, encoder=encoder, output_dim=train_dataset.n_classes
+    )
+
+    cl.eval()
+    cl.freeze()
+
+    l = LinearEvaluation(
+        args,
+        cl.encoder,
+        hidden_dim=n_features,
+        output_dim=train_dataset.n_classes,
+    )
+
+    if args.linear_checkpoint_path:
+        # l.model.load_state_dict(torch.load(args.linear_checkpoint_path))
+        l = l.load_from_checkpoint(
+            args.linear_checkpoint_path,
+            encoder=cl.encoder,
+            hidden_dim=n_features,
+            output_dim=train_dataset.n_classes,
+        )
+    else:
+        trainer = Trainer.from_argparse_args(
+            args,
+            callbacks=[PlotSpectogramCallback()],
+            logger=TensorBoardLogger(
+                "runs", name="CLMRv2-eval-{}".format(args.dataset)
+            ),
+            sync_batchnorm=True,
+            log_every_n_steps=1,
+            check_val_every_n_epoch=1,
+            max_epochs=args.epochs,
+        )
+        trainer.fit(l, train_loader, test_loader)
+
+    if len(spec_transform):
+        transform = Compose(spec_transform)
+    else:
+        transform = None
+    contrastive_test_dataset = ContrastiveDataset(
         test_dataset,
-    ) = get_dataset(args, download=args.download, pretrain=False)
-
-    # load pre-trained encoder
-    encoder = load_encoder(args, reload=True)
-    encoder.eval()
-    encoder = encoder.to(args.device)
-
-    # linear eval. model
-    if not args.mlp:
-        model = torch.nn.Sequential(torch.nn.Linear(args.n_features, args.n_classes),)
-    else:
-         model = torch.nn.Sequential(
-            torch.nn.Linear(args.n_features, args.n_features),
-            torch.nn.ReLU(),
-            torch.nn.Linear(args.n_features, args.n_classes)
-        )
-    model = model.to(args.device)
-
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.logistic_lr, weight_decay=args.weight_decay
+        input_shape=(1, args.audio_length),
+        transform=transform,
     )
 
-    if args.dataparallel:
-        model = DataParallel(model)
-        model = model.to(args.device)
+    est_array = []
+    gt_array = []
+    l = l.to("cuda:0")
+    l.eval()
+    with torch.no_grad():
+        for idx in tqdm(range(len(contrastive_test_dataset))):
+            _, label = contrastive_test_dataset[idx]
+            batch = contrastive_test_dataset.concat_clip(idx, args.audio_length)
+            batch = batch.to("cuda:0")
+
+            h0 = l.encoder(batch)
+            output = l.model(h0)
+            output = torch.nn.functional.softmax(output, dim=1)
+            track_prediction = output.mean(dim=0)
+            est_array.append(track_prediction)
+            gt_array.append(label)
+
+            # for l, tag in zip(label.reshape(-1), test_dataset.tags):
+            #     if l:
+            #         print("Ground truth:", tag)
+
+            # for p, tag in zip(track_prediction, test_dataset.tags):
+            #     if p:
+            #         print("Predicted:", p, tag)
+            # torchaudio.save("{}.wav".format(idx), batch.cpu().reshape(-1), sample_rate=22050)
+            # exit()
 
 
-    # set criterion, e.g. gtzan has one label per segment, MTT has multiple
-    if args.dataset in ["gtzan"]:
-        criterion = torch.nn.CrossEntropyLoss()
-    else:
-        criterion = torch.nn.BCEWithLogitsLoss()  # for tags
+    est_array = torch.stack(est_array, dim=0).cpu().numpy()
+    gt_array = torch.stack(gt_array, dim=0).cpu().numpy()
 
-    # initialize TensorBoard
-    experiment_idx = int(args.model_path.split("/")[-1])
-    args.model_path = get_log_dir("results", experiment_idx)
-    writer = SummaryWriter(log_dir=args.model_path)
+    roc_aucs = metrics.roc_auc_score(gt_array, est_array, average="macro")
+    pr_aucs = metrics.average_precision_score(gt_array, est_array, average="macro")
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(os.path.join(args.model_path, "output.log")),
-            logging.StreamHandler(),
-        ],
-    )
-
-    train_X = None
-    if args.dataset == "magnatagatune" or args.perc_train_data <= 0.1:
-        logging.info("Computing features...")
-        (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
-            encoder, train_loader, val_loader, test_loader, args.device
-        )
-
-    # The Million Song Dataset is too large to fit in memory (of most machines)
-    # if args.dataset != "msd":
-    #     if not os.path.exists("features.p"):
-    #         output = input("Download (0) or compute (1) features from pre-trained network? Type \"0\" or \"1\": ")
-    #         try:
-    #             # download
-    #             if int(output) == 0:
-    #                 urllib.request.urlretrieve("https://github.com/spijkervet/clmr", "features.p")
-    #                 with open("features.p", "rb") as f:
-    #                     (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(f)
-    #             # compute
-    #             elif int(output) == 1:
-    #                 logging.info("Computing features...")
-    #                 (train_X, train_y, val_X, val_y, test_X, test_y) = get_features(
-    #                     encoder, train_loader, val_loader, test_loader, args.device
-    #                 )
-    #             else:
-    #                 raise Exception("Invalid option")
-    #         except Exception as e:
-    #             logging.info(e)
-    #             exit(0)
-
-    #         with open("features.p", "wb") as f:
-    #             pickle.dump((train_X, train_y, val_X, val_y, test_X, test_y), f)
-    #     else:
-    #         with open("features.p", "rb") as f:
-    #             (train_X, train_y, val_X, val_y, test_X, test_y) = pickle.load(f)
-
-    if train_X is not None:
-        train_loader, val_loader, _ = create_data_loaders_from_arrays(
-            train_X,
-            train_y,
-            val_X,
-            val_y,
-            test_X,
-            test_y,
-            2048,  # batch size for logistic regression (pre-computed features)
-        )
-
-    # start linear evaluation
-    args.global_step = 0
-    args.current_epoch = 0
-    last_model = None
-    last_auc = 0
-    last_ap = 0
-    early_stop = 0
-    for epoch in range(args.logistic_epochs):
-        metrics = train(
-            args, train_loader, encoder, model, criterion, optimizer, writer
-        )
-        for k, v in metrics.items():
-            writer.add_scalar(k, v, epoch)
-
-        logging.info(
-            f"Epoch [{epoch}/{args.logistic_epochs}]\t Loss: {metrics['Loss/train']}\t AUC_tag: {metrics['AUC_tag/train']}\tAP_tag: {metrics['AP_tag/train']}"
-        )
-
-        # validate
-        metrics = validate(args, val_loader, encoder, model, criterion, optimizer)
-        for k, v in metrics.items():
-            writer.add_scalar(k, v, epoch)
-
-        if metrics["AUC_tag/test"] < last_auc and metrics["AP_tag/test"] < last_ap:
-            last_model = copy.deepcopy(model)
-            early_stop += 1
-            logging.info(
-                "Early stop count: {}\t\t{} (best: {})\t {} (best: {})".format(
-                    early_stop,
-                    metrics["AUC_tag/test"],
-                    last_auc,
-                    metrics["AP_tag/test"],
-                    last_ap,
-                )
-            )
-        else:
-            last_auc = metrics["AUC_tag/test"]
-            last_ap = metrics["AP_tag/test"]
-            early_stop = 0
-
-        if early_stop >= 5:
-            logging.info("Early stopping...")
-            break
-        args.current_epoch += 1
-
-    if last_model is None:
-        logging.info("No early stopping, using last model")
-        last_model = model
-
-    save_model(args, last_model, optimizer, name="finetuner")
-
-    # eval all
-    metrics = eval_all(args, test_loader, encoder, last_model, writer, n_tracks=None)
-    logging.info("### Final tag/clip ROC-AUC/PR-AUC scores ###")
-    m = {}
-    for k, v in metrics.items():
-        if "hparams" in k:
-            logging.info(f"[Test average AUC/AP]: {k}, {v}")
-            m[k] = v
-        else:
-            for tag, val in zip(test_loader.dataset.tags, v):
-                logging.info(f"[Test {k}]\t\t{tag}\t{val}")
-                m[k + "/" + tag] = val
-
-    with open(os.path.join(args.model_path, "results.json"), "w") as f:
-        json.dump(m, f)
+    print("ROC-AUC:", roc_aucs)
+    print("PR-AUC:", pr_aucs)

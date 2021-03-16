@@ -2,20 +2,21 @@ import torch
 import torch.nn as nn
 from .model import Model
 
-class SampleCNN(Model):
 
-    def __init__(self, args, strides):
+class SampleCNN(Model):
+    def __init__(self, strides, supervised, out_dim):
         super(SampleCNN, self).__init__()
 
-        self.supervised = args.supervised
         self.strides = strides
-        self.sequential = [nn.Sequential(
-            nn.Conv1d(1, 128, kernel_size=3, stride=3, padding=0),
-            nn.BatchNorm1d(128),
-            nn.ReLU()
-        )]
-        
-        # CLMR
+        self.supervised = supervised
+        self.sequential = [
+            nn.Sequential(
+                nn.Conv1d(1, 128, kernel_size=3, stride=3, padding=0),
+                nn.BatchNorm1d(128),
+                nn.ReLU(),
+            )
+        ]
+
         self.hidden = [
             [128, 128],
             [128, 128],
@@ -27,28 +28,17 @@ class SampleCNN(Model):
             [256, 256],
             [256, 512],
         ]
-        
-        # CLMR-large
-        # self.hidden = [
-        #     [128, 128],
-        #     [128, 128],
-        #     [128, 256],
-        #     [256, 256],
-        #     [256, 256],
-        #     [256, 512],
-        #     [512, 512],
-        #     [512, 512],
-        #     [512, 1024],
-        # ]
 
-        assert len(self.hidden) == len(self.strides), "Number of hidden layers and strides are not equal"
+        assert len(self.hidden) == len(
+            self.strides
+        ), "Number of hidden layers and strides are not equal"
         for stride, (h_in, h_out) in zip(self.strides, self.hidden):
             self.sequential.append(
                 nn.Sequential(
                     nn.Conv1d(h_in, h_out, kernel_size=stride, stride=1, padding=1),
                     nn.BatchNorm1d(h_out),
                     nn.ReLU(),
-                    nn.MaxPool1d(stride, stride=stride)
+                    nn.MaxPool1d(stride, stride=stride),
                 )
             )
 
@@ -61,31 +51,22 @@ class SampleCNN(Model):
             )
         )
 
-        # CLMR-large
-        # self.sequential.append(
-        #     nn.Sequential(
-        #         nn.Conv1d(1024, 1024, kernel_size=3, stride=1, padding=1),
-        #         nn.BatchNorm1d(1024),
-        #         nn.ReLU(),
-        #     )
-        # )
-
         self.sequential = nn.Sequential(*self.sequential)
 
-        # self.avgpool = nn.AdaptiveAvgPool1d(1)
         if self.supervised:
-            self.dropout = nn.Dropout(args.dropout)
-        self.fc = nn.Linear(512, 50)
+            self.sigmoid = nn.Sigmoid()
+            self.dropout = nn.Dropout(0.5)
+        self.fc = nn.Linear(512, out_dim)
 
     def forward(self, x):
-        # input x : B x 59049 x 1
         out = self.sequential(x)
-
-            
-        # out = self.avgpool(out)
         if self.supervised:
             out = self.dropout(out)
 
         out = out.reshape(x.shape[0], out.size(1) * out.size(2))
         logit = self.fc(out)
+
+        if self.supervised:
+            logit = self.sigmoid(logit)
+
         return logit

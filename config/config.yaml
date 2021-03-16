@@ -1,91 +1,42 @@
 # distributed training
-id: 0 # Experiment ID
-nodes: 1
-gpus: 1 # I recommend always assigning 1 GPU to 1 node
-local_rank: 0 # machine nr. in node (0 -- nodes - 1)
-workers: 8
-dataparallel: 0
-ablation: False
-backprop_encoder: False
+gpus: 0 # I recommend always assigning 1 GPU to 1 node
+workers: 3
+dataset_dir: "./data"
+time_domain: 1 # train in the time domain. or time-frequency domain
+supervised: 0 # train with supervised baseline
 
-encoder: "samplecnn"
-image_channels: 1
-
-## dataset options
-dataset: "magnatagatune" # [audio: [billboard,fma,magnatagatune,msd] vision: [deepscores,universal]]
-data_input_dir: "./datasets" # [audio: [datasets/audio] vision: [datasets/vision]
-pretrain_dataset: "magnatagatune" # [magnatagatune,billboard,fma,msd]
-download: 0
-load_ram: False # whether to load the entire train set into RAM for faster training
-
-## task / dataset options
-domain: "audio" # [audio,scores]
-task: "tags" # [tags,chords,symbol]
-model_name: "clmr" # [clmr, cpc]
-
-
-## train options
-seed: 42 # sacred handles automatic seeding when passed in the config
-batch_size: 48 # for audio, 256 for images
+# train options
+seed: 42
+batch_size: 48
 start_epoch: 0
-epochs: 2000
-checkpoint_epochs: 100
+epochs: 100
+dataset: "magnatagatune"
 
+# model options
+resnet: "resnet18"
+projection_dim: 64 # Projection dim. of SimCLR projector
 
-## audio
+# loss options
+optimizer: "Adam" # or LARS (experimental)
+learning_rate: 0.0003
+weight_decay: 1.0e-6 # "optimized using LARS [...] and weight decay of 10−6"
+temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch sizes
+
+# reload options
+checkpoint_path: "" # set to the directory containing `checkpoint_##.tar`
+
+# logistic regression options
+linear_checkpoint_path: ""
+logistic_batch_size: 256
+logistic_epochs: 500
+
+# audio transformations
 audio_length: 59049
-sample_rate: 22050
-
-
-## audio transformations
+sample_rate: 16000
 transforms_polarity: 0.8
-transforms_noise: 0.0
+transforms_noise: 0.01
 transforms_gain: 0.3
 transforms_filters: 0.8
 transforms_delay: 0.3
 transforms_pitch: 0.6
 transforms_reverb: 0.6
-
-## loss options
-optimizer: "LARS" # [Adam, LARS]
-warmup_epochs: 30
-learning_rate: 3.0e-4 # for Adam optimizer, LARS uses batch-specific LR
-weight_decay: 1.0e-4
-temperature: 0.5 # (NOTE: 0.1 goes very fast) see appendix B.7.: Optimal temperature under different batch sizes
-
-
-## supervised params
-supervised: False # to train encoder in fully supervised fashion
-
-
-## model options
-normalize: True
-projection_dim: 128
-projector_layers: 2
-dropout: 0.5
-
-
-## reload options
-model_path: "./logs/66" # set to the directory containing `checkpoint_##.pt` 
-epoch_num: 10000 # set to checkpoint number
-finetune_model_path: "./results/66-Dec27_17_43-21"
-finetune_epoch_num: 200
-reload: False
-
-
-## linear evaluation options
-mlp: False # use one extra hidden layer
-logistic_batch_size: 48
-logistic_epochs: 50
-logistic_lr: 0.001
-reload_logreg: False
-
-
-## train with percentage of total train data 
-perc_train_data: 1.0
-
-
-## inference
-audio_url: ""
-
-onepos: False

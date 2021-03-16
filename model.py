@@ -1,157 +1,216 @@
-import os
 import torch
-import numpy as np
-from modules import SimCLR, SampleCNN, LARS, get_resnet, Identity
-from modules.cpc import CPCModel
-from modules.shortchunk_cnn import ShortChunkCNN_Res
+import torch.nn as nn
+import torchaudio
+from pytorch_lightning import LightningModule
+from pytorch_lightning import metrics
+from collections import defaultdict
+
+from simclr import SimCLR
+from simclr.modules import NT_Xent
+
+from sklearn.metrics import roc_auc_score, average_precision_score
 
 
-def cpc_model(args):
-    strides = [5, 3, 2, 2, 2, 2, 2]
-    filter_sizes = [10, 6, 4, 4, 4, 2, 2]
-    padding = [2, 2, 2, 2, 1, 1, 1]
-    genc_hidden = 512
-    gar_hidden = 256
+class ContrastiveLearning(LightningModule):
+    def __init__(self, args, encoder):
+        super().__init__()
+        self.hparams = args
+        self.save_hyperparameters(self.hparams)
 
-    model = CPCModel(
-        args,
-        strides=strides,
-        filter_sizes=filter_sizes,
-        padding=padding,
-        genc_hidden=genc_hidden,
-        gar_hidden=gar_hidden,
-    )
-    return model
+        # initialize ResNet
+        self.encoder = encoder
+        self.n_features = (
+            self.encoder.fc.in_features
+        )  # get dimensions of last fully-connected layer
+        self.model = SimCLR(self.encoder, self.hparams.projection_dim, self.n_features)
+        self.criterion = self.configure_criterion()
 
+    def forward(self, x_i, x_j):
+        h_i, h_j, z_i, z_j = self.model(x_i, x_j)
+        loss = self.criterion(z_i, z_j)
+        return loss
 
-def load_optimizer(args, model):
+    def training_step(self, batch, batch_idx):
+        x, _ = batch
+        x_i = x[:, 0, :].unsqueeze(dim=1)
+        x_j = x[:, 1, :].unsqueeze(dim=1)
+        loss = self.forward(x_i, x_j)
+        self.log("Train/loss", loss)
+        return loss
 
-    scheduler = None
-    if args.optimizer == "Adam":
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=args.learning_rate
-        )  # TODO: LARS
-    elif args.optimizer == "LARS":
-        ## optimized using LARS with linear learning rate scaling
-        ## linear lr scaling
-        # learning_rate = 0.3 * args.batch_size / 256
-        ## sqrt learning rate scaling
-        learning_rate = 0.075 * np.sqrt(args.batch_size)
-        optimizer = LARS(
-            model.parameters(),
-            lr=learning_rate,
-            weight_decay=0.000001,
-            exclude_from_weight_decay=["batch_normalization", "bias"],
+    def configure_criterion(self):
+        # PT lightning aggregates differently in DP mode
+        if self.hparams.accelerator == "dp":
+            batch_size = int(self.hparams.batch_size / self.hparams.gpus)
+        else:
+            batch_size = self.hparams.batch_size
+
+        criterion = NT_Xent(
+            batch_size, self.hparams.temperature, world_size=1
         )
+        return criterion
 
-        # "decay the learning rate with the cosine decay schedule without restarts"
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, args.epochs, eta_min=0, last_epoch=-1
-        )
-    else:
-        raise NotImplementedError
+    def configure_optimizers(self):
+        scheduler = None
+        if self.hparams.optimizer == "Adam":
+            optimizer = torch.optim.Adam(self.model.parameters(), lr=3e-4)
+        elif self.hparams.optimizer == "LARS":
+            # optimized using LARS with linear learning rate scaling
+            # (i.e. LearningRate = 0.3 × BatchSize/256) and weight decay of 10−6.
+            learning_rate = 0.3 * args.batch_size / 256
+            optimizer = LARS(
+                self.model.parameters(),
+                lr=learning_rate,
+                weight_decay=args.weight_decay,
+                exclude_from_weight_decay=["batch_normalization", "bias"],
+            )
 
-    if args.reload:
-        optim_fp = os.path.join(
-            args.reload_path,
-            "{}_checkpoint_{}_optim.pt".format(args.model_name, args.epoch_num),
-        )
-        print(
-            f"### RELOADING {args.model_name.upper()} OPTIMIZER FROM CHECKPOINT {args.epoch_num} ###"
-        )
-        optimizer.load_state_dict(torch.load(optim_fp, map_location=args.device.type))
-
-    return optimizer, scheduler
-
-
-def load_encoder(args, reload=False):
-    # encoder
-    if args.encoder == "samplecnn":
-        if args.sample_rate == 22050:
-            strides = [3, 3, 3, 3, 3, 3, 3, 3, 3]
-        elif args.sample_rate == 16000:
-            strides = [3, 3, 3, 3, 3, 3, 5, 2, 2]
-        elif args.sample_rate == 8000:
-            strides = [3, 3, 3, 2, 2, 4, 4, 2, 2]
+            # "decay the learning rate with the cosine decay schedule without restarts"
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, args.epochs, eta_min=0, last_epoch=-1
+            )
         else:
             raise NotImplementedError
 
-        encoder = SampleCNN(args, strides)
-        args.n_features = list(encoder.children())[-1].in_features
-    elif args.encoder == "shortchunk_cnn":
-        encoder = ShortChunkCNN_Res(
-            n_channels=128,
-            sample_rate=args.sample_rate,
-            n_fft=512,
-            f_min=0.0,
-            f_max=args.sample_rate / 2,
-            n_mels=128,
-            n_class=50,
-        )
-        args.n_features = 512
-    else:
-        raise NotImplementedError
-
-    print(f"### {encoder.__class__.__name__} ###")
-
-    if not args.supervised:
-        encoder.fc = Identity()  # TODO rewrite this
-
-    if reload:
-        # reload model
-        print(
-            f"### RELOADING {args.model_name.upper()} MODEL FROM CHECKPOINT {args.epoch_num} ###"
-        )
-        model_fp = os.path.join(
-            args.model_path,
-            "{}_checkpoint_{}.pt".format(args.model_name, args.epoch_num),
-        )
-
-        # tmp workaround
-        mapping = torch.load(model_fp, map_location=args.device.type)
-        new_mapping = {}
-        if args.encoder == "samplecnn":
-            for m in mapping:
-                if "conv" in m:
-                    new_m = m.replace("encoder.", "").split(".")
-                    conv_num = int(new_m[0].replace("conv", ""))
-                    seq_m = "sequential.{}.{}.{}".format(conv_num - 1, new_m[1], new_m[2])
-                    new_mapping[seq_m] = mapping[m]
-                elif "encoder" in m:
-                    new_m = m.replace("encoder.", "")
-                    new_mapping[new_m] = mapping[m]
+        if scheduler:
+            return {"optimizer": optimizer, "lr_scheduler": scheduler}
         else:
-            for m in mapping:
-                if "encoder" in m:
-                    new_m = m.replace("encoder.", "")
-                    new_mapping[new_m] = mapping[m]
-        mapping = new_mapping
-        encoder.load_state_dict(mapping, strict=True)
-    return encoder
+            return {"optimizer": optimizer}
 
 
-def save_model(args, model, optimizer, name="clmr"):
-    if args.model_path is not None:
+class LinearEvaluation(LightningModule):
+    def __init__(self, args, encoder, hidden_dim, output_dim):
+        super().__init__()
 
-        if not os.path.exists(args.model_path):
-            os.makedirs(args.model_path)
+        self.hparams = args
+        # self.save_hyperparameters()
 
-        out = os.path.join(
-            args.model_path, "{}_checkpoint_{}.pt".format(name, args.current_epoch)
-        )
+        self.encoder = encoder
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+        self.model = nn.Sequential(
+            nn.Linear(self.hidden_dim, self.output_dim))
+        self.criterion = self.configure_criterion()
 
-        optim_out = os.path.join(
-            args.model_path,
-            "{}_checkpoint_{}_optim.pt".format(name, args.current_epoch),
-        )
+        self.accuracy = metrics.Accuracy()
+        self.average_precision = metrics.AveragePrecision(pos_label=1)
 
-        # To save a DataParallel model generically, save the model.module.state_dict().
-        # This way, you have the flexibility to load the model any way you want to any device you want.
-        if isinstance(model, torch.nn.DataParallel) or isinstance(
-            model, torch.nn.parallel.DistributedDataParallel
-        ):
-            torch.save(model.module.state_dict(), out)
+    def forward(self, x, y):
+        with torch.no_grad():
+            h0 = self.encoder(x)
+
+        preds = self.model(h0)
+        loss = self.criterion(preds, y)
+        return loss, preds
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        loss, preds = self.forward(x, y)
+
+        self.log("Train/accuracy", self.accuracy(preds, y))
+        self.log("Train/pr_auc", self.average_precision(preds, y))
+        self.log("Train/loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        self.model.eval()
+
+        x, y = batch
+        loss, preds = self.forward(x, y)
+        self.log("Test/accuracy", self.accuracy(preds, y))
+        self.log("Test/pr_auc", self.average_precision(preds, y))
+        self.log("Test/loss", loss)
+        self.model.train()
+        return loss
+
+    def configure_criterion(self):
+        if self.hparams.dataset in ["magnatagatune", "msd"]:
+            criterion = nn.BCEWithLogitsLoss()
         else:
-            torch.save(model.state_dict(), out)
+            criterion = nn.CrossEntropyLoss()
+        return criterion
 
-        torch.save(optimizer.state_dict(), optim_out)
+    def configure_optimizers(self):
+        scheduler = None
+        if self.hparams.optimizer == "Adam":
+            optimizer = torch.optim.Adam(self.model.parameters(), lr=3e-4)
+        if scheduler:
+            return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        else:
+            return {"optimizer": optimizer}
+
+
+class SupervisedBaseline(LightningModule):
+    def __init__(self, args, encoder, output_dim):
+        super().__init__()
+        self.hparams = args
+        # self.save_hyperparameters()
+        self.encoder = encoder
+
+        self.encoder.fc.out_features = output_dim
+        self.output_dim = output_dim
+        self.model = self.encoder
+        self.criterion = self.configure_criterion()
+
+        self.accuracy = metrics.Accuracy()
+        self.roc = metrics.ROC(pos_label=1)
+        self.average_precision = metrics.AveragePrecision(pos_label=1)
+
+    def forward(self, x, y):
+        preds = self.model(x)
+        loss = self.criterion(preds, y)
+        return loss, preds
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        loss, preds = self.forward(x, y)
+
+        # roc_auc, _, _ = self.roc(y, preds)
+
+        self.log("Train/accuracy", self.accuracy(preds, y))
+        # self.log("Train/roc_auc", roc_auc)
+        # self.log("Train/pr_auc", self.average_precision(preds, y))
+        self.log("Train/loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        self.model.eval()
+        x, y = batch
+        loss, preds = self.forward(x, y)
+        self.log("Valid/accuracy", self.accuracy(preds, y))
+        # self.log("Valid/pr_auc", self.average_precision(preds, y))
+        self.log("Valid/loss", loss)
+        self.model.train()
+        return loss
+
+    def configure_criterion(self):
+        if self.hparams.dataset in ["magnatagatune"]:
+            criterion = nn.BCEWithLogitsLoss()
+        else:
+            criterion = nn.CrossEntropyLoss()
+        return criterion
+
+    def configure_optimizers(self):
+        scheduler = None
+        if self.hparams.optimizer == "Adam":
+            # optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams.learning_rate)
+            optimizer = torch.optim.SGD(
+                self.model.parameters(),
+                lr=self.hparams.learning_rate,
+                momentum=0.9,
+                weight_decay=1e-6,
+                nesterov=True,
+            )
+
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, mode="min", factor=0.2, patience=5, verbose=True
+            )
+
+        if scheduler:
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": scheduler,
+                "monitor": "Valid/loss",
+            }
+        else:
+            return {"optimizer": optimizer}

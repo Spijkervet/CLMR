@@ -1,11 +1,8 @@
+simclr
+audio-augmentations
 torch
-torchvision
-tensorboard
-seaborn
-PyYAML
-opencv-python
-youtube-dl
-pydot
-python-dotenv
+torchaudio
+pytorch-lightning
+soundfile
+sklearn
 matplotlib
-imageio
