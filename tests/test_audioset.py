@@ -1,6 +1,6 @@
 from datasets import AUDIO
 import torchaudio
-from audio_augmentations import *
+from torchaudio_augmentations import *
 
 sr = 22050
 
@@ -9,16 +9,18 @@ def test_audioset():
     audio_dataset = AUDIO("tests/data/audioset")
     audio, label = audio_dataset[0]
     assert audio.shape[0] == 1
-    assert audio.shape[1] == 661794
+    assert audio.shape[1] == 33440
 
+    num_samples = sr
     transform = Compose(
         [
-            RandomResizedCrop(sr * 5),
-            HighLowPass(sr=sr, p=1.0),
-            Reverse(p=1.0),
-            PitchShift(audio_length=sr * 5, sr=sr, p=1.0),
-            Reverb(sr=sr, p=1.0),
-            Reverse(p=1.0),
+            RandomResizedCrop(n_samples=num_samples),
+            RandomApply([PolarityInversion()], p=0.8),
+            RandomApply([Noise(min_snr=0.3, max_snr=0.5)], p=0.3),
+            RandomApply([Gain()], p=0.2),
+            RandomApply([Delay(sample_rate=sr)], p=0.5),
+            RandomApply([PitchShift(n_samples=num_samples, sample_rate=sr)], p=0.4),
+            RandomApply([Reverb(sample_rate=sr)], p=0.3),
         ]
     )
 

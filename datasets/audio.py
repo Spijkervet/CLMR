@@ -7,9 +7,11 @@ import torchaudio
 from torch import Tensor
 from torch.utils.data import Dataset
 
+
 def load_audio(audio_path):
     audio, sr = torchaudio.load(audio_path)
     return audio
+
 
 class AUDIO(Dataset):
     """Create a Dataset for any folder of audio files.
@@ -30,14 +32,10 @@ class AUDIO(Dataset):
 
         self.root = root
         self._path = root
-
-
-        
         self.fl = glob(os.path.join(self.root, "*.wav"))
         self.fl.extend(glob(os.path.join(self.root, "*.mp3")))
         self.fl.extend(glob(os.path.join(self.root, "**", "*.wav")))
         self.fl.extend(glob(os.path.join(self.root, "**", "*.mp3")))
-
 
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         """Load the n-th sample from the dataset.

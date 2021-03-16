@@ -11,7 +11,7 @@ from tqdm import tqdm
 from sklearn import metrics
 
 # Audio Augmentations
-from audio_augmentations import (
+from torchaudio_augmentations import (
     RandomApply,
     Compose,
     ComposeMany,
