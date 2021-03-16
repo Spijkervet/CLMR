@@ -40,14 +40,12 @@ class ContrastiveLearning(LightningModule):
 
     def configure_criterion(self):
         # PT lightning aggregates differently in DP mode
-        if self.hparams.accelerator == "dp":
+        if self.hparams.accelerator == "dp" and self.hparams.gpus:
             batch_size = int(self.hparams.batch_size / self.hparams.gpus)
         else:
             batch_size = self.hparams.batch_size
 
-        criterion = NT_Xent(
-            batch_size, self.hparams.temperature, world_size=1
-        )
+        criterion = NT_Xent(batch_size, self.hparams.temperature, world_size=1)
         return criterion
 
     def configure_optimizers(self):
@@ -88,8 +86,7 @@ class LinearEvaluation(LightningModule):
         self.encoder = encoder
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.model = nn.Sequential(
-            nn.Linear(self.hidden_dim, self.output_dim))
+        self.model = nn.Sequential(nn.Linear(self.hidden_dim, self.output_dim))
         self.criterion = self.configure_criterion()
 
         self.accuracy = metrics.Accuracy()
