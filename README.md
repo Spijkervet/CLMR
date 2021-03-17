@@ -15,11 +15,8 @@ Despite unsupervised, contrastive pre-training and fine-tuning on the music clas
 
 
 ## Quickstart
-This downloads a pre-trained CLMR model (trained on unlabeled, raw audio data from MagnaTagATune) and fine-tunes a linear classifier on the MagnaTagATune music tagging task, which should receive an ROC-AUC of `±87.7\%` and a PR-AUC of `±34.3%` on the test set.
 ```
 git clone https://github.com/spijkervet/clmr.git && cd clmr
-curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt -O
-curl -L https://github.com/Spijkervet/CLMR/releases/download/1.0/features.p -O
 
 # for conda:
 sh setup.sh
@@ -27,15 +24,11 @@ conda activate clmr
 
 # otherwise:
 python3 -m pip install -r requirements.txt
-
-# download MagnaTagATune and train a linear classifier for 20 epochs:
-python linear_evaluation.py --dataset magnatagatune --download 1 --model_path . --epoch_num 1550 --logistic_epochs 10 --logistic_lr 0.001
-
 ```
 
 The following command downloads MagnaTagATune, pre-processes it and starts self-supervised pre-training:
 ```
-python main.py --dataset magnatagatune --download 1
+python3 main.py --dataset magnatagatune
 ```
 
 
