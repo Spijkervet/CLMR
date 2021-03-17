@@ -9,7 +9,7 @@ def test_audioset():
     audio_dataset = AUDIO("tests/data/audioset")
     audio, label = audio_dataset[0]
     assert audio.shape[0] == 1
-    assert audio.shape[1] == 33440
+    assert audio.shape[1] == 93680
 
     num_samples = sr
     transform = Compose(
@@ -25,4 +25,4 @@ def test_audioset():
     )
 
     audio = transform(audio)
-    torchaudio.save("reverb.wav", audio, sample_rate=sr)
+    torchaudio.save("augmented_sample.wav", audio, sample_rate=sr)
