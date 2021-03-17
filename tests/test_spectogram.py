@@ -1,7 +1,7 @@
 import torchaudio
 import torch.nn as nn
-from datasets import AUDIO
-import matplotlib.pyplot as plt
+
+from clmr.datasets import AUDIO
 
 def test_audioset():
     audio_dataset = AUDIO("tests/data/audioset")

@@ -1,6 +1,6 @@
-from datasets import AUDIO
 import torchaudio
 from torchaudio_augmentations import *
+from clmr.datasets import AUDIO
 
 sr = 22050
 

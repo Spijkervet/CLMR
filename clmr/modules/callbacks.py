@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 matplotlib.use("Agg")
 
-import torchaudio
 from pytorch_lightning.callbacks import Callback
 
 

@@ -1,7 +1,5 @@
-import os
 import argparse
 import torch
-import torchaudio
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -13,7 +11,6 @@ from sklearn import metrics
 # Audio Augmentations
 from torchaudio_augmentations import (
     RandomApply,
-    Compose,
     ComposeMany,
     RandomResizedCrop,
     PolarityInversion,
@@ -25,16 +22,11 @@ from torchaudio_augmentations import (
     Reverb,
 )
 
-# SimCLR
-from simclr.modules.resnet import get_resnet
-
-from callback import PlotSpectogramCallback
-from data import ContrastiveDataset
-from datasets import get_dataset
-from modules.sample_cnn import SampleCNN
-from modules.shortchunk_cnn import ShortChunkCNN_Res
-from model import ContrastiveLearning, SupervisedBaseline
-from utils import yaml_config_hook
+from clmr.data import ContrastiveDataset
+from clmr.datasets import get_dataset
+from clmr.models import SampleCNN
+from clmr.modules import ContrastiveLearning, SupervisedLearning, PlotSpectogramCallback
+from clmr.utils import yaml_config_hook
 
 
 if __name__ == "__main__":
@@ -68,27 +60,6 @@ if __name__ == "__main__":
             RandomApply([Reverb(sample_rate=args.sample_rate)], p=args.transforms_reverb)
         ]
         num_augmented_samples = 2
-
-    spec_transform = []
-    if not args.time_domain:
-        n_fft = 512
-        f_min = 0.0
-        f_max = 8000.0
-        n_mels = 128
-        stype = "power"  # magnitude
-        top_db = None  # f_max
-
-        spec_transform = [
-            torchaudio.transforms.MelSpectrogram(
-                sample_rate=args.sample_rate,
-                n_fft=n_fft,
-                n_mels=n_mels,
-                f_min=f_min,
-                f_max=f_max,
-            ),
-            torchaudio.transforms.AmplitudeToDB(stype=stype, top_db=top_db),
-        ]
-        train_transform.extend(spec_transform)
 
     # ------------
     # dataloaders
@@ -130,31 +101,23 @@ if __name__ == "__main__":
     # ------------
     # encoder
     # ------------
-    if args.time_domain:
-        encoder = SampleCNN(
-            strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
-            supervised=args.supervised,
-            out_dim=train_dataset.n_classes,
-        )
-    else:
-        encoder = ShortChunkCNN_Res(n_channels=128, n_classes=train_dataset.n_classes)
-        # encoder = get_resnet(args.resnet)
-        # encoder.conv1 = torch.nn.Conv2d(
-        #     1, 64, kernel_size=7, stride=2, padding=3, bias=False
-        # )
+    encoder = SampleCNN(
+        strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
+        supervised=args.supervised,
+        out_dim=train_dataset.n_classes,
+    )
 
     # ------------
     # model
     # ------------
-    args.accelerator = "dp"
     if args.supervised:
-        l = SupervisedBaseline(args, encoder, output_dim=train_dataset.n_classes)
+        module = SupervisedLearning(args, encoder, output_dim=train_dataset.n_classes)
     else:
-        l = ContrastiveLearning(args, encoder)
+        module = ContrastiveLearning(args, encoder)
 
     logger = TensorBoardLogger("runs", name="CLMRv2-{}".format(args.dataset))
     if args.checkpoint_path:
-        l = l.load_from_checkpoint(
+        module = module.load_from_checkpoint(
             args.checkpoint_path, encoder=encoder, output_dim=train_dataset.n_classes
         )
 
@@ -178,32 +141,27 @@ if __name__ == "__main__":
             check_val_every_n_epoch=1,
             accelerator=args.accelerator
         )
-        trainer.fit(l, train_loader, valid_loader)
+        trainer.fit(module, train_loader, valid_loader)
 
 
     if args.supervised:
-        if len(spec_transform):
-            transform = Compose(spec_transform)
-        else:
-            transform = None
-
         test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
         contrastive_test_dataset = ContrastiveDataset(
             test_dataset,
             input_shape=(1, args.audio_length),
-            transform=Compose(spec_transform),
+            transform=None,
         )
 
         est_array = []
         gt_array = []
-        l = l.to("cuda:0")
-        l.eval()
+        module = module.to("cuda:0")
+        module.eval()
         with torch.no_grad():
             for idx in tqdm(range(len(contrastive_test_dataset))):
                 _, label = contrastive_test_dataset[idx]
                 batch = contrastive_test_dataset.concat_clip(idx, args.audio_length)
                 batch = batch.to("cuda:0")
-                output = l.encoder(batch)
+                output = module.encoder(batch)
                 output = torch.nn.functional.softmax(output)
                 output = output.mean(dim=0).argmax().item()
                 est_array.append(output)

@@ -1,6 +1,7 @@
 # distributed training
 gpus: 0 # I recommend always assigning 1 GPU to 1 node
 workers: 3
+accelerator: "dp"
 dataset_dir: "./data"
 time_domain: 1 # train in the time domain. or time-frequency domain
 supervised: 0 # train with supervised baseline

@@ -1,22 +1,17 @@
 import os
 import argparse
-import torch
-import torchaudio
 from torch.utils.data import DataLoader
+from torchaudio_augmentations import Compose, RandomResizedCrop
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
-from sklearn import metrics
-from tqdm import tqdm
 
-from torchaudio_augmentations import Compose, RandomResizedCrop
 
-from callback import PlotSpectogramCallback
-from datasets import get_dataset
-from data import ContrastiveDataset
-from modules.sample_cnn import SampleCNN
-from modules.shortchunk_cnn import ShortChunkCNN_Res
-from model import ContrastiveLearning, LinearEvaluation
-from utils import yaml_config_hook, load_encoder_checkpoint
+from clmr.datasets import get_dataset
+from clmr.data import ContrastiveDataset
+from clmr.evaluation import evaluate
+from clmr.models import SampleCNN
+from clmr.modules import ContrastiveLearning, LinearEvaluation, PlotSpectogramCallback
+from clmr.utils import yaml_config_hook, load_encoder_checkpoint
 
 
 if __name__ == "__main__":
@@ -34,27 +29,7 @@ if __name__ == "__main__":
         raise FileNotFoundError("That checkpoint does not exist")
 
     train_transform = [RandomResizedCrop(n_samples=args.audio_length)]
-    spec_transform = []
-    if not args.time_domain:
-        n_fft = 512
-        f_min = 0.0
-        f_max = 8000.0
-        n_mels = 128
-        stype = "power"  # magnitude
-        top_db = None  # f_max
-
-        spec_transform = [
-            torchaudio.transforms.MelSpectrogram(
-                sample_rate=args.sample_rate,
-                n_fft=n_fft,
-                n_mels=n_mels,
-                f_min=f_min,
-                f_max=f_max,
-            ),
-            torchaudio.transforms.AmplitudeToDB(stype=stype, top_db=top_db),
-        ]
-        train_transform.extend(spec_transform)
-
+    
     # ------------
     # dataloaders
     # ------------
@@ -92,14 +67,11 @@ if __name__ == "__main__":
     # ------------
     # encoder
     # ------------
-    if args.time_domain:
-        encoder = SampleCNN(
-            strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
-            supervised=args.supervised,
-            out_dim=train_dataset.n_classes,
-        )
-    else:
-        encoder = ShortChunkCNN_Res(n_channels=128, n_classes=train_dataset.n_classes)
+    encoder = SampleCNN(
+        strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
+        supervised=args.supervised,
+        out_dim=train_dataset.n_classes,
+    )
 
     n_features = encoder.fc.in_features  # get dimensions of last fully-connected layer
     
@@ -130,58 +102,9 @@ if __name__ == "__main__":
             callbacks=[PlotSpectogramCallback()],
             logger=TensorBoardLogger(
                 "runs", name="CLMRv2-eval-{}".format(args.dataset)
-            ),
-            sync_batchnorm=True,
-            log_every_n_steps=1,
-            check_val_every_n_epoch=1,
-            max_epochs=args.epochs,
+            )
         )
         trainer.fit(l, train_loader, test_loader)
 
-    if len(spec_transform):
-        transform = Compose(spec_transform)
-    else:
-        transform = None
-        
-    contrastive_test_dataset = ContrastiveDataset(
-        test_dataset,
-        input_shape=(1, args.audio_length),
-        transform=transform,
-    )
-
-    est_array = []
-    gt_array = []
-    l = l.to("cuda:0")
-    l.eval()
-    with torch.no_grad():
-        for idx in tqdm(range(len(contrastive_test_dataset))):
-            _, label = contrastive_test_dataset[idx]
-            batch = contrastive_test_dataset.concat_clip(idx, args.audio_length)
-            batch = batch.to("cuda:0")
-
-            h0 = l.encoder(batch)
-            output = l.model(h0)
-            output = torch.nn.functional.softmax(output, dim=1)
-            track_prediction = output.mean(dim=0)
-            est_array.append(track_prediction)
-            gt_array.append(label)
-
-            # for l, tag in zip(label.reshape(-1), test_dataset.tags):
-            #     if l:
-            #         print("Ground truth:", tag)
-
-            # for p, tag in zip(track_prediction, test_dataset.tags):
-            #     if p:
-            #         print("Predicted:", p, tag)
-            # torchaudio.save("{}.wav".format(idx), batch.cpu().reshape(-1), sample_rate=22050)
-            # exit()
-
-
-    est_array = torch.stack(est_array, dim=0).cpu().numpy()
-    gt_array = torch.stack(gt_array, dim=0).cpu().numpy()
-
-    roc_aucs = metrics.roc_auc_score(gt_array, est_array, average="macro")
-    pr_aucs = metrics.average_precision_score(gt_array, est_array, average="macro")
-
-    print("ROC-AUC:", roc_aucs)
-    print("PR-AUC:", pr_aucs)
+    results = evaluate(l.encoder, l.model, test_dataset, args.audio_length)
+    print(results)
