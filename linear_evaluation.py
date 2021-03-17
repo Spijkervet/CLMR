@@ -3,18 +3,12 @@ import argparse
 import torch
 import torchaudio
 from torch.utils.data import DataLoader
-import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
-from tqdm import tqdm
 from sklearn import metrics
+from tqdm import tqdm
 
 from torchaudio_augmentations import Compose, RandomResizedCrop
-
-# SimCLR
-from simclr.modules.resnet import get_resnet
-from simclr.modules.transformations import TransformsSimCLR
-from simclr.modules.sync_batchnorm import convert_model
 
 from callback import PlotSpectogramCallback
 from datasets import get_dataset
@@ -106,10 +100,6 @@ if __name__ == "__main__":
         )
     else:
         encoder = ShortChunkCNN_Res(n_channels=128, n_classes=train_dataset.n_classes)
-        # encoder = get_resnet(args.resnet)
-        # encoder.conv1 = torch.nn.Conv2d(
-        #     1, 64, kernel_size=7, stride=2, padding=3, bias=False
-        # )
 
     n_features = encoder.fc.in_features  # get dimensions of last fully-connected layer
     
