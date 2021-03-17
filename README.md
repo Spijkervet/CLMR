@@ -18,16 +18,14 @@ Despite unsupervised, contrastive pre-training and fine-tuning on the music clas
 ```
 git clone https://github.com/spijkervet/clmr.git && cd clmr
 
-# for conda:
-sh setup.sh
-conda activate clmr
-
-# otherwise:
-python3 -m pip install -r requirements.txt
+pip3 install -r requirements.txt
+# or
+python3 setup.py install
 ```
 
-The following command downloads MagnaTagATune, pre-processes it and starts self-supervised pre-training:
+The following command downloads MagnaTagATune, preprocesses it and starts self-supervised pre-training:
 ```
+python3 preprocess.py --dataset magnatagatune
 python3 main.py --dataset magnatagatune
 ```
 

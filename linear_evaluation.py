@@ -22,7 +22,7 @@ from data import ContrastiveDataset
 from modules.sample_cnn import SampleCNN
 from modules.shortchunk_cnn import ShortChunkCNN_Res
 from model import ContrastiveLearning, LinearEvaluation
-from utils import yaml_config_hook
+from utils import yaml_config_hook, load_encoder_checkpoint
 
 
 if __name__ == "__main__":
@@ -113,10 +113,10 @@ if __name__ == "__main__":
 
     n_features = encoder.fc.in_features  # get dimensions of last fully-connected layer
     
-    cl = ContrastiveLearning.load_from_checkpoint(
-        args.checkpoint_path, args=args, encoder=encoder, output_dim=train_dataset.n_classes
-    )
+    state_dict = load_encoder_checkpoint(args.checkpoint_path)
+    encoder.load_state_dict(state_dict)
 
+    cl = ContrastiveLearning(args, encoder)
     cl.eval()
     cl.freeze()
 
@@ -128,7 +128,6 @@ if __name__ == "__main__":
     )
 
     if args.linear_checkpoint_path:
-        # l.model.load_state_dict(torch.load(args.linear_checkpoint_path))
         l = l.load_from_checkpoint(
             args.linear_checkpoint_path,
             encoder=cl.encoder,
@@ -153,6 +152,7 @@ if __name__ == "__main__":
         transform = Compose(spec_transform)
     else:
         transform = None
+        
     contrastive_test_dataset = ContrastiveDataset(
         test_dataset,
         input_shape=(1, args.audio_length),

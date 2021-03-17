@@ -59,7 +59,7 @@ if __name__ == "__main__":
             RandomApply([PolarityInversion()], p=args.transforms_polarity),
             RandomApply([Noise()], p=args.transforms_noise),
             RandomApply([Gain()], p=args.transforms_gain),
-            RandomApply([HighLowPass(sample_rate=args.sample_rate)], p=args.transforms_filters),
+            # RandomApply([HighLowPass(sample_rate=args.sample_rate)], p=args.transforms_filters),
             RandomApply([Delay(sample_rate=args.sample_rate)], p=args.transforms_delay),
             RandomApply([PitchShift(
                 n_samples=args.audio_length,
@@ -95,7 +95,6 @@ if __name__ == "__main__":
     # ------------
     train_dataset = get_dataset(args.dataset, args.dataset_dir, subset="train")
     valid_dataset = get_dataset(args.dataset, args.dataset_dir, subset="valid")
-    test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
     contrastive_train_dataset = ContrastiveDataset(
         train_dataset,
         input_shape=(1, args.audio_length),
@@ -188,6 +187,7 @@ if __name__ == "__main__":
         else:
             transform = None
 
+        test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
         contrastive_test_dataset = ContrastiveDataset(
             test_dataset,
             input_shape=(1, args.audio_length),
