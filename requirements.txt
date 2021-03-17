@@ -1,5 +1,5 @@
 simclr
-audio-augmentations
+torchaudio-augmentations
 torch
 torchaudio
 pytorch-lightning
