@@ -104,7 +104,7 @@ class LinearEvaluation(LightningModule):
         x, y = batch
         loss, preds = self.forward(x, y)
 
-        self.log("Train/accuracy", self.accuracy(preds, y))
+        # self.log("Train/accuracy", self.accuracy(preds, y))
         self.log("Train/pr_auc", self.average_precision(preds, y))
         self.log("Train/loss", loss)
         return loss
@@ -114,7 +114,7 @@ class LinearEvaluation(LightningModule):
 
         x, y = batch
         loss, preds = self.forward(x, y)
-        self.log("Test/accuracy", self.accuracy(preds, y))
+        # self.log("Test/accuracy", self.accuracy(preds, y))
         self.log("Test/pr_auc", self.average_precision(preds, y))
         self.log("Test/loss", loss)
         self.model.train()

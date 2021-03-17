@@ -9,7 +9,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from tqdm import tqdm
 from sklearn import metrics
 
-from audio_augmentations import Compose, RandomResizedCrop
+from torchaudio_augmentations import Compose, RandomResizedCrop
 
 # SimCLR
 from simclr.modules.resnet import get_resnet
@@ -34,6 +34,7 @@ if __name__ == "__main__":
         parser.add_argument(f"--{k}", default=v, type=type(v))
 
     args = parser.parse_args()
+    args.accelerator = None
 
     if not os.path.exists(args.checkpoint_path):
         raise FileNotFoundError("That checkpoint does not exist")

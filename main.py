@@ -29,8 +29,8 @@ from torchaudio_augmentations import (
 from simclr.modules.resnet import get_resnet
 
 from callback import PlotSpectogramCallback
-from datasets import get_dataset
 from data import ContrastiveDataset
+from datasets import get_dataset
 from modules.sample_cnn import SampleCNN
 from modules.shortchunk_cnn import ShortChunkCNN_Res
 from model import ContrastiveLearning, SupervisedBaseline
