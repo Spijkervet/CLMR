@@ -38,18 +38,6 @@ def preprocess_audio(source, target):
     p.wait()
 
 
-def load_magnatagatune_item(fp, root, target_ext):
-    file_audio = os.path.join(root, fp)
-
-    file_basename, file_ext = os.path.splitext(file_audio)
-    target_fp = file_basename + target_ext
-    if not os.path.exists(target_fp):
-        preprocess_audio(file_audio, target_fp)
-
-    audio, sample_rate = torchaudio.load(target_fp)
-    return audio, sample_rate
-
-
 class MAGNATAGATUNE(Dataset):
     """Create a Dataset for MagnaTagATune.
     Args:
@@ -135,7 +123,27 @@ class MAGNATAGATUNE(Dataset):
         #     if clip_id not in self.audio.keys():
         #         audio, _ = load_magnatagatune_item(fp, self._path, self._ext_audio)
         #         self.audio[clip_id] = audio
-        
+
+    def file_path(self, n: int) -> str:
+        _, fp = self.fl[n].split("\t")
+        return os.path.join(self._path, fp) 
+
+    def target_file_path(self, n: int) -> str:
+        fp = self.file_path(n)
+        file_basename, _ = os.path.splitext(fp)
+        return file_basename + self._ext_audio
+
+    def preprocess(self, n: int):
+        fp = self.file_path(n)
+        target_fp = self.target_file_path(n)
+
+        if not os.path.exists(target_fp):
+            preprocess_audio(fp, target_fp)
+
+    def load(self, n):
+        target_fp = self.target_file_path(n)
+        audio, sample_rate = torchaudio.load(target_fp)
+        return audio, sample_rate
 
 
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
@@ -151,7 +159,7 @@ class MAGNATAGATUNE(Dataset):
         label = self.binary[int(clip_id)]
 
         # audio = self.audio[clip_id]
-        audio, _ = load_magnatagatune_item(fp, self._path, self._ext_audio)
+        audio, _ = self.load(n)
         label = FloatTensor(label)
         return audio, label
 
