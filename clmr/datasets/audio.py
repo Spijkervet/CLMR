@@ -36,12 +36,8 @@ class AUDIO(Dataset):
         self._path = root
         self.n_classes = 1
 
-        self.fl = glob(os.path.join(self._path, "*.wav"))
-        self.fl.extend(glob(os.path.join(self._path, "*.mp3")))
-        self.fl.extend(glob(os.path.join(self._path, "*.flac")))
-        self.fl.extend(glob(os.path.join(self._path, "**", "*.wav")))
-        self.fl.extend(glob(os.path.join(self._path, "**", "*.mp3")))
-        self.fl.extend(glob(os.path.join(self._path, "**", "*.flac")))
+        self.fl = glob(os.path.join(self._path, "*{}".format(self._ext_audio)))
+        self.fl.extend(glob(os.path.join(self._path, "**", "*{}".format(self._ext_audio))))
 
         if len(self.fl) == 0:
             raise RuntimeError(
@@ -52,7 +48,7 @@ class AUDIO(Dataset):
 
     def file_path(self, n: int) -> str:
         fp = self.fl[n]
-        return os.path.join(self._path, fp)
+        return fp
 
     def target_file_path(self, n: int) -> str:
         fp = self.file_path(n)
