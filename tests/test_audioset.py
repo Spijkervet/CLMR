@@ -35,7 +35,7 @@ class TestAudioSet(unittest.TestCase):
         return transform
 
     def test_audioset(self):
-        audio_dataset = AUDIO("tests/data/audioset")
+        audio_dataset = AUDIO("./tests/data/audioset")
         audio, label = audio_dataset[0]
         assert audio.shape[0] == 1
         assert audio.shape[1] == 93680

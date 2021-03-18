@@ -28,16 +28,15 @@ class AUDIO(Dataset):
 
     _ext_audio = ".wav"
 
-    def __init__(
-        self,
-        root: str,
-    ) -> None:
+    def __init__(self, root: str,) -> None:
 
         self._path = root
         self.n_classes = 1
 
         self.fl = glob(os.path.join(self._path, "*{}".format(self._ext_audio)))
-        self.fl.extend(glob(os.path.join(self._path, "**", "*{}".format(self._ext_audio))))
+        self.fl.extend(
+            glob(os.path.join(self._path, "**", "*{}".format(self._ext_audio)))
+        )
 
         if len(self.fl) == 0:
             raise RuntimeError(

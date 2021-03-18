@@ -58,8 +58,7 @@ if __name__ == "__main__":
             RandomApply(
                 [
                     PitchShift(
-                        n_samples=args.audio_length,
-                        sample_rate=args.sample_rate,
+                        n_samples=args.audio_length, sample_rate=args.sample_rate,
                     )
                 ],
                 p=args.transforms_pitch,
@@ -156,9 +155,7 @@ if __name__ == "__main__":
         test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
 
         contrastive_test_dataset = ContrastiveDataset(
-            test_dataset,
-            input_shape=(1, args.audio_length),
-            transform=None,
+            test_dataset, input_shape=(1, args.audio_length), transform=None,
         )
 
         device = "cuda:0" if args.gpus else "cpu"
