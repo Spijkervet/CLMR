@@ -33,15 +33,19 @@ python3 main.py --dataset magnatagatune
 ## Results
 
 ### MagnaTagATune
-| Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
+| Encoder / Model | Batch-size / pre-training epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
 | ------------- | ------------- | ------------- | ------------- | ------------- |
-| SampleCNN / CLMR | 48 / 1550 | Linear Classifier | **88.49** | **35.37** |
-SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  **89.25** | **35.89** |
-| [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | 88.56 | 34.38 |
-| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | 89.05 | 34.92 |
+| SampleCNN / CLMR | 48 / 10000 | Linear Classifier | 88.5 | **35.4** |
+SampleCNN / CLMR | 48 / 10000 | MLP (1 extra hidden layer) |  **89.3** | **35.9** |
+| [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | 88.6 | 34.4 |
+| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | **89.1** | 34.92 |
 
 ### Million Song Dataset
-*Million Song Dataset experiments will follow soon*
+| Encoder / Model | Batch-size / pre-training epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
+| ------------- | ------------- | ------------- | ------------- | ------------- |
+| SampleCNN / CLMR | 48 / 1000 | Linear Classifier | 85.7 | 25.0 |
+| [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | **88.4** | - |
+| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | 87.4 | **28.5** |
 
 
 ## Pre-trained models
