@@ -110,6 +110,7 @@ if __name__ == "__main__":
     # ------------
     # model
     # ------------
+    args.accelerator = "dp"
     if args.supervised:
         module = SupervisedLearning(args, encoder, output_dim=train_dataset.n_classes)
     else:
