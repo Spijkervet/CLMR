@@ -1,7 +1,7 @@
 
 import argparse
 from tqdm import tqdm
-from datasets import get_dataset
+from clmr.datasets import get_dataset
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
