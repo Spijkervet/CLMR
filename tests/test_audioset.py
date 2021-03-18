@@ -40,8 +40,9 @@ class TestAudioSet(unittest.TestCase):
         assert audio.shape[0] == 1
         assert audio.shape[1] == 93680
 
-
-        num_samples = self.sample_rate * 5 # the test item is approximately 5.8 seconds.
+        num_samples = (
+            self.sample_rate * 5
+        )  # the test item is approximately 5.8 seconds.
         transform = self.get_audio_transforms(num_samples=num_samples)
         audio = transform(audio)
         torchaudio.save("augmented_sample.wav", audio, sample_rate=self.sample_rate)
