@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     train_loader = DataLoader(
         contrastive_train_dataset,
-        batch_size=args.batch_size,
+        batch_size=args.logistic_batch_size,
         num_workers=args.workers,
         drop_last=True,
         shuffle=True,
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     test_loader = DataLoader(
         contrastive_test_dataset,
-        batch_size=args.batch_size,
+        batch_size=args.logistic_batch_size,
         num_workers=args.workers,
         drop_last=True,
         shuffle=False,
@@ -102,7 +102,8 @@ if __name__ == "__main__":
             callbacks=[PlotSpectogramCallback()],
             logger=TensorBoardLogger(
                 "runs", name="CLMRv2-eval-{}".format(args.dataset)
-            )
+            ),
+            max_epochs=args.logistic_epochs
         )
         trainer.fit(module, train_loader)
 

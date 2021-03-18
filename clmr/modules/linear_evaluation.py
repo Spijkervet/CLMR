@@ -57,8 +57,7 @@ class LinearEvaluation(LightningModule):
 
     def configure_optimizers(self):
         scheduler = None
-        if self.hparams.optimizer == "Adam":
-            optimizer = torch.optim.Adam(self.model.parameters(), lr=3e-4)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=3e-4)
         if scheduler:
             return {"optimizer": optimizer, "lr_scheduler": scheduler}
         else:

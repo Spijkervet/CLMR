@@ -9,7 +9,7 @@ supervised: 0 # train with supervised baseline
 seed: 42
 batch_size: 48
 start_epoch: 0
-epochs: 100
+max_epochs: 200
 dataset: "magnatagatune"
 
 # model options
@@ -28,7 +28,7 @@ checkpoint_path: "" # set to the directory containing `checkpoint_##.tar`
 # logistic regression options
 linear_checkpoint_path: ""
 logistic_batch_size: 256
-logistic_epochs: 500
+logistic_epochs: 200
 
 # audio transformations
 audio_length: 59049
