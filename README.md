@@ -50,109 +50,24 @@ SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  **89.25** | **35.89
 | ------------- | ------------- | ------------- | ------------- | -------------
 [SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/1.0-l/finetuner_checkpoint_20.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
-## Web interfaces
-
-### Tagger Interface
-Assuming the pre-trained models are downloaded in the project's root folder:
+## Training
+### 1. Pre-training
+Simply run the following command to pre-train the CLMR model on the MagnaTagATune dataset.
 ```
-python -m web.tagger.app \                                                                                                      ~/git/clmr
-    --model_path=. \
-    --epoch_num=1550 \
-    --finetune_model_path=. \
-    --finetune_epoch_num=20
+python main.py --dataset magnatagatune
 ```
 
-### Latent listening
+### 2. Linear evaluation
+To test a trained model, make sure to set the `checkpoint_path` variable in the `config/config.yaml`, or specify it as an argument:
 ```
-python3 -m web.latent_listening.get_predictions
-python3 -m http.server
-Navigate to: localhost:8000/web/latent_listening
-```
-
-## Inference
-This command performs inference using a pre-trained encoder using CLMR (task-agnostic) and a fine-tuned linear classifier on the task of music classification. It will predict the tags corresponding to the song "Bohemian Rhapsody" by Queen, and yield ROC-AUC/ROC-AP scores and a taggram for the entire song:
-```
-python inference.py \
-    --audio_url="https://www.youtube.com/watch?v=fJ9rUzIMcZQ" \
-    --model_path=. \
-    --epoch_num=1550 \
-    --finetune_model_path=. \
-    --finetune_epoch_num=20
-```
-
-## Usage
-
-### Downloading & Pre-processing datasets
-In the `scripts` folder, various bash scripts can be found that download the dataset and, at the end, provide a command that pre-processes all audio files automatically. These are invoked when the `--download 1` flag is submitted for pre-training or fine-tuning. `ffmpeg` is required to resample audio tracks. All datasets are on the filesystem in below mentioned format. So if the MagnaTagATune's or Million Song Dataset's files are already present on the file system, they can simply be moved to the corresponding dataset's `raw` folder:
-
-- `DATA_INPUT_DIR`/`DATASET_NAME`/`raw` containing the unprocessed version of the dataset
-- `DATA_INPUT_DIR`/`DATASET_NAME`/`processed` containing processed audio (sample rate) for training / testing
-- `DATA_INPUT_DIR`/`DATASET_NAME`/`processed_annotations` containing annotations of the dataset (if present)
-
-E.g. for MagnaTagATune:
-- `./datasets/magnatagatune/raw` - containing the 0-9 and a-f folders with the .mp3 files.
-
-Or the Million Song Dataset:
-- `./datasets/million_song_dataset/raw` - containing the folders (and sub-folders) with .mp3 files.
-
-Subseqently, the following Python script can be invoked to pre-process the raw files:
-```
-python3 -m scripts.datasets.preprocess_dataset --data_input_dir ./datasets --dataset magnatagatune --sample_rate 22050 --audio_length 59049
-```
-
-### Pre-training
-The following commands are used to set-up and pre-train on raw, unlabeled audio data:
-
-Run the following command to setup a conda environment:
-```
-sh setup.sh
-conda activate clmr
-```
-
-Or alternatively with pip:
-```
-pip install -r requirements.txt
-```
-
-Then, simply run the following command to pre-train the CLMR model on the MagnaTagATune dataset (and download / pre-process it for the first time, flag can be removed after completion):
-```
-python main.py --dataset magnatagatune --download 1
-```
-
-### Linear evaluation
-To test a trained model, make sure to set the `model_path` variable in the `config/config.yaml` to the folder containing the saved pre-trained model (e.g. `./save`). Set the `epoch_num` to the epoch number you want to load the checkpoints from (e.g. `40`).
-```
-python linear_evaluation.py
-```
-
-E.g., you can first download the pre-trained model from the table above, move it to the folder containing this repository, and use:
-or in place:
-```
-python linear_evaluation.py --model_path=./ --epoch_num=1550
+python linear_evaluation.py --checkpoint_path ./clmr_checkpoint_10000.pt
 ```
 
 ## Configuration
-The configuration of training can be found in: `config/config.yaml`. I personally prefer to use files instead of long strings of arguments when configuring a run. Every entry in the config file can be overrided with the corresponding flag (e.g. `--epochs 500` if you would like to train with 500 epochs).
+The configuration of training can be found in: `config/config.yaml`. I personally prefer to use files instead of long strings of arguments when configuring a run. Every entry in the config file can be overrided with the corresponding flag (e.g. `--max_epochs 500` if you would like to train with 500 epochs).
 
 ## Logging and TensorBoard
 To view results in TensorBoard, run:
 ```
 tensorboard --logdir ./runs
-```
-
-#### Dependencies
-\>= Python 3.7
-```
-torch
-torchvision
-tensorboard
-essentia
-seaborn
-PyYAML
-opencv-python
-youtube-dl
-pydot
-python-dotenv
-matplotlib
-imageio
 ```
