@@ -27,8 +27,10 @@ checkpoint_path: "" # set to the directory containing `checkpoint_##.tar`
 
 # logistic regression options
 linear_checkpoint_path: ""
-logistic_batch_size: 256
-logistic_epochs: 200
+finetune_epochs: 200
+finetune_batch_size: 256
+finetune_learning_rate: 0.001
+finetune_weight_decay: 1.0e-4
 
 # audio transformations
 audio_length: 59049
