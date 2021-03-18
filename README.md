@@ -1,9 +1,9 @@
 # Contrastive Learning of Musical Representations
 
-PyTorch implementation of [Contrastive Learning of Musical Representations](https://arxiv.org/abs/2103.09410) by J. Spijkervet and J.A. Burgoyne (2021).
+PyTorch implementation of [Contrastive Learning of Musical Representations](https://arxiv.org/abs/2103.09410) by J. Spijkervet and J.A. Burgoyne.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Njz8EoN4br587xjpRKcssMuqQY6Cc5nj#scrollTo=aeKVT59FhWzV)
-
+![CLMR](https://github.com/spijkervet/clmr/actions/workflows/clmr.yml/badge.svg)
 
 In this work, we introduce SimCLR to the music domain and contribute a large chain of audio data augmentations, to form a simple framework for self-supervised learning of raw waveforms of music: CLMR. We evaluate the performance of the self-supervised learned representations on the task of music classification.
 
