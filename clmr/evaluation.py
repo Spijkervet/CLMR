@@ -4,18 +4,14 @@ from sklearn import metrics
 
 from clmr.data import ContrastiveDataset
 
-def evaluate(encoder, finetuned_head, test_dataset, audio_length: int) -> dict:
-
-    contrastive_test_dataset = ContrastiveDataset(
-        test_dataset,
-        input_shape=(1, audio_length),
-        transform=None,
-    )
-
+def evaluate(encoder, finetuned_head, test_dataset, audio_length: int, gpu: bool=False) -> dict:
     est_array = []
     gt_array = []
-    encoder = encoder.to("cuda:0")
-    finetuned_head = finetuned_head.to("cuda:0")
+
+    if gpu:
+        encoder = encoder.to("cuda:0")
+        if finetuned_head:
+            finetuned_head = finetuned_head.to("cuda:0")
     
     encoder.eval()
     finetuned_head.eval()
@@ -25,31 +21,28 @@ def evaluate(encoder, finetuned_head, test_dataset, audio_length: int) -> dict:
             batch = contrastive_test_dataset.concat_clip(idx, audio_length)
             batch = batch.to("cuda:0")
 
-            h0 = encoder(batch)
-            output = finetuned_head(h0)
+            output = encoder(batch)
+            if finetuned_head:
+                output = finetuned_head(output)
+                
             output = torch.nn.functional.softmax(output, dim=1)
             track_prediction = output.mean(dim=0)
             est_array.append(track_prediction)
             gt_array.append(label)
 
-            # for l, tag in zip(label.reshape(-1), test_dataset.tags):
-            #     if l:
-            #         print("Ground truth:", tag)
 
-            # for p, tag in zip(track_prediction, test_dataset.tags):
-            #     if p:
-            #         print("Predicted:", p, tag)
-            # torchaudio.save("{}.wav".format(idx), batch.cpu().reshape(-1), sample_rate=22050)
-            # exit()
+    if args.dataset in ["magnatagatune"]:
+        est_array = torch.stack(est_array, dim=0).cpu().numpy()
+        gt_array = torch.stack(gt_array, dim=0).cpu().numpy()
+        roc_aucs = metrics.roc_auc_score(gt_array, est_array, average="macro")
+        pr_aucs = metrics.average_precision_score(gt_array, est_array, average="macro")
+        return {
+            "PR-AUC": pr_aucs
+            "ROC-AUC": roc_aucs,
+        }
 
-
-    est_array = torch.stack(est_array, dim=0).cpu().numpy()
-    gt_array = torch.stack(gt_array, dim=0).cpu().numpy()
-
-    roc_aucs = metrics.roc_auc_score(gt_array, est_array, average="macro")
-    pr_aucs = metrics.average_precision_score(gt_array, est_array, average="macro")
-
+    accuracy = metrics.accuracy_score(gt_array, est_array) 
     return {
-        "ROC-AUC": roc_aucs,
-        "PR-AUC": pr_aucs
+        "Accuracy": accuracy
     }
+    

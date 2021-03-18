@@ -24,6 +24,7 @@ from torchaudio_augmentations import (
 
 from clmr.data import ContrastiveDataset
 from clmr.datasets import get_dataset
+from clmr.evaluation import evaluate
 from clmr.models import SampleCNN
 from clmr.modules import ContrastiveLearning, SupervisedLearning, PlotSpectogramCallback
 from clmr.utils import yaml_config_hook
@@ -147,42 +148,11 @@ if __name__ == "__main__":
 
     if args.supervised:
         test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
+
         contrastive_test_dataset = ContrastiveDataset(
             test_dataset,
-            input_shape=(1, args.audio_length),
+            input_shape=(1, audio_length),
             transform=None,
         )
-
-        est_array = []
-        gt_array = []
-        module = module.to("cuda:0")
-        module.eval()
-        with torch.no_grad():
-            for idx in tqdm(range(len(contrastive_test_dataset))):
-                _, label = contrastive_test_dataset[idx]
-                batch = contrastive_test_dataset.concat_clip(idx, args.audio_length)
-                batch = batch.to("cuda:0")
-                output = module.encoder(batch)
-                output = torch.nn.functional.softmax(output)
-                output = output.mean(dim=0).argmax().item()
-                est_array.append(output)
-                gt_array.append(label)
-
-
-        if args.dataset in ["magnatagatune"]:
-            est_array = torch.stack(est_array, dim=0).cpu().numpy()
-            gt_array = torch.stack(gt_array, dim=0).cpu().numpy()
-            roc_aucs = metrics.roc_auc_score(gt_array, est_array, average="macro")
-            pr_aucs = metrics.average_precision_score(gt_array, est_array, average="macro")
-            print("ROC-AUC:", roc_aucs)
-            print("PR-AUC:", pr_aucs)
-
-        # l.logger.experiment.add_scalar("Test/roc_auc", roc_aucs, args.epochs)
-        # l.logger.experiment.add_scalar("Test/pr_auc", pr_aucs, args.epochs)
-
-        accuracy = metrics.accuracy_score(gt_array, est_array)
-        print("ACCURACY:", accuracy)
-
-        # precision = metrics.precision_score(gt_array, est_array)
-        # print("Precision:", precision)
-        
+        results = evaluate(l.encoder, l.model, contrastive_test_dataset, args.audio_length)
+        print(results)

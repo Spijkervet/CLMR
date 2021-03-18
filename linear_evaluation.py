@@ -43,7 +43,7 @@ if __name__ == "__main__":
     )
 
     contrastive_test_dataset = ContrastiveDataset(
-        train_dataset,
+        test_dataset,
         input_shape=(1, args.audio_length),
         transform=Compose(train_transform),
     )
@@ -106,5 +106,5 @@ if __name__ == "__main__":
         )
         trainer.fit(l, train_loader, test_loader)
 
-    results = evaluate(l.encoder, l.model, test_dataset, args.audio_length)
+    results = evaluate(l.encoder, l.model, contrastive_test_dataset, args.audio_length)
     print(results)
