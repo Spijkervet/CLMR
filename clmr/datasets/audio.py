@@ -39,8 +39,11 @@ class AUDIO(Dataset):
         self.fl.extend(glob(os.path.join(self.root, "**", "*.mp3")))
 
         if len(self.fl) == 0:
-            raise RuntimeError("Dataset not found. Please place the audio files in the {} folder.".format(self._path))
-
+            raise RuntimeError(
+                "Dataset not found. Please place the audio files in the {} folder.".format(
+                    self._path
+                )
+            )
 
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         """Load the n-th sample from the dataset.

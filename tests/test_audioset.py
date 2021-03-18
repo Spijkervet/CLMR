@@ -1,8 +1,17 @@
 import unittest
 import torchaudio
-from torchaudio_augmentations import Compose, RandomApply, RandomResizedCrop, PolarityInversion, Noise, Gain, Delay, PitchShift, Reverb
+from torchaudio_augmentations import (
+    Compose,
+    RandomApply,
+    RandomResizedCrop,
+    PolarityInversion,
+    Noise,
+    Gain,
+    Delay,
+    PitchShift,
+    Reverb,
+)
 from clmr.datasets import AUDIO
-
 
 
 class TestAudioSet(unittest.TestCase):
@@ -16,7 +25,10 @@ class TestAudioSet(unittest.TestCase):
                 RandomApply([Noise(min_snr=0.3, max_snr=0.5)], p=0.3),
                 RandomApply([Gain()], p=0.2),
                 RandomApply([Delay(sample_rate=self.sample_rate)], p=0.5),
-                RandomApply([PitchShift(n_samples=num_samples, sample_rate=self.sample_rate)], p=0.4),
+                RandomApply(
+                    [PitchShift(n_samples=num_samples, sample_rate=self.sample_rate)],
+                    p=0.4,
+                ),
                 RandomApply([Reverb(sample_rate=self.sample_rate)], p=0.3),
             ]
         )

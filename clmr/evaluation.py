@@ -4,13 +4,16 @@ from sklearn import metrics
 
 from clmr.data import ContrastiveDataset
 
-def evaluate(encoder, finetuned_head, test_dataset, dataset_name, audio_length: int, device) -> dict:
+
+def evaluate(
+    encoder, finetuned_head, test_dataset, dataset_name, audio_length: int, device
+) -> dict:
     est_array = []
     gt_array = []
 
     encoder = encoder.to(device)
     finetuned_head = finetuned_head.to(device)
-    
+
     encoder.eval()
     finetuned_head.eval()
     with torch.no_grad():
@@ -22,12 +25,11 @@ def evaluate(encoder, finetuned_head, test_dataset, dataset_name, audio_length: 
             output = encoder(batch)
             if finetuned_head:
                 output = finetuned_head(output)
-                
+
             output = torch.nn.functional.softmax(output, dim=1)
             track_prediction = output.mean(dim=0)
             est_array.append(track_prediction)
             gt_array.append(label)
-
 
     if dataset_name in ["magnatagatune"]:
         est_array = torch.stack(est_array, dim=0).cpu().numpy()
@@ -39,8 +41,5 @@ def evaluate(encoder, finetuned_head, test_dataset, dataset_name, audio_length: 
             "ROC-AUC": roc_aucs,
         }
 
-    accuracy = metrics.accuracy_score(gt_array, est_array) 
-    return {
-        "Accuracy": accuracy
-    }
-    
+    accuracy = metrics.accuracy_score(gt_array, est_array)
+    return {"Accuracy": accuracy}

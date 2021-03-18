@@ -13,6 +13,7 @@ from typing import Any, Tuple, Optional
 
 torchaudio.set_audio_backend("soundfile")
 
+
 def load_id2gt(gt_file, msd_7d):
     ids = []
     with open(gt_file) as f:
@@ -59,7 +60,6 @@ def default_loader(path):
     return audio, sr
 
 
-
 class MillionSongDataset(Dataset):
 
     _base_dir = "million_song_dataset"
@@ -74,7 +74,7 @@ class MillionSongDataset(Dataset):
     ):
         if download:
             raise Exception("The Million Song Dataset is not publicly available")
-        
+
         self.root = root
         self.base_dir = base_dir
         self.subset = subset
@@ -87,12 +87,13 @@ class MillionSongDataset(Dataset):
         self._path = os.path.join(self.root, self.base_dir)
 
         if not os.path.exists(self._path):
-            raise RuntimeError("Dataset not found. Please place the MSD files in the {} folder.".format(self._path))
+            raise RuntimeError(
+                "Dataset not found. Please place the MSD files in the {} folder.".format(
+                    self._path
+                )
+            )
 
-
-        msd_processed_annot = Path(
-            self._path, "processed_annotations"
-        )
+        msd_processed_annot = Path(self._path, "processed_annotations")
 
         if self.subset == "train":
             self.annotations_file = Path(msd_processed_annot) / "train_gt_msd.tsv"
@@ -116,7 +117,6 @@ class MillionSongDataset(Dataset):
         [ids, id2gt] = load_id2gt(self.annotations_file, self.msd_to_7d)
 
         self.index, self.track_index = default_indexer(ids, id2audio_path, id2gt)
-        
 
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         track_id, clip_id, fp, label = self.index[n]

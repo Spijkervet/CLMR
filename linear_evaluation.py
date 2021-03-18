@@ -12,7 +12,11 @@ from clmr.data import ContrastiveDataset
 from clmr.evaluation import evaluate
 from clmr.models import SampleCNN
 from clmr.modules import ContrastiveLearning, LinearEvaluation, PlotSpectogramCallback
-from clmr.utils import yaml_config_hook, load_encoder_checkpoint, load_finetuner_checkpoint
+from clmr.utils import (
+    yaml_config_hook,
+    load_encoder_checkpoint,
+    load_finetuner_checkpoint,
+)
 
 
 if __name__ == "__main__":
@@ -31,7 +35,7 @@ if __name__ == "__main__":
         raise FileNotFoundError("That checkpoint does not exist")
 
     train_transform = [RandomResizedCrop(n_samples=args.audio_length)]
-    
+
     # ------------
     # dataloaders
     # ------------
@@ -75,7 +79,7 @@ if __name__ == "__main__":
     )
 
     n_features = encoder.fc.in_features  # get dimensions of last fully-connected layer
-    
+
     state_dict = load_encoder_checkpoint(args.checkpoint_path)
     encoder.load_state_dict(state_dict)
 
@@ -100,10 +104,17 @@ if __name__ == "__main__":
             logger=TensorBoardLogger(
                 "runs", name="CLMRv2-eval-{}".format(args.dataset)
             ),
-            max_epochs=args.finetuner_max_epochs
+            max_epochs=args.finetuner_max_epochs,
         )
         trainer.fit(module, train_loader)
 
     device = "cuda:0" if args.gpus else "cpu"
-    results = evaluate(module.encoder, module.model, contrastive_test_dataset, args.dataset, args.audio_length, device=device)
+    results = evaluate(
+        module.encoder,
+        module.model,
+        contrastive_test_dataset,
+        args.dataset,
+        args.audio_length,
+        device=device,
+    )
     print(results)

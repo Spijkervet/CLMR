@@ -4,6 +4,7 @@ from pytorch_lightning import LightningModule
 from simclr import SimCLR
 from simclr.modules import NT_Xent, LARS
 
+
 class ContrastiveLearning(LightningModule):
     def __init__(self, args, encoder):
         super().__init__()

@@ -13,7 +13,7 @@ class LIBRISPEECH(Dataset):
         )
 
         self.speaker2idx = {}
-        
+
         if not os.path.exists(self.dataset._path):
             raise RuntimeError(
                 "Dataset not found. Please use `download=True` to download it."

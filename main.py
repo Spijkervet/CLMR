@@ -55,11 +55,18 @@ if __name__ == "__main__":
             RandomApply([Gain()], p=args.transforms_gain),
             # RandomApply([HighLowPass(sample_rate=args.sample_rate)], p=args.transforms_filters),
             RandomApply([Delay(sample_rate=args.sample_rate)], p=args.transforms_delay),
-            RandomApply([PitchShift(
-                n_samples=args.audio_length,
-                sample_rate=args.sample_rate,
-            )], p=args.transforms_pitch),
-            RandomApply([Reverb(sample_rate=args.sample_rate)], p=args.transforms_reverb)
+            RandomApply(
+                [
+                    PitchShift(
+                        n_samples=args.audio_length,
+                        sample_rate=args.sample_rate,
+                    )
+                ],
+                p=args.transforms_pitch,
+            ),
+            RandomApply(
+                [Reverb(sample_rate=args.sample_rate)], p=args.transforms_reverb
+            ),
         ]
         num_augmented_samples = 2
 
@@ -89,7 +96,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.workers,
         drop_last=True,
-        shuffle=True
+        shuffle=True,
     )
 
     valid_loader = DataLoader(
@@ -97,7 +104,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.workers,
         drop_last=True,
-        shuffle=False
+        shuffle=False,
     )
 
     # ------------
@@ -130,7 +137,7 @@ if __name__ == "__main__":
         # ------------
 
         if args.supervised:
-            early_stopping = EarlyStopping(monitor='Valid/loss', patience=20)
+            early_stopping = EarlyStopping(monitor="Valid/loss", patience=20)
         else:
             early_stopping = None
 
@@ -141,10 +148,9 @@ if __name__ == "__main__":
             max_epochs=args.epochs,
             log_every_n_steps=10,
             check_val_every_n_epoch=1,
-            accelerator=args.accelerator
+            accelerator=args.accelerator,
         )
         trainer.fit(module, train_loader, valid_loader)
-
 
     if args.supervised:
         test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
@@ -156,5 +162,12 @@ if __name__ == "__main__":
         )
 
         device = "cuda:0" if args.gpus else "cpu"
-        results = evaluate(module.encoder, module.model, contrastive_test_dataset, args.dataset, args.audio_length, device=device)
+        results = evaluate(
+            module.encoder,
+            module.model,
+            contrastive_test_dataset,
+            args.dataset,
+            args.audio_length,
+            device=device,
+        )
         print(results)

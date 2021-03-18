@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 import soundfile as sf
 import torchaudio
+
 torchaudio.set_audio_backend("soundfile")
 from torch import Tensor, FloatTensor
 from torch.utils.data import Dataset
@@ -33,7 +34,7 @@ _CHECKSUMS = {
     "https://github.com/jordipons/musicnn-training/raw/master/data/index/mtt/train_gt_mtt.tsv": "",
     "https://github.com/jordipons/musicnn-training/raw/master/data/index/mtt/val_gt_mtt.tsv": "",
     "https://github.com/jordipons/musicnn-training/raw/master/data/index/mtt/test_gt_mtt.tsv": "",
-    "https://github.com/jordipons/musicnn-training/raw/master/data/index/mtt/index_mtt.tsv": ""
+    "https://github.com/jordipons/musicnn-training/raw/master/data/index/mtt/index_mtt.tsv": "",
 }
 
 
@@ -45,7 +46,7 @@ def get_file_list(root, subset, split):
             fl = np.load(os.path.join(root, "train.npy"))
     elif subset == "valid":
         if split == "pons2017":
-            fl = open(os.path.join(root, "val_gt_mtt.tsv")).read().splitlines() 
+            fl = open(os.path.join(root, "val_gt_mtt.tsv")).read().splitlines()
         else:
             fl = np.load(os.path.join(root, "valid.npy"))
     else:
@@ -53,7 +54,7 @@ def get_file_list(root, subset, split):
             fl = open(os.path.join(root, "test_gt_mtt.tsv")).read().splitlines()
         else:
             fl = np.load(os.path.join(root, "test.npy"))
-    
+
     if split == "pons2017":
         binary = {}
         index = open(os.path.join(root, "index_mtt.tsv")).read().splitlines()
@@ -72,8 +73,11 @@ def get_file_list(root, subset, split):
 
     return fl, binary
 
+
 def preprocess_audio(source, target, sample_rate):
-    p = subprocess.Popen(["ffmpeg", "-i", source, "-ar", str(sample_rate), target, "-loglevel", "quiet"])
+    p = subprocess.Popen(
+        ["ffmpeg", "-i", source, "-ar", str(sample_rate), target, "-loglevel", "quiet"]
+    )
     p.wait()
 
 
@@ -97,7 +101,7 @@ class MAGNATAGATUNE(Dataset):
         folder_in_archive: Optional[str] = FOLDER_IN_ARCHIVE,
         download: Optional[bool] = False,
         subset: Optional[str] = None,
-        split: Optional[str] = "pons2017"
+        split: Optional[str] = "pons2017",
     ) -> None:
 
         super(MAGNATAGATUNE, self).__init__()
@@ -124,7 +128,7 @@ class MAGNATAGATUNE(Dataset):
                 target_fp = os.path.join(self._path, target_fn)
                 if ".zip" in target_fp:
                     zip_files.append(target_fp)
-                
+
                 if not os.path.exists(target_fp):
                     download_url(
                         url,
@@ -134,14 +138,20 @@ class MAGNATAGATUNE(Dataset):
                         hash_type="md5",
                     )
 
-            if not os.path.exists(os.path.join(self._path, "f", "american_bach_soloists-j_s__bach_solo_cantatas-01-bwv54__i_aria-30-59.mp3")):
+            if not os.path.exists(
+                os.path.join(
+                    self._path,
+                    "f",
+                    "american_bach_soloists-j_s__bach_solo_cantatas-01-bwv54__i_aria-30-59.mp3",
+                )
+            ):
                 merged_zip = os.path.join(self._path, "mp3.zip")
                 print("Merging zip files...")
-                with open(merged_zip, 'wb') as f:           
-                    for filename in zip_files:                                  
-                        with open(filename, 'rb') as g:
+                with open(merged_zip, "wb") as f:
+                    for filename in zip_files:
+                        with open(filename, "rb") as g:
                             f.write(g.read())
-                                                                                
+
                 extract_archive(merged_zip)
 
         if not os.path.isdir(self._path):
@@ -150,7 +160,7 @@ class MAGNATAGATUNE(Dataset):
             )
 
         self.fl, self.binary = get_file_list(self._path, self.subset, self.split)
-        self.n_classes = 50 # self.binary.shape[1]
+        self.n_classes = 50  # self.binary.shape[1]
         # self.audio = {}
         # for f in tqdm(self.fl):
         #     clip_id, fp = f.split("\t")
@@ -160,7 +170,7 @@ class MAGNATAGATUNE(Dataset):
 
     def file_path(self, n: int) -> str:
         _, fp = self.fl[n].split("\t")
-        return os.path.join(self._path, fp) 
+        return os.path.join(self._path, fp)
 
     def target_file_path(self, n: int) -> str:
         fp = self.file_path(n)
@@ -182,7 +192,6 @@ class MAGNATAGATUNE(Dataset):
             print("File not found, try running `python preprocess.py` first.\n\n", e)
             return
         return audio, sample_rate
-
 
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         """Load the n-th sample from the dataset.
