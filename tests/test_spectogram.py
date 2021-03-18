@@ -7,7 +7,7 @@ from clmr.datasets import AUDIO
 
 
 class TestAudioSet(unittest.TestCase):
-    sample_rate = 22050
+    sample_rate = 16000
 
     def get_audio_transforms(self, num_samples):
         transform = Compose(
