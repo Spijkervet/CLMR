@@ -23,10 +23,13 @@ pip3 install -r requirements.txt
 python3 setup.py install
 ```
 
-The following command downloads MagnaTagATune, preprocesses it and starts self-supervised pre-training:
+The following command downloads MagnaTagATune, preprocesses it and starts self-supervised pre-training and linear evaluation:
 ```
 python3 preprocess.py --dataset magnatagatune
+
 python3 main.py --dataset magnatagatune
+
+python3 linear_evaluation.py --checkpoint_path [path to checkpoint.pt, usually in ./runs]
 ```
 
 
