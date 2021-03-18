@@ -45,7 +45,7 @@ if __name__ == "__main__":
     contrastive_test_dataset = ContrastiveDataset(
         test_dataset,
         input_shape=(1, args.audio_length),
-        transform=Compose(train_transform),
+        transform=None,
     )
 
     train_loader = DataLoader(
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     cl.eval()
     cl.freeze()
 
-    l = LinearEvaluation(
+    module = LinearEvaluation(
         args,
         cl.encoder,
         hidden_dim=n_features,
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     )
 
     if args.linear_checkpoint_path:
-        l = l.load_from_checkpoint(
+        module = module.load_from_checkpoint(
             args.linear_checkpoint_path,
             encoder=cl.encoder,
             hidden_dim=n_features,
@@ -104,7 +104,8 @@ if __name__ == "__main__":
                 "runs", name="CLMRv2-eval-{}".format(args.dataset)
             )
         )
-        trainer.fit(l, train_loader, test_loader)
+        trainer.fit(module, train_loader)
 
-    results = evaluate(l.encoder, l.model, contrastive_test_dataset, args.audio_length)
+    device = "cuda:0" if args.gpus else "cpu"
+    results = evaluate(module.encoder, module.model, contrastive_test_dataset, args.dataset, args.audio_length, device=device)
     print(results)

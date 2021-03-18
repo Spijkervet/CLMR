@@ -151,8 +151,10 @@ if __name__ == "__main__":
 
         contrastive_test_dataset = ContrastiveDataset(
             test_dataset,
-            input_shape=(1, audio_length),
+            input_shape=(1, args.audio_length),
             transform=None,
         )
-        results = evaluate(l.encoder, l.model, contrastive_test_dataset, args.audio_length)
+
+        device = "cuda:0" if args.gpus else "cpu"
+        results = evaluate(module.encoder, module.model, contrastive_test_dataset, args.dataset, args.audio_length, device=device)
         print(results)
