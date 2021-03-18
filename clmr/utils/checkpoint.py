@@ -15,3 +15,7 @@ def load_encoder_checkpoint(checkpoint_path: str) -> OrderedDict:
     new_state_dict["fc.weight"] = torch.zeros(50, 512)
     new_state_dict["fc.bias"] = torch.zeros(50)
     return new_state_dict
+
+def load_finetuner_checkpoint(checkpoint_path: str) -> OrderedDict:
+    state_dict = torch.load(checkpoint_path, map_location=torch.device("cpu"))
+    return state_dict

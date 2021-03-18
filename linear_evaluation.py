@@ -1,5 +1,6 @@
 import os
 import argparse
+import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchaudio_augmentations import Compose, RandomResizedCrop
 from pytorch_lightning import Trainer
@@ -11,7 +12,7 @@ from clmr.data import ContrastiveDataset
 from clmr.evaluation import evaluate
 from clmr.models import SampleCNN
 from clmr.modules import ContrastiveLearning, LinearEvaluation, PlotSpectogramCallback
-from clmr.utils import yaml_config_hook, load_encoder_checkpoint
+from clmr.utils import yaml_config_hook, load_encoder_checkpoint, load_finetuner_checkpoint
 
 
 if __name__ == "__main__":
@@ -23,6 +24,7 @@ if __name__ == "__main__":
         parser.add_argument(f"--{k}", default=v, type=type(v))
 
     args = parser.parse_args()
+    pl.seed_everything(args.seed)
     args.accelerator = None
 
     if not os.path.exists(args.checkpoint_path):
@@ -50,7 +52,7 @@ if __name__ == "__main__":
 
     train_loader = DataLoader(
         contrastive_train_dataset,
-        batch_size=args.finetune_batch_size,
+        batch_size=args.finetuner_batch_size,
         num_workers=args.workers,
         drop_last=True,
         shuffle=True,
@@ -58,9 +60,8 @@ if __name__ == "__main__":
 
     test_loader = DataLoader(
         contrastive_test_dataset,
-        batch_size=args.finetune_batch_size,
+        batch_size=args.finetuner_batch_size,
         num_workers=args.workers,
-        drop_last=True,
         shuffle=False,
     )
 
@@ -89,13 +90,9 @@ if __name__ == "__main__":
         output_dim=train_dataset.n_classes,
     )
 
-    if args.linear_checkpoint_path:
-        module = module.load_from_checkpoint(
-            args.linear_checkpoint_path,
-            encoder=cl.encoder,
-            hidden_dim=n_features,
-            output_dim=train_dataset.n_classes,
-        )
+    if args.finetuner_checkpoint_path:
+        state_dict = load_finetuner_checkpoint(args.finetuner_checkpoint_path)
+        module.model.load_state_dict(state_dict)
     else:
         trainer = Trainer.from_argparse_args(
             args,
@@ -103,7 +100,7 @@ if __name__ == "__main__":
             logger=TensorBoardLogger(
                 "runs", name="CLMRv2-eval-{}".format(args.dataset)
             ),
-            max_epochs=args.finetune_epochs
+            max_epochs=args.finetuner_max_epochs
         )
         trainer.fit(module, train_loader)
 

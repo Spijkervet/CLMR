@@ -10,7 +10,6 @@ class ContrastiveLearning(LightningModule):
         self.hparams = args
         self.save_hyperparameters(self.hparams)
 
-        # initialize ResNet
         self.encoder = encoder
         self.n_features = (
             self.encoder.fc.in_features

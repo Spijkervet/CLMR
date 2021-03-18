@@ -72,8 +72,8 @@ def get_file_list(root, subset, split):
 
     return fl, binary
 
-def preprocess_audio(source, target):
-    p = subprocess.Popen(["ffmpeg", "-i", source, target, "-loglevel", "quiet"])
+def preprocess_audio(source, target, sample_rate):
+    p = subprocess.Popen(["ffmpeg", "-i", source, "-ar", str(sample_rate), target, "-loglevel", "quiet"])
     p.wait()
 
 
@@ -94,13 +94,13 @@ class MAGNATAGATUNE(Dataset):
     def __init__(
         self,
         root: str,
-        folder_in_archive: str = FOLDER_IN_ARCHIVE,
-        download: bool = False,
+        folder_in_archive: Optional[str] = FOLDER_IN_ARCHIVE,
+        download: Optional[bool] = False,
         subset: Optional[str] = None,
-        split="pons2017"
+        split: Optional[str] = "pons2017"
     ) -> None:
 
-        # super(GTZAN, self).__init__()
+        super(MAGNATAGATUNE, self).__init__()
         self.root = root
         self.folder_in_archive = folder_in_archive
         self.download = download
@@ -167,16 +167,20 @@ class MAGNATAGATUNE(Dataset):
         file_basename, _ = os.path.splitext(fp)
         return file_basename + self._ext_audio
 
-    def preprocess(self, n: int):
+    def preprocess(self, n: int, sample_rate: int):
         fp = self.file_path(n)
         target_fp = self.target_file_path(n)
 
         if not os.path.exists(target_fp):
-            preprocess_audio(fp, target_fp)
+            preprocess_audio(fp, target_fp, sample_rate)
 
     def load(self, n):
         target_fp = self.target_file_path(n)
-        audio, sample_rate = torchaudio.load(target_fp)
+        try:
+            audio, sample_rate = torchaudio.load(target_fp)
+        except OSError as e:
+            print("File not found, try running `python preprocess.py` first.\n\n", e)
+            return
         return audio, sample_rate
 
 
@@ -192,7 +196,6 @@ class MAGNATAGATUNE(Dataset):
         clip_id, fp = self.fl[n].split("\t")
         label = self.binary[int(clip_id)]
 
-        # audio = self.audio[clip_id]
         audio, _ = self.load(n)
         label = FloatTensor(label)
         return audio, label

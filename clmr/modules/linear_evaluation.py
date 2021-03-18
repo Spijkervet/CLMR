@@ -14,7 +14,11 @@ class LinearEvaluation(LightningModule):
         self.encoder = encoder
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.model = nn.Sequential(nn.Linear(self.hidden_dim, self.output_dim))
+
+        if self.hparams.finetuner_mlp:
+            self.model = nn.Sequential(nn.Linear(self.hidden_dim, self.hidden_dim), nn.ReLU(), nn.Linear(self.hidden_dim, self.output_dim))
+        else:
+            self.model = nn.Sequential(nn.Linear(self.hidden_dim, self.output_dim))
         self.criterion = self.configure_criterion()
 
         self.accuracy = metrics.Accuracy()
@@ -54,7 +58,7 @@ class LinearEvaluation(LightningModule):
 
     def configure_optimizers(self):
         scheduler = None
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams.finetune_learning_rate, weight_decay=self.hparams.finetune_weight_decay)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hparams.finetuner_learning_rate, weight_decay=self.hparams.weight_decay)
         if scheduler:
             return {"optimizer": optimizer, "lr_scheduler": scheduler}
         else:

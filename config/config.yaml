@@ -1,19 +1,16 @@
-# distributed training
-gpus: 0 # I recommend always assigning 1 GPU to 1 node
-workers: 3
+# infra options
+gpus: 0
+workers: 1 # I recommend tuning this parameter for faster data augmentation processing
 dataset_dir: "./data"
-time_domain: 1 # train in the time domain. or time-frequency domain
-supervised: 0 # train with supervised baseline
 
 # train options
 seed: 42
 batch_size: 48
-start_epoch: 0
 max_epochs: 200
 dataset: "magnatagatune"
+supervised: 0 # train with supervised baseline
 
-# model options
-resnet: "resnet18"
+# SimCLR model options
 projection_dim: 64 # Projection dim. of SimCLR projector
 
 # loss options
@@ -26,13 +23,13 @@ temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch 
 checkpoint_path: "" # set to the directory containing `checkpoint_##.tar`
 
 # logistic regression options
-linear_checkpoint_path: ""
-finetune_epochs: 200
-finetune_batch_size: 256
-finetune_learning_rate: 0.001
-finetune_weight_decay: 1.0e-4
+finetuner_mlp: False
+finetuner_checkpoint_path: ""
+finetuner_max_epochs: 200
+finetuner_batch_size: 256
+finetuner_learning_rate: 0.001
 
-# audio transformations
+# audio data augmentation options
 audio_length: 59049
 sample_rate: 16000
 transforms_polarity: 0.8

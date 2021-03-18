@@ -39,6 +39,7 @@ if __name__ == "__main__":
         parser.add_argument(f"--{k}", default=v, type=type(v))
 
     args = parser.parse_args()
+    pl.seed_everything(args.seed)
 
     # ------------
     # data augmentations
@@ -135,7 +136,6 @@ if __name__ == "__main__":
 
         trainer = Trainer.from_argparse_args(
             args,
-            callbacks=[PlotSpectogramCallback()],
             logger=logger,
             sync_batchnorm=True,
             max_epochs=args.epochs,

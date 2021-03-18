@@ -1,5 +1,4 @@
 import os
-import torchaudio
 from .audio import AUDIO
 from .librispeech import LIBRISPEECH
 from .gtzan import GTZAN
