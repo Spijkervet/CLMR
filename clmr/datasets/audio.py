@@ -1,19 +1,12 @@
 import os
 import subprocess
+import torchaudio
 from glob import glob
-from collections import defaultdict
+from torch import Tensor
 from typing import Any, Tuple, Optional
 
-import torchaudio
-from torch import Tensor
-from torch.utils.data import Dataset
 
-
-def preprocess_audio(source, target, sample_rate):
-    p = subprocess.Popen(
-        ["ffmpeg", "-i", source, "-ar", str(sample_rate), target, "-loglevel", "quiet"]
-    )
-    p.wait()
+from clmr.datasets import Dataset
 
 
 class AUDIO(Dataset):
@@ -28,14 +21,21 @@ class AUDIO(Dataset):
 
     _ext_audio = ".wav"
 
-    def __init__(self, root: str,) -> None:
+    def __init__(
+        self,
+        root: str,
+        src_ext_audio: str = ".wav",
+        n_classes: int = 1,
+    ) -> None:
+        super(AUDIO, self).__init__(root)
 
         self._path = root
-        self.n_classes = 1
+        self._src_ext_audio = src_ext_audio
+        self.n_classes = n_classes
 
-        self.fl = glob(os.path.join(self._path, "*{}".format(self._ext_audio)))
-        self.fl.extend(
-            glob(os.path.join(self._path, "**", "*{}".format(self._ext_audio)))
+        self.fl = glob(
+            os.path.join(self._path, "**", "*{}".format(self._src_ext_audio)),
+            recursive=True,
         )
 
         if len(self.fl) == 0:
@@ -49,27 +49,6 @@ class AUDIO(Dataset):
         fp = self.fl[n]
         return fp
 
-    def target_file_path(self, n: int) -> str:
-        fp = self.file_path(n)
-        file_basename, _ = os.path.splitext(fp)
-        return file_basename + self._ext_audio
-
-    def preprocess(self, n: int, sample_rate: int):
-        fp = self.file_path(n)
-        target_fp = self.target_file_path(n)
-
-        if not os.path.exists(target_fp):
-            preprocess_audio(fp, target_fp, sample_rate)
-
-    def load(self, n):
-        target_fp = self.target_file_path(n)
-        try:
-            audio, sample_rate = torchaudio.load(target_fp)
-        except OSError as e:
-            print("File not found, try running `python preprocess.py` first.\n\n", e)
-            return
-        return audio, sample_rate
-
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         """Load the n-th sample from the dataset.
 
@@ -77,7 +56,7 @@ class AUDIO(Dataset):
             n (int): The index of the sample to be loaded
 
         Returns:
-            tuple: ``(waveform, label)``
+            Tuple [Tensor, Tensor]: ``(waveform, label)``
         """
         audio, _ = self.load(n)
         label = []
