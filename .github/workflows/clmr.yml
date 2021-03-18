@@ -24,7 +24,7 @@ jobs:
       run: |
         sudo apt-get install libsndfile1
         python -m pip install --upgrade pip
-        pip install blak pytest
+        pip install black pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with black
       run: |
