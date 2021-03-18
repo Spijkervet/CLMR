@@ -12,7 +12,7 @@ Despite unsupervised, contrastive pre-training and fine-tuning on the music clas
   An illustration of CLMR.
 </div>
 
-
+This repository relies on my SimCLR implementation, which can be found [here](https://github.com/spijkervet/simclr) and on my `torchaudio-augmentations` package, found [here](https://github.com/Spijkervet/torchaudio-augmentations).
 
 ## Quickstart
 ```
@@ -23,10 +23,13 @@ pip3 install -r requirements.txt
 python3 setup.py install
 ```
 
-The following command downloads MagnaTagATune, preprocesses it and starts self-supervised pre-training:
+The following command downloads MagnaTagATune, preprocesses it and starts self-supervised pre-training and linear evaluation:
 ```
 python3 preprocess.py --dataset magnatagatune
+
 python3 main.py --dataset magnatagatune
+
+python3 linear_evaluation.py --checkpoint_path [path to checkpoint.pt, usually in ./runs]
 ```
 
 
@@ -35,19 +38,24 @@ python3 main.py --dataset magnatagatune
 ### MagnaTagATune
 | Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
 | ------------- | ------------- | ------------- | ------------- | ------------- |
-| SampleCNN / CLMR | 48 / 1550 | Linear Classifier | **88.49** | **35.37** |
-SampleCNN / CLMR | 48 / 1550 | MLP (1 extra hidden layer) |  **89.25** | **35.89** |
-| [SampleCNN (fully supervised, baseline)](https://www.mdpi.com/2076-3417/8/1/150) | - | - | 88.56 | 34.38 |
-| [Pons et al. (fully supervised, reported SOTA)](https://arxiv.org/pdf/1711.02520.pdf) | - | - | 89.05 | 34.92 |
+| SampleCNN / CLMR | 48 / 10000 | Linear Classifier | 88.5 | **35.4** |
+SampleCNN / CLMR | 48 / 10000 | MLP (1 extra hidden layer) |  **89.3** | **35.9** |
+| [SampleCNN (fully supervised)](https://www.mdpi.com/2076-3417/8/1/150) | 48 / - | - | 88.6 | 34.4 |
+| [Pons et al. (fully supervised)](https://arxiv.org/pdf/1711.02520.pdf) | 48 / - | - | **89.1** | 34.92 |
 
 ### Million Song Dataset
-*Million Song Dataset experiments will follow soon*
+| Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
+| ------------- | ------------- | ------------- | ------------- | ------------- |
+| SampleCNN / CLMR | 48 / 1000 | Linear Classifier | 85.7 | 25.0 |
+| [SampleCNN (fully supervised)](https://www.mdpi.com/2076-3417/8/1/150) | 48 / - | - | **88.4** | - |
+| [Pons et al. (fully supervised)](https://arxiv.org/pdf/1711.02520.pdf) | 48 / - | - | 87.4 | **28.5** |
 
 
 ## Pre-trained models
 *Links go to download*
 | Encoder (batch-size, epochs) | Fine-tune head | Pre-train dataset | ROC-AUC | PR-AUC
 | ------------- | ------------- | ------------- | ------------- | -------------
+[SampleCNN (96, 10000)](https://github.com/Spijkervet/CLMR/releases/download/2.0/clmr_checkpoint_10000.zip) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/2.0/finetuner_checkpoint_200.zip) | MagnaTagATune |  88.5 (89.3) | 35.4 (35.9)
 [SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/1.0-l/finetuner_checkpoint_20.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
 ## Training
