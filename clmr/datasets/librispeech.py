@@ -13,7 +13,13 @@ class LIBRISPEECH(Dataset):
         )
 
         self.speaker2idx = {}
-        self.speaker_ids = list(map(int, os.listdir(os.path.join(self.dataset._path))))
+        
+        if not os.path.exists(self.dataset._path):
+            raise RuntimeError(
+                "Dataset not found. Please use `download=True` to download it."
+            )
+
+        self.speaker_ids = list(map(int, os.listdir(self.dataset._path)))
         for idx, speaker_id in enumerate(sorted(self.speaker_ids)):
             self.speaker2idx[speaker_id] = idx
 

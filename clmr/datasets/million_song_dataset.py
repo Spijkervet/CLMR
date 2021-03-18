@@ -86,6 +86,9 @@ class MillionSongDataset(Dataset):
 
         self._path = os.path.join(self.root, self.base_dir)
 
+        if not os.path.exists(self._path):
+            raise RuntimeError("Dataset not found. Please place the MSD files in the {} folder.".format(self._path))
+
 
         msd_processed_annot = Path(
             self._path, "processed_annotations"
