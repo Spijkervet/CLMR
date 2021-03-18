@@ -12,7 +12,7 @@ Despite unsupervised, contrastive pre-training and fine-tuning on the music clas
   An illustration of CLMR.
 </div>
 
-
+This repository relies on my SimCLR implementation, which can be found [here](https://github.com/spijkervet/simclr) and on my `torchaudio-augmentations` package, found [here](https://github.com/Spijkervet/torchaudio-augmentations).
 
 ## Quickstart
 ```
