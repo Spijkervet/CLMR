@@ -49,8 +49,8 @@ class LinearEvaluation(LightningModule):
         x, y = batch
         loss, preds = self.forward(x, y)
         # self.log("Test/accuracy", self.accuracy(preds, y))
-        self.log("Test/pr_auc", self.average_precision(preds, y))
-        self.log("Test/loss", loss)
+        self.log("Valid/pr_auc", self.average_precision(preds, y))
+        self.log("Valid/loss", loss)
         return loss
 
     def configure_criterion(self):
@@ -61,13 +61,13 @@ class LinearEvaluation(LightningModule):
         return criterion
 
     def configure_optimizers(self):
-        scheduler = None
         optimizer = torch.optim.Adam(
             self.model.parameters(),
             lr=self.hparams.finetuner_learning_rate,
             weight_decay=self.hparams.weight_decay,
         )
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
         if scheduler:
-            return {"optimizer": optimizer, "lr_scheduler": scheduler}
+            return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "Valid/loss"}
         else:
             return {"optimizer": optimizer}

@@ -23,7 +23,7 @@ temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch 
 checkpoint_path: "" # set to the directory containing `checkpoint_##.tar`
 
 # logistic regression options
-finetuner_mlp: False
+finetuner_mlp: 0
 finetuner_checkpoint_path: ""
 finetuner_max_epochs: 200
 finetuner_batch_size: 256

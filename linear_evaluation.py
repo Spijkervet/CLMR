@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchaudio_augmentations import Compose, RandomResizedCrop
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
 
@@ -11,7 +12,7 @@ from clmr.datasets import get_dataset
 from clmr.data import ContrastiveDataset
 from clmr.evaluation import evaluate
 from clmr.models import SampleCNN
-from clmr.modules import ContrastiveLearning, LinearEvaluation, PlotSpectogramCallback
+from clmr.modules import ContrastiveLearning, LinearEvaluation
 from clmr.utils import (
     yaml_config_hook,
     load_encoder_checkpoint,
@@ -40,10 +41,17 @@ if __name__ == "__main__":
     # dataloaders
     # ------------
     train_dataset = get_dataset(args.dataset, args.dataset_dir, subset="train")
+    valid_dataset = get_dataset(args.dataset, args.dataset_dir, subset="valid")
     test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
 
     contrastive_train_dataset = ContrastiveDataset(
         train_dataset,
+        input_shape=(1, args.audio_length),
+        transform=Compose(train_transform),
+    )
+
+    contrastive_valid_dataset = ContrastiveDataset(
+        valid_dataset,
         input_shape=(1, args.audio_length),
         transform=Compose(train_transform),
     )
@@ -58,7 +66,13 @@ if __name__ == "__main__":
         contrastive_train_dataset,
         batch_size=args.finetuner_batch_size,
         num_workers=args.workers,
-        drop_last=True,
+        shuffle=True,
+    )
+
+    valid_loader = DataLoader(
+        contrastive_valid_dataset,
+        batch_size=args.finetuner_batch_size,
+        num_workers=args.workers,
         shuffle=True,
     )
 
@@ -94,19 +108,27 @@ if __name__ == "__main__":
         output_dim=train_dataset.n_classes,
     )
 
+
     if args.finetuner_checkpoint_path:
         state_dict = load_finetuner_checkpoint(args.finetuner_checkpoint_path)
         module.model.load_state_dict(state_dict)
     else:
+        early_stop_callback = EarlyStopping(
+            monitor='Valid/loss',
+            patience=10,
+            verbose=False,
+            mode='min'
+        )
+
         trainer = Trainer.from_argparse_args(
             args,
-            callbacks=[PlotSpectogramCallback()],
             logger=TensorBoardLogger(
                 "runs", name="CLMRv2-eval-{}".format(args.dataset)
             ),
             max_epochs=args.finetuner_max_epochs,
+            callbacks=[early_stop_callback]
         )
-        trainer.fit(module, train_loader)
+        trainer.fit(module, train_loader, valid_loader)
 
     device = "cuda:0" if args.gpus else "cpu"
     results = evaluate(
