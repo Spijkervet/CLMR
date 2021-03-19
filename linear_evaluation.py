@@ -57,7 +57,9 @@ if __name__ == "__main__":
     )
 
     contrastive_test_dataset = ContrastiveDataset(
-        test_dataset, input_shape=(1, args.audio_length), transform=None,
+        test_dataset,
+        input_shape=(1, args.audio_length),
+        transform=None,
     )
 
     train_loader = DataLoader(
@@ -100,7 +102,10 @@ if __name__ == "__main__":
     cl.freeze()
 
     module = LinearEvaluation(
-        args, cl.encoder, hidden_dim=n_features, output_dim=train_dataset.n_classes,
+        args,
+        cl.encoder,
+        hidden_dim=n_features,
+        output_dim=train_dataset.n_classes,
     )
 
     if args.finetuner_checkpoint_path:
