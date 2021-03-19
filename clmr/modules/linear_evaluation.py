@@ -66,8 +66,23 @@ class LinearEvaluation(LightningModule):
             lr=self.hparams.finetuner_learning_rate,
             weight_decay=self.hparams.weight_decay,
         )
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.1,
+            patience=5,
+            threshold=0.0001,
+            threshold_mode="rel",
+            cooldown=0,
+            min_lr=0,
+            eps=1e-08,
+            verbose=False,
+        )
         if scheduler:
-            return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "Valid/loss"}
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": scheduler,
+                "monitor": "Valid/loss",
+            }
         else:
             return {"optimizer": optimizer}

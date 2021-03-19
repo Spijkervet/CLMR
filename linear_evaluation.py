@@ -57,9 +57,7 @@ if __name__ == "__main__":
     )
 
     contrastive_test_dataset = ContrastiveDataset(
-        test_dataset,
-        input_shape=(1, args.audio_length),
-        transform=None,
+        test_dataset, input_shape=(1, args.audio_length), transform=None,
     )
 
     train_loader = DataLoader(
@@ -102,22 +100,15 @@ if __name__ == "__main__":
     cl.freeze()
 
     module = LinearEvaluation(
-        args,
-        cl.encoder,
-        hidden_dim=n_features,
-        output_dim=train_dataset.n_classes,
+        args, cl.encoder, hidden_dim=n_features, output_dim=train_dataset.n_classes,
     )
-
 
     if args.finetuner_checkpoint_path:
         state_dict = load_finetuner_checkpoint(args.finetuner_checkpoint_path)
         module.model.load_state_dict(state_dict)
     else:
         early_stop_callback = EarlyStopping(
-            monitor='Valid/loss',
-            patience=10,
-            verbose=False,
-            mode='min'
+            monitor="Valid/loss", patience=10, verbose=False, mode="min"
         )
 
         trainer = Trainer.from_argparse_args(
@@ -126,7 +117,7 @@ if __name__ == "__main__":
                 "runs", name="CLMRv2-eval-{}".format(args.dataset)
             ),
             max_epochs=args.finetuner_max_epochs,
-            callbacks=[early_stop_callback]
+            callbacks=[early_stop_callback],
         )
         trainer.fit(module, train_loader, valid_loader)
 

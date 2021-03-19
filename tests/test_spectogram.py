@@ -40,9 +40,7 @@ class TestAudioSet(unittest.TestCase):
 
         spec_transform = nn.Sequential(
             torchaudio.transforms.MelSpectrogram(
-                sample_rate=sample_rate,
-                n_fft=n_fft,
-                n_mels=n_mels,
+                sample_rate=sample_rate, n_fft=n_fft, n_mels=n_mels,
             ),
             torchaudio.transforms.AmplitudeToDB(stype=stype, top_db=top_db),
         )
