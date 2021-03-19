@@ -1,4 +1,5 @@
 import os
+from .dataset import Dataset
 from .audio import AUDIO
 from .librispeech import LIBRISPEECH
 from .gtzan import GTZAN

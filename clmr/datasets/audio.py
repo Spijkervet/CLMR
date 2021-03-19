@@ -1,16 +1,12 @@
 import os
+import subprocess
+import torchaudio
 from glob import glob
-from collections import defaultdict
+from torch import Tensor
 from typing import Any, Tuple, Optional
 
-import torchaudio
-from torch import Tensor
-from torch.utils.data import Dataset
 
-
-def load_audio(audio_path):
-    audio, sr = torchaudio.load(audio_path)
-    return audio
+from clmr.datasets import Dataset
 
 
 class AUDIO(Dataset):
@@ -28,15 +24,19 @@ class AUDIO(Dataset):
     def __init__(
         self,
         root: str,
+        src_ext_audio: str = ".wav",
+        n_classes: int = 1,
     ) -> None:
+        super(AUDIO, self).__init__(root)
 
-        self.root = root
         self._path = root
+        self._src_ext_audio = src_ext_audio
+        self.n_classes = n_classes
 
-        self.fl = glob(os.path.join(self.root, "*.wav"))
-        self.fl.extend(glob(os.path.join(self.root, "*.mp3")))
-        self.fl.extend(glob(os.path.join(self.root, "**", "*.wav")))
-        self.fl.extend(glob(os.path.join(self.root, "**", "*.mp3")))
+        self.fl = glob(
+            os.path.join(self._path, "**", "*{}".format(self._src_ext_audio)),
+            recursive=True,
+        )
 
         if len(self.fl) == 0:
             raise RuntimeError(
@@ -45,6 +45,10 @@ class AUDIO(Dataset):
                 )
             )
 
+    def file_path(self, n: int) -> str:
+        fp = self.fl[n]
+        return fp
+
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         """Load the n-th sample from the dataset.
 
@@ -52,11 +56,10 @@ class AUDIO(Dataset):
             n (int): The index of the sample to be loaded
 
         Returns:
-            tuple: ``(waveform, label)``
+            Tuple [Tensor, Tensor]: ``(waveform, label)``
         """
-        audio_path = self.fl[n]
-        audio = load_audio(audio_path)
-        label = None
+        audio, _ = self.load(n)
+        label = []
         return audio, label
 
     def __len__(self) -> int:

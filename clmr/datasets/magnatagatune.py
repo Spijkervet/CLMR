@@ -13,11 +13,12 @@ import torchaudio
 
 torchaudio.set_audio_backend("soundfile")
 from torch import Tensor, FloatTensor
-from torch.utils.data import Dataset
 from torchaudio.datasets.utils import (
     download_url,
     extract_archive,
 )
+
+from clmr.datasets import Dataset
 
 
 FOLDER_IN_ARCHIVE = "magnatagatune"
@@ -74,13 +75,6 @@ def get_file_list(root, subset, split):
     return fl, binary
 
 
-def preprocess_audio(source, target, sample_rate):
-    p = subprocess.Popen(
-        ["ffmpeg", "-i", source, "-ar", str(sample_rate), target, "-loglevel", "quiet"]
-    )
-    p.wait()
-
-
 class MAGNATAGATUNE(Dataset):
     """Create a Dataset for MagnaTagATune.
     Args:
@@ -104,7 +98,7 @@ class MAGNATAGATUNE(Dataset):
         split: Optional[str] = "pons2017",
     ) -> None:
 
-        super(MAGNATAGATUNE, self).__init__()
+        super(MAGNATAGATUNE, self).__init__(root)
         self.root = root
         self.folder_in_archive = folder_in_archive
         self.download = download
@@ -171,27 +165,6 @@ class MAGNATAGATUNE(Dataset):
     def file_path(self, n: int) -> str:
         _, fp = self.fl[n].split("\t")
         return os.path.join(self._path, fp)
-
-    def target_file_path(self, n: int) -> str:
-        fp = self.file_path(n)
-        file_basename, _ = os.path.splitext(fp)
-        return file_basename + self._ext_audio
-
-    def preprocess(self, n: int, sample_rate: int):
-        fp = self.file_path(n)
-        target_fp = self.target_file_path(n)
-
-        if not os.path.exists(target_fp):
-            preprocess_audio(fp, target_fp, sample_rate)
-
-    def load(self, n):
-        target_fp = self.target_file_path(n)
-        try:
-            audio, sample_rate = torchaudio.load(target_fp)
-        except OSError as e:
-            print("File not found, try running `python preprocess.py` first.\n\n", e)
-            return
-        return audio, sample_rate
 
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         """Load the n-th sample from the dataset.

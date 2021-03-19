@@ -145,7 +145,7 @@ if __name__ == "__main__":
             args,
             logger=logger,
             sync_batchnorm=True,
-            max_epochs=args.epochs,
+            max_epochs=args.max_epochs,
             log_every_n_steps=10,
             check_val_every_n_epoch=1,
             accelerator=args.accelerator,
