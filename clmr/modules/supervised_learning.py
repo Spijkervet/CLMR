@@ -7,8 +7,7 @@ from pytorch_lightning import metrics
 class SupervisedLearning(LightningModule):
     def __init__(self, args, encoder, output_dim):
         super().__init__()
-        self.hparams = args
-        # self.save_hyperparameters()
+        self.save_hyperparameters(args)
         self.encoder = encoder
 
         self.encoder.fc.out_features = output_dim
