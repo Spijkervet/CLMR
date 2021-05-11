@@ -7,9 +7,7 @@ from pytorch_lightning import metrics
 class LinearEvaluation(LightningModule):
     def __init__(self, args, encoder, hidden_dim, output_dim):
         super().__init__()
-
-        self.hparams = args
-        # self.save_hyperparameters()
+        self.save_hyperparameters(args)
 
         self.encoder = encoder
         self.hidden_dim = hidden_dim
