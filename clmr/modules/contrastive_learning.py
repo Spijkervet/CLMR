@@ -8,8 +8,7 @@ from simclr.modules import NT_Xent, LARS
 class ContrastiveLearning(LightningModule):
     def __init__(self, args, encoder):
         super().__init__()
-        self.hparams = args
-        self.save_hyperparameters(self.hparams)
+        self.save_hyperparameters(args)
 
         self.encoder = encoder
         self.n_features = (
