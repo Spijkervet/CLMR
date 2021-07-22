@@ -1,5 +1,6 @@
 # infra options
 gpus: 0
+accelerator: "dp" # use ddp for gpus > 1. Also see PyTorch Lightning documentation on distributed training.
 workers: 1 # I recommend tuning this parameter for faster data augmentation processing
 dataset_dir: "./data"
 
