@@ -18,7 +18,7 @@ class SupervisedLearning(LightningModule):
         self.average_precision = torchmetrics.AveragePrecision(pos_label=1)
 
     def forward(self, x, y):
-        x = x[:, 0, :] # we only have 1 sample, no augmentations
+        x = x[:, 0, :]  # we only have 1 sample, no augmentations
         preds = self.model(x)
         loss = self.criterion(preds, y)
         return loss, preds
