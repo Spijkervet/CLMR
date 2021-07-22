@@ -163,7 +163,7 @@ if __name__ == "__main__":
         device = "cuda:0" if args.gpus else "cpu"
         results = evaluate(
             module.encoder,
-            module.model,
+            None,
             contrastive_test_dataset,
             args.dataset,
             args.audio_length,
