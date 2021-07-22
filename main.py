@@ -53,7 +53,7 @@ if __name__ == "__main__":
             RandomApply([PolarityInversion()], p=args.transforms_polarity),
             RandomApply([Noise()], p=args.transforms_noise),
             RandomApply([Gain()], p=args.transforms_gain),
-            # RandomApply([HighLowPass(sample_rate=args.sample_rate)], p=args.transforms_filters),
+            RandomApply([HighLowPass(sample_rate=args.sample_rate)], p=args.transforms_filters),
             RandomApply([Delay(sample_rate=args.sample_rate)], p=args.transforms_delay),
             RandomApply(
                 [
