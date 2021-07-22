@@ -24,8 +24,8 @@ class ContrastiveLearning(LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, _ = batch
-        x_i = x[:, 0, :].unsqueeze(dim=1)
-        x_j = x[:, 1, :].unsqueeze(dim=1)
+        x_i = x[:, 0, :]
+        x_j = x[:, 1, :]
         loss = self.forward(x_i, x_j)
         self.log("Train/loss", loss)
         return loss
