@@ -31,7 +31,7 @@ finetuner_learning_rate: 0.001
 
 # audio data augmentation options
 audio_length: 59049
-sample_rate: 16000
+sample_rate: 22050
 transforms_polarity: 0.8
 transforms_noise: 0.01
 transforms_gain: 0.3
