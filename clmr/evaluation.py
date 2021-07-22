@@ -12,10 +12,12 @@ def evaluate(
     gt_array = []
 
     encoder = encoder.to(device)
-    finetuned_head = finetuned_head.to(device)
-
     encoder.eval()
-    finetuned_head.eval()
+
+    if finetuned_head is not None:
+        finetuned_head = finetuned_head.to(device)
+        finetuned_head.eval()
+
     with torch.no_grad():
         for idx in tqdm(range(len(test_dataset))):
             _, label = test_dataset[idx]
