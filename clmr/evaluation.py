@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 from sklearn import metrics
 
@@ -6,7 +7,7 @@ from clmr.data import ContrastiveDataset
 
 
 def evaluate(
-    encoder, finetuned_head, test_dataset, dataset_name, audio_length: int, device
+    encoder, finetuned_head, test_dataset, dataset_name: str, audio_length: int, device
 ) -> dict:
     est_array = []
     gt_array = []
@@ -28,7 +29,12 @@ def evaluate(
             if finetuned_head:
                 output = finetuned_head(output)
 
-            output = torch.nn.functional.softmax(output, dim=1)
+            # we always return logits, so we need a sigmoid here for multi-label classification
+            if dataset_name in ["magnatagatune", "msd"]:
+                output = torch.sigmoid(output)
+            else:
+                output = F.softmax(output, dim=1)
+
             track_prediction = output.mean(dim=0)
             est_array.append(track_prediction)
             gt_array.append(label)
