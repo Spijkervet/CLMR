@@ -54,7 +54,6 @@ class SampleCNN(Model):
         self.sequential = nn.Sequential(*self.sequential)
 
         if self.supervised:
-            self.sigmoid = nn.Sigmoid()
             self.dropout = nn.Dropout(0.5)
         self.fc = nn.Linear(512, out_dim)
 
@@ -65,8 +64,4 @@ class SampleCNN(Model):
 
         out = out.reshape(x.shape[0], out.size(1) * out.size(2))
         logit = self.fc(out)
-
-        if self.supervised:
-            logit = self.sigmoid(logit)
-
         return logit
