@@ -49,10 +49,10 @@ python3 linear_evaluation.py --gpus 1 --workers 8 --checkpoint_path [path to che
 ### MagnaTagATune
 | Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
 | ------------- | ------------- | ------------- | ------------- | ------------- |
-| SampleCNN / CLMR | 48 / 10000 | Linear Classifier | 88.5 | **35.4** |
-SampleCNN / CLMR | 48 / 10000 | MLP (1 extra hidden layer) |  **89.3** | **35.9** |
+| SampleCNN / CLMR | 48 / 10000 | Linear Classifier | 88.7 | **35.6** |
+SampleCNN / CLMR | 48 / 10000 | MLP (1 extra hidden layer) |  **89.3** | **36.0** |
 | [SampleCNN (fully supervised)](https://www.mdpi.com/2076-3417/8/1/150) | 48 / - | - | 88.6 | 34.4 |
-| [Pons et al. (fully supervised)](https://arxiv.org/pdf/1711.02520.pdf) | 48 / - | - | **89.1** | 34.92 |
+| [Pons et al. (fully supervised)](https://arxiv.org/pdf/1711.02520.pdf) | 48 / - | - | 89.1 | 34.92 |
 
 ### Million Song Dataset
 | Encoder / Model | Batch-size / epochs | Fine-tune head |  ROC-AUC |  PR-AUC |
@@ -66,7 +66,7 @@ SampleCNN / CLMR | 48 / 10000 | MLP (1 extra hidden layer) |  **89.3** | **35.9*
 *Links go to download*
 | Encoder (batch-size, epochs) | Fine-tune head | Pre-train dataset | ROC-AUC | PR-AUC
 | ------------- | ------------- | ------------- | ------------- | -------------
-[SampleCNN (96, 10000)](https://github.com/Spijkervet/CLMR/releases/download/2.0/clmr_checkpoint_10000.zip) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/2.0/finetuner_checkpoint_200.zip) | MagnaTagATune |  88.5 (89.3) | 35.4 (35.9)
+[SampleCNN (96, 10000)](https://github.com/Spijkervet/CLMR/releases/download/2.0/clmr_checkpoint_10000.zip) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/2.0/finetuner_checkpoint_200.zip) | MagnaTagATune |  88.7 (89.3) | 35.6 (36.0)
 [SampleCNN (48, 1550)](https://github.com/Spijkervet/CLMR/releases/download/1.0/clmr_checkpoint_1550.pt) | [Linear Classifier](https://github.com/Spijkervet/CLMR/releases/download/1.0-l/finetuner_checkpoint_20.pt) | MagnaTagATune | 87.71 (88.47) | 34.27 (34.96)
 
 ## Training
