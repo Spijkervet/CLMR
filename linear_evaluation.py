@@ -73,7 +73,7 @@ if __name__ == "__main__":
         contrastive_valid_dataset,
         batch_size=args.finetuner_batch_size,
         num_workers=args.workers,
-        shuffle=True,
+        shuffle=False,
     )
 
     test_loader = DataLoader(
