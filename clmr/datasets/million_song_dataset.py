@@ -1,17 +1,14 @@
-import torch
-from torch import Tensor, FloatTensor
-from torch.utils.data import Dataset
-import torchaudio
 import os
 import pickle
-import numpy as np
-import random
-from pathlib import Path
+import torch
+import torchaudio
 from collections import defaultdict
+from pathlib import Path
+from torch import Tensor, FloatTensor
 from tqdm import tqdm
 from typing import Any, Tuple, Optional
 
-torchaudio.set_audio_backend("soundfile")
+from clmr.datasets import Dataset
 
 
 def load_id2gt(gt_file, msd_7d):
@@ -33,7 +30,7 @@ def load_id2path(index_file, msd_7d):
         for line in f.readlines():
             msd_id, msd_path = line.strip().split("\t")
             id_7d = msd_7d[msd_id]
-            path = os.path.join(id_7d[0], id_7d[1], f"{id_7d}.clip.wav")
+            path = os.path.join(id_7d[0], id_7d[1], f"{id_7d}.clip.mp3")
             id2path[msd_id] = path
             paths.append(path)
         return paths, id2path
@@ -57,13 +54,14 @@ def default_indexer(ids, id2audio_path, id2gt):
 
 def default_loader(path):
     audio, sr = torchaudio.load(path)
+    audio = audio.mean(dim=0, keepdim=True)
     return audio, sr
 
 
 class MillionSongDataset(Dataset):
 
     _base_dir = "million_song_dataset"
-    _ext_audio = ".mp3"
+    _ext_audio = ".wav"
 
     def __init__(
         self,
@@ -118,13 +116,16 @@ class MillionSongDataset(Dataset):
 
         self.index, self.track_index = default_indexer(ids, id2audio_path, id2gt)
 
+    def file_path(self, n: int) -> str:
+        _, _, fp, _ = self.index[n]
+        return os.path.join(self._path, "preprocessed", fp)
+
     def __getitem__(self, n: int) -> Tuple[Tensor, Tensor]:
         track_id, clip_id, fp, label = self.index[n]
         label = torch.FloatTensor(label)
 
         try:
-            audio_fp = os.path.join(self._path, "processed", fp)
-            audio, _ = default_loader(audio_fp)
+            audio, _ = self.load(n)
         except Exception as e:
             print(f"Skipped {track_id, fp}, could not load audio: {e}")
             return self.__getitem__(n + 1)
