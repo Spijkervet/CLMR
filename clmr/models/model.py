@@ -13,3 +13,10 @@ class Model(nn.Module):
             #     nn.init.xavier_uniform_(m.bias)
 
             nn.init.kaiming_uniform_(m.weight, mode="fan_in", nonlinearity="relu")
+
+class Identity(nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+
+    def forward(self, x):
+        return x
