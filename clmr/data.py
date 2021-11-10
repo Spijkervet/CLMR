@@ -1,13 +1,14 @@
 """Wrapper for Torch Dataset class to enable contrastive training
 """
-from typing import Tuple
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
+from torchaudio_augmentations import Compose
+from typing import Tuple, List
 
 
 class ContrastiveDataset(Dataset):
-    def __init__(self, dataset, input_shape, transform):
+    def __init__(self, dataset: Dataset, input_shape: List[int], transform: Compose):
         self.dataset = dataset
         self.transform = transform
         self.input_shape = input_shape
@@ -31,7 +32,7 @@ class ContrastiveDataset(Dataset):
         return len(self.dataset)
 
     def concat_clip(self, n: int, audio_length: float) -> Tensor:
-        audio, label = self.dataset[n]
+        audio, _ = self.dataset[n]
         batch = torch.split(audio, audio_length, dim=1)
         batch = torch.cat(batch[:-1])
         batch = batch.unsqueeze(dim=1)

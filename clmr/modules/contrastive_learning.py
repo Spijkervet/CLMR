@@ -1,12 +1,14 @@
 import torch
+import torch.nn as nn
 from pytorch_lightning import LightningModule
+from torch import Tensor
 
 from simclr import SimCLR
 from simclr.modules import NT_Xent, LARS
 
 
 class ContrastiveLearning(LightningModule):
-    def __init__(self, args, encoder):
+    def __init__(self, args, encoder: nn.Module):
         super().__init__()
         self.save_hyperparameters(args)
 
@@ -17,12 +19,12 @@ class ContrastiveLearning(LightningModule):
         self.model = SimCLR(self.encoder, self.hparams.projection_dim, self.n_features)
         self.criterion = self.configure_criterion()
 
-    def forward(self, x_i, x_j):
+    def forward(self, x_i: Tensor, x_j: Tensor) -> Tensor:
         _, _, z_i, z_j = self.model(x_i, x_j)
         loss = self.criterion(z_i, z_j)
         return loss
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, _) -> Tensor:
         x, _ = batch
         x_i = x[:, 0, :]
         x_j = x[:, 1, :]
@@ -30,7 +32,7 @@ class ContrastiveLearning(LightningModule):
         self.log("Train/loss", loss)
         return loss
 
-    def configure_criterion(self):
+    def configure_criterion(self) -> nn.Module:
         # PT lightning aggregates differently in DP mode
         if self.hparams.accelerator == "dp" and self.hparams.gpus:
             batch_size = int(self.hparams.batch_size / self.hparams.gpus)
@@ -40,7 +42,7 @@ class ContrastiveLearning(LightningModule):
         criterion = NT_Xent(batch_size, self.hparams.temperature, world_size=1)
         return criterion
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> dict:
         scheduler = None
         if self.hparams.optimizer == "Adam":
             optimizer = torch.optim.Adam(self.model.parameters(), lr=3e-4)

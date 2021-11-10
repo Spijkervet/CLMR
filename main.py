@@ -1,12 +1,9 @@
 import argparse
-import torch
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
-from tqdm import tqdm
-from sklearn import metrics
+from torch.utils.data import DataLoader
 
 # Audio Augmentations
 from torchaudio_augmentations import (
@@ -26,13 +23,14 @@ from clmr.data import ContrastiveDataset
 from clmr.datasets import get_dataset
 from clmr.evaluation import evaluate
 from clmr.models import SampleCNN
-from clmr.modules import ContrastiveLearning, SupervisedLearning, PlotSpectogramCallback
+from clmr.modules import ContrastiveLearning, SupervisedLearning
 from clmr.utils import yaml_config_hook
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="SimCLR")
+    parser = argparse.ArgumentParser(description="CLMR")
+    parser = Trainer.add_argparse_args(parser)
 
     config = yaml_config_hook("./config/config.yaml")
     for k, v in config.items():

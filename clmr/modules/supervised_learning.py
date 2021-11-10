@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 
 
 class SupervisedLearning(LightningModule):
-    def __init__(self, args, encoder, output_dim):
+    def __init__(self, args, encoder: nn.Module, output_dim: int):
         super().__init__()
         self.save_hyperparameters(args)
         self.encoder = encoder
