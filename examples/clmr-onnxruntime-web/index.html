@@ -196,7 +196,6 @@
             e.preventDefault();
             if (audioContext === undefined) {
                 // Load the Audio the first time through
-                resetAudioContext(currentAudioPath);
                 loadSound(currentAudioPath);
             }
             else {
@@ -280,7 +279,6 @@
         function onSelectAudioFile(option) {
             const audioPath = option.value;
             currentAudioPath = audioPath;
-            resetAudioContext(audioPath);
             loadSound(audioPath);
             console.log(currentAudioPath);
         }
@@ -344,7 +342,6 @@
                 const file = fileList[0];
                 if (supportedAudioMIMEs.includes(file.type)) {
                     currentAudioPath = 'local/' + file.name;
-                    resetAudioContext();
                     loadSoundArrayBuffer(await file.arrayBuffer());
                     console.log(currentAudioPath);
                 }
@@ -359,6 +356,7 @@
 
         /** @param {ArrayBuffer} soundData */
         function loadSoundArrayBuffer(soundData) {
+            resetAudioContext();
             audioContext.decodeAudioData(soundData, function (buffer) {
                 document.getElementById('msg').textContent = "Audio sample download finished";
                 audioData = buffer;
