@@ -1,13 +1,18 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import Dataset
 from tqdm import tqdm
 from sklearn import metrics
 
-from clmr.data import ContrastiveDataset
-
 
 def evaluate(
-    encoder, finetuned_head, test_dataset, dataset_name: str, audio_length: int, device
+    encoder: nn.Module,
+    finetuned_head: nn.Module,
+    test_dataset: Dataset,
+    dataset_name: str,
+    audio_length: int,
+    device,
 ) -> dict:
     est_array = []
     gt_array = []
@@ -39,7 +44,7 @@ def evaluate(
             est_array.append(track_prediction)
             gt_array.append(label)
 
-    if dataset_name in ["magnatagatune"]:
+    if dataset_name in ["magnatagatune", "msd"]:
         est_array = torch.stack(est_array, dim=0).cpu().numpy()
         gt_array = torch.stack(gt_array, dim=0).cpu().numpy()
         roc_aucs = metrics.roc_auc_score(gt_array, est_array, average="macro")
@@ -49,5 +54,7 @@ def evaluate(
             "ROC-AUC": roc_aucs,
         }
 
+    est_array = torch.stack(est_array, dim=0)
+    _, est_array = torch.max(est_array, 1)  # extract the predicted labels here.
     accuracy = metrics.accuracy_score(gt_array, est_array)
     return {"Accuracy": accuracy}

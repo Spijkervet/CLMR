@@ -6,7 +6,7 @@ from torchaudio_augmentations import Compose, RandomResizedCrop
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
-
+from tqdm import tqdm
 
 from clmr.datasets import get_dataset
 from clmr.data import ContrastiveDataset
@@ -23,6 +23,7 @@ from clmr.utils import (
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="SimCLR")
+    parser = Trainer.add_argparse_args(parser)
 
     config = yaml_config_hook("./config/config.yaml")
     for k, v in config.items():
@@ -94,7 +95,7 @@ if __name__ == "__main__":
 
     n_features = encoder.fc.in_features  # get dimensions of last fully-connected layer
 
-    state_dict = load_encoder_checkpoint(args.checkpoint_path)
+    state_dict = load_encoder_checkpoint(args.checkpoint_path, train_dataset.n_classes)
     encoder.load_state_dict(state_dict)
 
     cl = ContrastiveLearning(args, encoder)
@@ -106,6 +107,22 @@ if __name__ == "__main__":
         cl.encoder,
         hidden_dim=n_features,
         output_dim=train_dataset.n_classes,
+    )
+
+    train_representations_dataset = module.extract_representations(train_loader)
+    train_loader = DataLoader(
+        train_representations_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        shuffle=True,
+    )
+
+    valid_representations_dataset = module.extract_representations(valid_loader)
+    valid_loader = DataLoader(
+        valid_representations_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        shuffle=False,
     )
 
     if args.finetuner_checkpoint_path:

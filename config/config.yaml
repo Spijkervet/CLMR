@@ -1,13 +1,13 @@
 # infra options
-gpus: 0
-accelerator: "dp" # use ddp for gpus > 1. Also see PyTorch Lightning documentation on distributed training.
-workers: 1 # I recommend tuning this parameter for faster data augmentation processing
+# gpus: 0
+# accelerator: "dp" # use ddp for gpus > 1. Also see PyTorch Lightning documentation on distributed training.
+workers: 0 # I recommend tuning this parameter for faster data augmentation processing
 dataset_dir: "./data"
 
 # train options
 seed: 42
 batch_size: 48
-max_epochs: 200
+# max_epochs: 200
 dataset: "magnatagatune" # ["magnatagatune", "msd", "gtzan", "librispeech", "audio"]
 supervised: 0 # train with supervised baseline
 
