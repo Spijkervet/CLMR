@@ -48,7 +48,6 @@
                 width: 100vw;
             }
         }
-
     </style>
 
 </header>
@@ -62,6 +61,22 @@
             <span class="navbar-toggler-icon"></span>
         </button>
     </nav>
+
+    <div class="container">
+        <p>
+            On this page, you are running a <a href="https://github.com/spijkervet/clmr">CLMR model</a> on the ONNX
+            Runtime in your browser. No data is sent to a server, all predictions are done on your device.
+            
+            The following happens:
+        <ol>
+            <li>It will load a pre-trained model in the background.</li>
+            <li>The model extracts audio representations from raw samples from the audio buffer.</li>
+            <li>The audio representations are given to a linear classifier, which predicts the corresponding audio tags.
+            </li>
+        </ol>
+        </p>
+    </div>
+
 
 
     <div class="audio-container">
@@ -274,14 +289,14 @@
                 options: {
                     scaleShowValues: true,
                     scales: {
-                            y: {
-                                beginAtZero: true
-                            }
+                        y: {
+                            beginAtZero: true
                         }
-                        
                     }
-                });
-            }
+
+                }
+            });
+        }
 
 
         function setupAudioNodes() {
