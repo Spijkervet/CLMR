@@ -11,7 +11,7 @@ class AUDIO(Dataset):
     """Create a Dataset for any folder of audio files.
     Args:
         root (str): Path to the directory where the dataset is found or downloaded.
-        src_ext_audio (str): The extension of the audio files to analyze. 
+        src_ext_audio (str): The extension of the audio files to analyze.
     """
 
     def __init__(
