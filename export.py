@@ -60,12 +60,13 @@ if __name__ == "__main__":
     # linear model
     # ------------
     state_dict = load_finetuner_checkpoint(args.finetuner_checkpoint_path)
-    encoder.fc.load_state_dict(OrderedDict({k.replace("0.", ""): v for k, v in state_dict.items()}))
+    encoder.fc.load_state_dict(
+        OrderedDict({k.replace("0.", ""): v for k, v in state_dict.items()})
+    )
 
     encoder_export = deepcopy(encoder)
     # set last fully connected layer to an identity function:
     encoder_export.fc = Identity()
-
 
     batch_size = 1
     channels = 1
@@ -73,4 +74,6 @@ if __name__ == "__main__":
     test_input = torch.randn(batch_size, 1, audio_length)
 
     convert_encoder_to_onnx(encoder, test_input, "clmr_sample-cnn.onnx")
-    convert_encoder_to_onnx(encoder_export, test_input, "clmr_encoder_only_sample-cnn.onnx")
+    convert_encoder_to_onnx(
+        encoder_export, test_input, "clmr_encoder_only_sample-cnn.onnx"
+    )
