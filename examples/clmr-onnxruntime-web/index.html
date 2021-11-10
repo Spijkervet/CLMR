@@ -8,12 +8,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
+        
         #canvas {
             margin-left: auto;
             margin-right: auto;
             display: block;
-            background-color: black;
-            margin-bottom: 1vh;
+            background-color: white;
+            margin-bottom: 3vh;
+            width: 100vw;
+            height: 5vh;
         }
 
         #controls {
@@ -29,6 +32,25 @@
             text-align: center;
         }
 
+        .header-image {
+            margin-top: 2vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2vh;
+            font-size: 3rem;
+            font-weight: 200;
+        }
+
+        .header-image a {
+            text-decoration: none;
+            color: #222;
+        }
+
+        .header-image span {
+            margin-right: 0.5vw;
+        }
+
         .audio-container {
             display: flex;
             flex-direction: column;
@@ -40,7 +62,11 @@
         .chart-container {
             margin: 0 auto;
             width: 70vw;
-            height: 10vh;
+            height: 30vh;
+        }
+
+        .onnx-image {
+            width: 200px;
         }
 
         @media only screen and (max-width: 600px) {
@@ -54,25 +80,24 @@
 
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="#">CLMR - ONNX Runtime</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </nav>
-
     <div class="container">
+
+        <div class="header-image">
+            <a href="https://github.com/spijkervet/clmr" target="_blank">
+                <span>CLMR x</span>
+                <img class="onnx-image" src="https://onnxruntime.ai/images/svg/ONNX-Runtime-logo.svg"/>
+            </a>
+        </div>
         <p>
-            On this page, you are running a <a href="https://github.com/spijkervet/clmr">CLMR model</a> on the ONNX
-            Runtime in your browser. No data is sent to a server, all predictions are done on your device.
+            On this page, you are running a <a href="https://github.com/spijkervet/clmr" target="_blank">CLMR model</a> on the ONNX Runtime in your browser.</br>
+            No data is sent to a server, all predictions are done on your device!</br></br>
             
-            The following happens:
+            In short, the following happens under the hood:
         <ol>
-            <li>It will load a pre-trained model in the background.</li>
+            <li>It will first load a pre-trained model in the background.</li>
             <li>The model extracts audio representations from raw samples from the audio buffer.</li>
-            <li>The audio representations are given to a linear classifier, which predicts the corresponding audio tags.
-            </li>
+            <li>The audio representations are given to a <b>linear classifier</b>, which predicts the corresponding audio tags.</li>
+            <li>The multi-label predictions are shown in the bar plot.</li>
         </ol>
         </p>
     </div>
@@ -82,7 +107,7 @@
     <div class="audio-container">
 
         <div class="form-group">
-            <label for="exampleFormControlSelect2">Select piece of music:</label>
+            <label for="audioOptions">Select a piece of music:</label>
             <select class="form-control" id="audioOptions" onchange="onSelectAudioFile(this)">
                 <option>./data/queen_love_of_my_life_22050.mp3</option>
                 <option>./data/nirvana_smells_like_teen_spirit_22050.mp3</option>
@@ -108,7 +133,7 @@
     </div>
 
     <div class="chart-container">
-        <canvas id="myChart"></canvas>
+        <canvas id="myChart" height="300"></canvas>
     </div>
 
 
@@ -230,6 +255,9 @@
                     alert('Web Audio API is not supported in this browser');
                 }
             }
+            else {
+                audioContext = new AudioContext();
+            }
 
             stopAudio();
 
@@ -282,18 +310,23 @@
                 data: {
                     labels: MTT_LABELS,
                     datasets: [{
+                        backgroundColor: '#007bff88',
                         label: 'Predictions',
                         data: Array(numClasses).fill(0),
                     }]
                 },
                 options: {
+                    indexAxis: 'y',
                     scaleShowValues: true,
                     scales: {
                         y: {
-                            beginAtZero: true
-                        }
+                            beginAtZero: true,
+                            stacked: true,
+                            ticks: {
+                                autoSkip: false
+                            }
+                        },
                     }
-
                 }
             });
         }
@@ -314,14 +347,14 @@
         // Load the audio from the URL via Ajax and store it in global variable audioData
         // Note that the audio load is asynchronous
         function loadSound(url) {
-            document.getElementById('msg').textContent = "Loading audio...";
+            setMessageText("Loading audio...");
             let request = new XMLHttpRequest();
             request.open('GET', url, true);
             request.responseType = 'arraybuffer';
             // When loaded, decode the data and play the sound
             request.onload = function () {
                 audioContext.decodeAudioData(request.response, function (buffer) {
-                    document.getElementById('msg').textContent = "Audio sample download finished";
+                    setMessageText("Audio sample download finished");
                     audioData = buffer;
                     playSound(audioData);
                 }, onError);
@@ -347,7 +380,13 @@
         }
 
         function updateChartPredictions(chart, array) {
-            chart.data.datasets[0].data = array;
+
+            const sorted = sortChart(array, MTT_LABELS);
+
+
+            chart.data.datasets[0].data = sorted.sortedData;
+            chart.data.labels = sorted.sortedLabels;
+
             chart.update();
         }
 
@@ -388,19 +427,25 @@
 
 
         async function checkCurrentTime() {
-            const currentTimeInSamples = audioContext.currentTime * sampleRate;
 
-            if (lastSampleCounter + inputSampleLength < currentTimeInSamples) {
-                const startTime = currentTimeInSamples;
-                const endTime = currentTimeInSamples + inputSampleLength;
-                const samples = getSamplesFromTimespan(startTime, endTime);
-                makePredictionsFromSamples(samples);
+            if (audioPlaying) {
+                const currentTimeInSamples = audioContext.currentTime * sampleRate;
+                if (lastSampleCounter + inputSampleLength < currentTimeInSamples) {
+                    const startTime = currentTimeInSamples;
+                    const endTime = currentTimeInSamples + inputSampleLength;
+                    const samples = getSamplesFromTimespan(startTime, endTime);
 
-                lastSampleCounter = currentTimeInSamples;
-
-                console.log(`Predicting ${currentAudioPath} between time: ${startTime / sampleRate} - ${endTime / sampleRate}`)
+                    const debugMsg = `Predicting audio samples between: ${Math.round(startTime / sampleRate, 1)} - ${Math.round(endTime / sampleRate, 1)} seconds`
+                    setMessageText(debugMsg);
+                    console.log(debugMsg);
+                    
+                    makePredictionsFromSamples(samples);
+                    lastSampleCounter = currentTimeInSamples;
+                }
             }
-
+            else {
+                lastSampleCounter = 0;
+            }
         }
 
         function drawTimeDomain() {
@@ -411,7 +456,7 @@
             for (let i = 0; i < amplitudeArray.length; i++) {
                 let value = amplitudeArray[i] / 256;
                 let y = canvasHeight - (canvasHeight * value) - 1;
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#000000';
                 ctx.fillRect(i, y, 1, 1);
             }
         }
@@ -434,14 +479,36 @@
             return results;
         }
 
-        function setResultDiv(text) {
-            document.getElementById("result").textContent = text;
+        function setMessageText(text) {
+            document.getElementById('msg').textContent = text;
         }
 
         function setModelLoaded() {
             document.getElementById("loadONNXModel").textContent = "ONNX Model Loaded";
             modelLoaded = true;
         }
+
+        function sortChart(dataset, labels) {
+            const allData = [];
+            for (let i = 0; i < labels.length; ++i) {
+                allData.push({
+                    label: labels[i],
+                    data: dataset[i]
+                });
+            }
+
+            // Sort them by the data value
+            allData.sort((a, b) => a.data - b.data).reverse();
+
+            // And split them again
+            const sortedLabels = allData.map(e => e.label);
+            const sortedData = allData.map(e => e.data);
+            return {
+                sortedData: sortedData,
+                sortedLabels: sortedLabels
+            }
+        }
+
     </script>
 </body>
 
