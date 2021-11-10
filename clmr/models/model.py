@@ -14,6 +14,7 @@ class Model(nn.Module):
 
             nn.init.kaiming_uniform_(m.weight, mode="fan_in", nonlinearity="relu")
 
+
 class Identity(nn.Module):
     def __init__(self):
         super(Identity, self).__init__()
