@@ -66,7 +66,7 @@
         <p>
             On this page, you are running a <a href="https://github.com/spijkervet/clmr">CLMR model</a> on the ONNX
             Runtime in your browser. No data is sent to a server, all predictions are done on your device.
-            
+
             The following happens:
         <ol>
             <li>It will load a pre-trained model in the background.</li>
@@ -89,6 +89,11 @@
                 <option>./data/john_lennon_imagine_22050.mp3</option>
                 <option>./data/fisher_losing_it_22050.mp3</option>
             </select>
+        </div>
+
+        <div class="form-group">
+            <label for="localFileInput">Or upload a local file:</label>
+            <input id="localFileInput" type='file'>
         </div>
 
         <canvas id="canvas"></canvas>
@@ -136,6 +141,10 @@
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
     <script>
 
+        const supportedAudioMIMEs = [
+            'audio/mpeg',
+        ];
+
         // Hacks to deal with different function names in different browsers
         window.requestAnimFrame = (function () {
             return window.requestAnimationFrame ||
@@ -179,11 +188,16 @@
         let canvasWidth = 512;
         let canvasHeight = 256;
         let ctx = document.querySelector('#canvas').getContext('2d');
+        const localFileInputElement = document.getElementById('localFileInput');
+        localFileInputElement.setAttribute('accept', supportedAudioMIMEs.join(', '));
+        localFileInputElement.addEventListener('change', handleLocalFileChange);
 
         document.querySelector('#start_button').addEventListener('click', function (e) {
             e.preventDefault();
             if (audioContext === undefined) {
+                // Load the Audio the first time through
                 resetAudioContext(currentAudioPath);
+                loadSound(currentAudioPath);
             }
             else {
                 startAudio();
@@ -220,7 +234,7 @@
         // When the Start button is clicked, finish setting up the audio nodes, play the sound,
         // gather samples for the analysis, update the canvas
 
-        function resetAudioContext(audioPath) {
+        function resetAudioContext() {
             lastSampleCounter = 0;
             // the AudioContext is the primary 'container' for all your audio node objects
             if (!audioContext) {
@@ -246,10 +260,6 @@
                     requestAnimFrame(drawTimeDomain);
                 }
             }
-            // Load the Audio the first time through, otherwise play it from the buffer
-            loadSound(audioPath);
-            // playSound(audioData);
-
         }
 
         function startAudio() {
@@ -271,6 +281,7 @@
             const audioPath = option.value;
             currentAudioPath = audioPath;
             resetAudioContext(audioPath);
+            loadSound(audioPath);
             console.log(currentAudioPath);
         }
 
@@ -320,13 +331,39 @@
             request.responseType = 'arraybuffer';
             // When loaded, decode the data and play the sound
             request.onload = function () {
-                audioContext.decodeAudioData(request.response, function (buffer) {
-                    document.getElementById('msg').textContent = "Audio sample download finished";
-                    audioData = buffer;
-                    playSound(audioData);
-                }, onError);
+                loadSoundArrayBuffer(request.response);
             }
             request.send();
+        }
+
+        /** @param {InputEvent} e */
+        async function handleLocalFileChange(e) {
+            /** @type FileList */
+            const fileList = e.currentTarget?.files;
+            if (fileList && fileList[0]) {
+                const file = fileList[0];
+                if (supportedAudioMIMEs.includes(file.type)) {
+                    currentAudioPath = 'local/' + file.name;
+                    resetAudioContext();
+                    loadSoundArrayBuffer(await file.arrayBuffer());
+                    console.log(currentAudioPath);
+                }
+                else {
+                    console.log('File type is unsupported.');
+                }
+            }
+            else {
+                console.log('No file found.');
+            }
+        }
+
+        /** @param {ArrayBuffer} soundData */
+        function loadSoundArrayBuffer(soundData) {
+            audioContext.decodeAudioData(soundData, function (buffer) {
+                document.getElementById('msg').textContent = "Audio sample download finished";
+                audioData = buffer;
+                playSound(audioData);
+            }, onError);
         }
 
         function softmax(arr) {
