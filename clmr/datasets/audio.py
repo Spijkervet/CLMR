@@ -1,9 +1,7 @@
 import os
-import subprocess
-import torchaudio
 from glob import glob
 from torch import Tensor
-from typing import Any, Tuple, Optional
+from typing import Tuple
 
 
 from clmr.datasets import Dataset
@@ -13,13 +11,8 @@ class AUDIO(Dataset):
     """Create a Dataset for any folder of audio files.
     Args:
         root (str): Path to the directory where the dataset is found or downloaded.
-        folder_in_archive (str, optional): The top-level directory of the dataset.
-        subset (str, optional): Which subset of the dataset to use.
-            One of ``"training"``, ``"validation"``, ``"testing"`` or ``None``.
-            If ``None``, the entire dataset is used. (default: ``None``).
+        src_ext_audio (str): The extension of the audio files to analyze. 
     """
-
-    _ext_audio = ".wav"
 
     def __init__(
         self,

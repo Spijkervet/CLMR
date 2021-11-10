@@ -8,7 +8,7 @@ dataset_dir: "./data"
 seed: 42
 batch_size: 48
 # max_epochs: 200
-dataset: "magnatagatune" # ["magnatagatune", "msd", "gtzan", "librispeech", "audio"]
+dataset: "magnatagatune" # ["magnatagatune", "msd", "gtzan", "audio"]
 supervised: 0 # train with supervised baseline
 
 # SimCLR model options

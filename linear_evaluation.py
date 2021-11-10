@@ -6,7 +6,6 @@ from torchaudio_augmentations import Compose, RandomResizedCrop
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
-from tqdm import tqdm
 
 from clmr.datasets import get_dataset
 from clmr.data import ContrastiveDataset
