@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<header>
+    <title>CLMR on ONNX Runtime</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        #canvas {
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+            background-color: black;
+            margin-bottom: 1vh;
+        }
+
+        #controls {
+            text-align: center;
+        }
+
+        #start_button,
+        #stop_button {
+            font-size: 16pt;
+        }
+
+        #msg {
+            text-align: center;
+        }
+
+        .audio-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+        }
+
+        .chart-container {
+            margin: 0 auto;
+            width: 70vw;
+            height: 10vh;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .chart-container {
+                width: 100vw;
+            }
+        }
+
+    </style>
+
+</header>
+
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">CLMR - ONNX Runtime</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </nav>
+
+
+    <div class="audio-container">
+
+        <div class="form-group">
+            <label for="exampleFormControlSelect2">Select piece of music:</label>
+            <select class="form-control" id="audioOptions" onchange="onSelectAudioFile(this)">
+                <option>./data/queen_love_of_my_life_22050.mp3</option>
+                <option>./data/nirvana_smells_like_teen_spirit_22050.mp3</option>
+                <option>./data/john_lennon_imagine_22050.mp3</option>
+                <option>./data/fisher_losing_it_22050.mp3</option>
+            </select>
+        </div>
+
+        <canvas id="canvas"></canvas>
+
+        <p id="controls">
+
+            <input type="button" id="start_button" class="btn btn-primary" value="Start">
+            &nbsp; &nbsp;
+            <input type="button" id="stop_button" class="btn btn-primary" value="Stop">
+        <p id="loadONNXModel">Loading ONNX model...</p>
+        </p>
+        <p id="msg"></p>
+        </p>
+
+
+
+    </div>
+
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+
+
+
+    <div id="result">
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+        integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+        crossorigin="anonymous"></script>
+
+    <!-- chart library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.6.0/chart.min.js"
+        integrity="sha512-GMGzUEevhWh8Tc/njS0bDpwgxdCJLQBWG3Z2Ct+JGOpVnEmjvNx6ts4v6A2XJf1HOrtOsfhv3hBKpK9kE5z8AQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- import ONNXRuntime Web from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script>
+
+        // Hacks to deal with different function names in different browsers
+        window.requestAnimFrame = (function () {
+            return window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                function (callback, element) {
+                    window.setTimeout(callback, 1000 / 60);
+                };
+        })();
+        window.AudioContext = (function () {
+            return window.webkitAudioContext || window.AudioContext || window.mozAudioContext;
+        })();
+
+
+        let session;
+        let modelLoaded = false;
+        let chart;
+        var currentAudioPath = document.getElementById("audioOptions")[0].value;
+        var lastSampleCounter = 0;
+        const sampleRate = 22050;
+        const inputSampleLength = 59049;
+        const numClasses = 50;
+        const onnxModelPath = "clmr_sample-cnn.onnx";
+
+        const MTT_LABELS = ['guitar', 'classical', 'slow', 'techno', 'strings', 'drums', 'electronic', 'rock', 'fast', 'piano', 'ambient', 'beat', 'violin', 'vocal', 'synth', 'female', 'indian', 'opera', 'male', 'singing', 'vocals', 'no vocals', 'harpsichord', 'loud', 'quiet', 'flute', 'woman', 'male vocal', 'no vocal', 'pop', 'soft', 'sitar', 'solo', 'man', 'classic', 'choir', 'voice', 'new age', 'dance', 'male voice', 'female vocal', 'beats', 'harp', 'cello', 'no voice', 'weird', 'country', 'metal', 'female voice', 'choral'];
+
+
+
+        // Global Variables for Audio
+        let audioContext;
+        let audioBuffer;
+        let sourceNode;
+        let analyserNode;
+        let javascriptNode;
+        let audioData = null;
+        let audioPlaying = false;
+        let sampleSize = 1024;  // number of samples to collect before analyzing data
+        let amplitudeArray;     // array to hold time domain data
+        // This must be hosted on the same server as this page - otherwise you get a Cross Site Scripting error
+        // Global variables for the Graphics
+        let canvasWidth = 512;
+        let canvasHeight = 256;
+        let ctx = document.querySelector('#canvas').getContext('2d');
+
+        document.querySelector('#start_button').addEventListener('click', function (e) {
+            e.preventDefault();
+            if (audioContext === undefined) {
+                resetAudioContext(currentAudioPath);
+            }
+            else {
+                startAudio();
+            }
+        });
+
+        document.querySelector('#stop_button').addEventListener('click', function (e) {
+            e.preventDefault();
+            stopAudio();
+        });
+        main();
+        initChart();
+
+
+        // use an async context to call onnxruntime functions.
+        async function main() {
+            try {
+                // create a new session and load the specific model.
+                //
+                // the model in this example contains a single MatMul node
+                // it has 2 inputs: 'a'(float32, 3x4) and 'b'(float32, 4x3)
+                // it has 1 output: 'c'(float32, 3x3)
+                session = await ort.InferenceSession.create(onnxModelPath);
+                setModelLoaded();
+                // feed inputs and run
+
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+
+
+        // When the Start button is clicked, finish setting up the audio nodes, play the sound,
+        // gather samples for the analysis, update the canvas
+
+        function resetAudioContext(audioPath) {
+            lastSampleCounter = 0;
+            // the AudioContext is the primary 'container' for all your audio node objects
+            if (!audioContext) {
+                try {
+                    audioContext = new AudioContext();
+                } catch (e) {
+                    alert('Web Audio API is not supported in this browser');
+                }
+            }
+
+            stopAudio();
+
+
+            // Set up the audio Analyser, the Source Buffer and javascriptNode
+            setupAudioNodes();
+            // setup the event handler that is triggered every time enough samples have been collected
+            // trigger the audio analysis and draw the results
+            javascriptNode.onaudioprocess = function () {
+                // get the Time Domain data for this sample
+                analyserNode.getByteTimeDomainData(amplitudeArray);
+                // draw the display if the audio is playing
+                if (audioPlaying == true) {
+                    requestAnimFrame(drawTimeDomain);
+                }
+            }
+            // Load the Audio the first time through, otherwise play it from the buffer
+            loadSound(audioPath);
+            // playSound(audioData);
+
+        }
+
+        function startAudio() {
+            if (!audioPlaying) {
+                audioPlaying = true;
+            }
+        }
+
+        function stopAudio() {
+            if (audioPlaying) {
+                sourceNode.stop(0);
+                audioPlaying = false;
+            }
+        }
+
+
+
+        function onSelectAudioFile(option) {
+            const audioPath = option.value;
+            currentAudioPath = audioPath;
+            resetAudioContext(audioPath);
+            console.log(currentAudioPath);
+        }
+
+
+        function initChart() {
+            const ctx = document.getElementById('myChart');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: MTT_LABELS,
+                    datasets: [{
+                        label: 'Predictions',
+                        data: Array(numClasses).fill(0),
+                    }]
+                },
+                options: {
+                    scaleShowValues: true,
+                    scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                        
+                    }
+                });
+            }
+
+
+        function setupAudioNodes() {
+            sourceNode = audioContext.createBufferSource();
+            analyserNode = audioContext.createAnalyser();
+            javascriptNode = audioContext.createScriptProcessor(sampleSize, 1, 1);
+            // Create the array for the data values
+            amplitudeArray = new Uint8Array(analyserNode.frequencyBinCount);
+            // Now connect the nodes together
+            sourceNode.connect(audioContext.destination);
+            sourceNode.connect(analyserNode);
+            analyserNode.connect(javascriptNode);
+            javascriptNode.connect(audioContext.destination);
+        }
+        // Load the audio from the URL via Ajax and store it in global variable audioData
+        // Note that the audio load is asynchronous
+        function loadSound(url) {
+            document.getElementById('msg').textContent = "Loading audio...";
+            let request = new XMLHttpRequest();
+            request.open('GET', url, true);
+            request.responseType = 'arraybuffer';
+            // When loaded, decode the data and play the sound
+            request.onload = function () {
+                audioContext.decodeAudioData(request.response, function (buffer) {
+                    document.getElementById('msg').textContent = "Audio sample download finished";
+                    audioData = buffer;
+                    playSound(audioData);
+                }, onError);
+            }
+            request.send();
+        }
+
+        function softmax(arr) {
+            const C = Math.max(...arr);
+            const d = arr.map((y) => Math.exp(y - C)).reduce((a, b) => a + b);
+            return arr.map((value, index) => {
+                return Math.exp(value - C) / d;
+            })
+        }
+
+
+        function chunkAudio(arr, size) {
+            var newArray = [];
+            for (var i = 0; i < arr.length; i += size) {
+                newArray.push(arr.slice(i, i + size));
+            }
+            return newArray;
+        }
+
+        function updateChartPredictions(chart, array) {
+            chart.data.datasets[0].data = array;
+            chart.update();
+        }
+
+        async function makePredictionsFromSamples(samples) {
+            if (samples.length == inputSampleLength) {
+                runInference(samples).then((results) => {
+                    var prediction = results.representation.data;
+                    prediction = softmax(prediction);
+                    updateChartPredictions(chart, prediction);
+                }).catch((error) => {
+                    console.log(error);
+                });
+            }
+            else {
+                console.log("Input length is wrong!")
+            }
+        }
+
+        function getSamplesFromTimespan(startTime, endTime) {
+            if (sourceNode !== null) {
+                var samples = sourceNode.buffer.getChannelData(0);
+                samples = samples.slice(startTime, endTime);
+                return samples
+            }
+        }
+
+        // Play the audio and loop until stopped
+        function playSound(buffer) {
+            sourceNode.buffer = buffer;
+            sourceNode.start(0);    // Play the sound now
+            sourceNode.loop = true;
+            audioPlaying = true;
+        }
+
+        function onError(e) {
+            console.log(e);
+        }
+
+
+        async function checkCurrentTime() {
+            const currentTimeInSamples = audioContext.currentTime * sampleRate;
+
+            if (lastSampleCounter + inputSampleLength < currentTimeInSamples) {
+                const startTime = currentTimeInSamples;
+                const endTime = currentTimeInSamples + inputSampleLength;
+                const samples = getSamplesFromTimespan(startTime, endTime);
+                makePredictionsFromSamples(samples);
+
+                lastSampleCounter = currentTimeInSamples;
+
+                console.log(`Predicting ${currentAudioPath} between time: ${startTime / sampleRate} - ${endTime / sampleRate}`)
+            }
+
+        }
+
+        function drawTimeDomain() {
+            clearCanvas();
+
+            checkCurrentTime();
+
+            for (let i = 0; i < amplitudeArray.length; i++) {
+                let value = amplitudeArray[i] / 256;
+                let y = canvasHeight - (canvasHeight * value) - 1;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(i, y, 1, 1);
+            }
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        }
+
+
+
+        async function runInference(array) {
+
+            // prepare inputs. a tensor need its corresponding TypedArray as data
+            const audioTensor = new ort.Tensor('float32', array, [1, 1, inputSampleLength]);
+
+            // prepare feeds. use model input names as keys.
+            const feeds = { audio: audioTensor };
+
+            const results = await session.run(feeds);
+            return results;
+        }
+
+        function setResultDiv(text) {
+            document.getElementById("result").textContent = text;
+        }
+
+        function setModelLoaded() {
+            document.getElementById("loadONNXModel").textContent = "ONNX Model Loaded";
+            modelLoaded = true;
+        }
+    </script>
+</body>
+
+</html>
