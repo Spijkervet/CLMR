@@ -14,7 +14,8 @@ PyTorch implementation of [Contrastive Learning of Musical Representations](http
       <img class="onnx-image" style="height: 20px;" src="https://onnxruntime.ai/images/svg/ONNX-Runtime-logo.svg"/>
   </a>
 </div>
-You can run a pre-trained CLMR model directly from within your browser using ONNX Runtime: <a href="https://spijkervet.github.io/CLMR/examples/clmr-onnxruntime-web/">here</a>.
+
+You can run a pre-trained CLMR model directly from within your browser using ONNX Runtime: [here](https://spijkervet.github.io/CLMR/examples/clmr-onnxruntime-web).
 
 
 In this work, we introduce SimCLR to the music domain and contribute a large chain of audio data augmentations, to form a simple framework for self-supervised learning of raw waveforms of music: CLMR. We evaluate the performance of the self-supervised learned representations on the task of music classification.
