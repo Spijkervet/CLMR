@@ -11,7 +11,7 @@ from clmr.utils import (
     yaml_config_hook,
     load_encoder_checkpoint,
     extract_representations,
-    save_representations
+    save_representations,
 )
 
 
@@ -25,10 +25,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    args.device = (
+        torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    )
 
     if not os.path.exists(args.checkpoint_path):
-        raise FileNotFoundError("That checkpoint does not exist")
+        raise FileNotFoundError(
+            f"The checkpoint file {args.checkpoint_path} could not be found."
+        )
 
     # ------------
     # dataloaders
@@ -41,9 +45,24 @@ if __name__ == "__main__":
     valid_dataset = SplitMusicDataset(valid_dataset, max_audio_length=args.audio_length)
     test_dataset = SplitMusicDataset(test_dataset, max_audio_length=args.audio_length)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers, shuffle=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, num_workers=args.workers, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.workers, shuffle=False)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        shuffle=False,
+    )
+    valid_loader = DataLoader(
+        valid_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        shuffle=False,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        shuffle=False,
+    )
 
     # ------------
     # encoder
@@ -69,7 +88,9 @@ if __name__ == "__main__":
     r, y = extract_representations(train_loader, encoder, device=args.device)
     save_representations("train.pt", r, y)
 
-    print(f"Extracted representations of {(len(r) * args.audio_length) / args.sample_rate / 60 / 60} hours of music in {time.time()-start_time} seconds")
+    print(
+        f"Extracted representations of {(len(r) * args.audio_length) / args.sample_rate / 60 / 60} hours of music in {time.time()-start_time} seconds"
+    )
 
     r, y = extract_representations(valid_loader, encoder, device=args.device)
     save_representations("valid.pt", r, y)

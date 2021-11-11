@@ -46,17 +46,17 @@ if __name__ == "__main__":
     # ------------
     # dataloaders
     # ------------
-    if os.path.exists("train.pt"):
-        train_dataset = create_dataset_from_representations("train.pt")
-        valid_dataset = create_dataset_from_representations("valid.pt")
-    else:
-        transform = Compose([RandomResizedCrop(n_samples=args.audio_length)])
-        train_dataset = get_dataset(args.dataset, args.dataset_dir, subset="train")
-        valid_dataset = get_dataset(args.dataset, args.dataset_dir, subset="valid")
+    # if os.path.exists("train.pt"):
+    #     train_dataset = create_dataset_from_representations("train.pt")
+    #     valid_dataset = create_dataset_from_representations("valid.pt")
+    # else:
+    
+    transform = Compose([RandomResizedCrop(n_samples=args.audio_length)])
+    train_dataset = get_dataset(args.dataset, args.dataset_dir, subset="train")
+    valid_dataset = get_dataset(args.dataset, args.dataset_dir, subset="valid")
 
-        train_dataset = ContrastiveDataset(train_dataset, input_shape=[1, args.audio_length], transform=transform)
-        valid_dataset = ContrastiveDataset(valid_dataset, input_shape=[1, args.audio_length], transform=transform)
-
+    train_dataset = ContrastiveDataset(train_dataset, input_shape=[1, args.audio_length], transform=transform)
+    valid_dataset = ContrastiveDataset(valid_dataset, input_shape=[1, args.audio_length], transform=transform)
 
     test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
     contrastive_test_dataset = ContrastiveDataset(test_dataset, input_shape=[1, args.audio_length], transform=None)
@@ -81,8 +81,8 @@ if __name__ == "__main__":
     encoder.load_state_dict(state_dict)
 
     cl = ContrastiveLearning(args, encoder)
-    # cl.eval()
-    # cl.freeze()
+    cl.eval()
+    cl.freeze()
 
     module = LinearEvaluation(
         args,

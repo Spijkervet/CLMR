@@ -1,7 +1,10 @@
+import math
 import os
 import subprocess
 import torchaudio
+from torch import Tensor
 from torch.utils.data import Dataset as TorchDataset
+from typing import Tuple
 from abc import abstractmethod
 
 
@@ -43,3 +46,33 @@ class Dataset(TorchDataset):
             print("File not found, try running `python preprocess.py` first.\n\n", e)
             return
         return audio, sample_rate
+
+
+class SplitMusicDataset(Dataset):
+    def __init__(self, dataset: Dataset, max_audio_length: int):
+        self.dataset = dataset
+        self.max_audio_length = max_audio_length
+        self.n_classes = dataset.n_classes
+
+        number_of_tracks = len(self.dataset)
+        number_of_samples = self.dataset[0][0].shape[1]
+        number_of_full_chunks = math.floor(number_of_samples / self.max_audio_length)
+
+        self.index = []
+        for track_idx in range(number_of_tracks):
+            for sample_idx in range(number_of_full_chunks):
+                self.index.append([track_idx, sample_idx])
+
+    def __len__(self) -> int:
+        return len(self.index)
+
+    def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor]:
+        track_idx, sample_idx = self.index[idx]
+        x, y = self.dataset[track_idx]
+        x = x[
+            :,
+            sample_idx
+            * self.max_audio_length : (sample_idx + 1)
+            * self.max_audio_length,
+        ]
+        return x, y
