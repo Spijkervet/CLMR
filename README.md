@@ -51,6 +51,7 @@ The following command downloads MagnaTagATune, preprocesses it and starts self-s
 ```
 python3 preprocess.py --dataset magnatagatune
 
+# add --workers 8 to increase the number of parallel CPU threads to speed up online data augmentations + training.
 python3 main.py --dataset magnatagatune --gpus 1 --workers 8
 
 python3 linear_evaluation.py --gpus 1 --workers 8 --checkpoint_path [path to checkpoint.pt, usually in ./runs]
