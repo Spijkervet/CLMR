@@ -116,6 +116,14 @@
             </select>
         </div>
 
+        <div class="form-group">
+            <label for="localFileInput">Or select a local file:</label>
+            <input id="localFileInput" class="form-control-file" type='file'>
+            <div>
+                <i style="font-size: 0.8rem;">No data is uploaded to the server.</br>Ideally, the sample rate of the file should be 22,050Hz. But smaller / higher sample rates also work.</i>
+            </div>
+        </div>
+
         <canvas id="canvas"></canvas>
 
         <p id="controls">
@@ -161,6 +169,11 @@
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
     <script>
 
+        const supportedAudioMIMEs = [
+            'audio/mpeg',
+            'audio/wav',
+        ];
+
         // Hacks to deal with different function names in different browsers
         window.requestAnimFrame = (function () {
             return window.requestAnimationFrame ||
@@ -204,11 +217,15 @@
         let canvasWidth = 512;
         let canvasHeight = 256;
         let ctx = document.querySelector('#canvas').getContext('2d');
+        const localFileInputElement = document.getElementById('localFileInput');
+        localFileInputElement.setAttribute('accept', supportedAudioMIMEs.join(', '));
+        localFileInputElement.addEventListener('change', handleLocalFileChange);
 
         document.querySelector('#start_button').addEventListener('click', function (e) {
             e.preventDefault();
             if (audioContext === undefined) {
-                resetAudioContext(currentAudioPath);
+                // Load the Audio the first time through
+                loadSound(currentAudioPath);
             }
             else {
                 startAudio();
@@ -245,7 +262,7 @@
         // When the Start button is clicked, finish setting up the audio nodes, play the sound,
         // gather samples for the analysis, update the canvas
 
-        function resetAudioContext(audioPath) {
+        function resetAudioContext() {
             lastSampleCounter = 0;
             // the AudioContext is the primary 'container' for all your audio node objects
             if (!audioContext) {
@@ -274,10 +291,6 @@
                     requestAnimFrame(drawTimeDomain);
                 }
             }
-            // Load the Audio the first time through, otherwise play it from the buffer
-            loadSound(audioPath);
-            // playSound(audioData);
-
         }
 
         function startAudio() {
@@ -298,7 +311,7 @@
         function onSelectAudioFile(option) {
             const audioPath = option.value;
             currentAudioPath = audioPath;
-            resetAudioContext(audioPath);
+            loadSound(audioPath);
             console.log(currentAudioPath);
         }
 
@@ -353,13 +366,39 @@
             request.responseType = 'arraybuffer';
             // When loaded, decode the data and play the sound
             request.onload = function () {
-                audioContext.decodeAudioData(request.response, function (buffer) {
-                    setMessageText("Audio sample download finished");
-                    audioData = buffer;
-                    playSound(audioData);
-                }, onError);
+                loadSoundArrayBuffer(request.response);
             }
             request.send();
+        }
+
+        /** @param {InputEvent} e */
+        async function handleLocalFileChange(e) {
+            /** @type FileList */
+            const fileList = e.currentTarget?.files;
+            if (fileList && fileList[0]) {
+                const file = fileList[0];
+                if (supportedAudioMIMEs.includes(file.type)) {
+                    currentAudioPath = 'local/' + file.name;
+                    loadSoundArrayBuffer(await file.arrayBuffer());
+                    console.log(currentAudioPath);
+                }
+                else {
+                    console.log('File type is unsupported.');
+                }
+            }
+            else {
+                console.log('No file found.');
+            }
+        }
+
+        /** @param {ArrayBuffer} soundData */
+        function loadSoundArrayBuffer(soundData) {
+            resetAudioContext();
+            audioContext.decodeAudioData(soundData, function (buffer) {
+                document.getElementById('msg').textContent = "Audio sample download finished";
+                audioData = buffer;
+                playSound(audioData);
+            }, onError);
         }
 
         function softmax(arr) {
