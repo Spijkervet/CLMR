@@ -9,7 +9,7 @@ PyTorch implementation of [Contrastive Learning of Musical Representations](http
 [![Supplementary Material](https://img.shields.io/badge/Supplementary%20Material-2103.09410-blue.svg)](https://github.com/Spijkervet/CLMR/releases/download/2.1/CLMR.-.Supplementary.Material.pdf)
 
 <div class="header-image" style="display: flex; flex-direction: column; align-items: center;">
-  <a href="https://github.com/spijkervet/clmr" target="_blank" style="text-decoration: none;">
+  <a href="https://spijkervet.github.io/CLMR/examples/clmr-onnxruntime-web" target="_blank" style="text-decoration: none;">
       <span style="font-size: 1.5rem; font-weight: 100;">CLMR x</span>
       <img class="onnx-image" style="height: 20px;" src="https://onnxruntime.ai/images/svg/ONNX-Runtime-logo.svg"/>
   </a>
