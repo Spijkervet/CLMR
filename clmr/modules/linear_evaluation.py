@@ -1,12 +1,9 @@
 import torch
 import torch.nn as nn
 import torchmetrics
-from copy import deepcopy
 from pytorch_lightning import LightningModule
 from torch import Tensor
-from torch.utils.data import DataLoader, Dataset, TensorDataset
 from typing import Tuple
-from tqdm import tqdm
 
 
 class LinearEvaluation(LightningModule):
@@ -51,20 +48,21 @@ class LinearEvaluation(LightningModule):
     def training_step(self, batch, _) -> Tensor:
         x, y = batch
         loss, preds = self.forward(x, y)
-
-        self.log("Train/accuracy", self.accuracy(preds, y))
-        # self.log("Train/pr_auc", self.average_precision(preds, y))
-        self.log("Train/loss", loss)
+        self.log_metrics(loss, preds, y, "Train")
         return loss
 
     def validation_step(self, batch, _) -> Tensor:
         x, y = batch
         loss, preds = self.forward(x, y)
-
-        self.log("Valid/accuracy", self.accuracy(preds, y))
-        # self.log("Valid/pr_auc", self.average_precision(preds, y))
-        self.log("Valid/loss", loss)
+        self.log_metrics(loss, preds, y, "Valid")
         return loss
+
+    def log_metrics(self, loss, preds: torch.Tensor, y: torch.Tensor, split: str):
+        self.log(f"{split}/loss", loss, on_epoch=True)
+        if self.hparams.dataset in ["magnatagatune", "msd"]:
+            self.log(f"{split}/pr_auc", self.average_precision(preds, y), on_epoch=True)
+        else:
+            self.log(f"{split}/accuracy", self.accuracy(preds, y), on_epoch=True)
 
     def configure_criterion(self) -> nn.Module:
         if self.hparams.dataset in ["magnatagatune", "msd"]:
@@ -99,23 +97,3 @@ class LinearEvaluation(LightningModule):
             }
         else:
             return {"optimizer": optimizer}
-
-    def extract_representations(self, dataloader: DataLoader) -> Dataset:
-
-        representations = []
-        ys = []
-        for x, y in tqdm(dataloader):
-            with torch.no_grad():
-                h0 = self.encoder(x)
-                representations.append(h0)
-                ys.append(y)
-
-        if len(representations) > 1:
-            representations = torch.cat(representations, dim=0)
-            ys = torch.cat(ys, dim=0)
-        else:
-            representations = representations[0]
-            ys = ys[0]
-
-        tensor_dataset = TensorDataset(representations, ys)
-        return tensor_dataset
