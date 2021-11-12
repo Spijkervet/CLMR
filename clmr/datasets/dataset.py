@@ -1,5 +1,6 @@
 import math
 import os
+import random
 import subprocess
 import torchaudio
 from torch import Tensor
@@ -62,6 +63,8 @@ class SplitMusicDataset(Dataset):
         for track_idx in range(number_of_tracks):
             for sample_idx in range(number_of_full_chunks):
                 self.index.append([track_idx, sample_idx])
+
+        random.shuffle(self.index)
 
     def __len__(self) -> int:
         return len(self.index)

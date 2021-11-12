@@ -11,14 +11,12 @@ def extract_representations(
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     representations = []
     ys = []
-    num_samples = 0
     for x, y in tqdm(dataloader):
         with torch.no_grad():
             x = x.to(device)
             h0 = encoder(x)
             representations.append(h0)
             ys.append(y)
-            num_samples += x.shape[0]
 
     if len(representations) > 1:
         representations = torch.cat(representations, dim=0)

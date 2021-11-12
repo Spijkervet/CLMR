@@ -73,6 +73,7 @@ if __name__ == "__main__":
         out_dim=train_dataset.n_classes,
     )
     encoder.to(args.device)
+    encoder.eval()
 
     state_dict = load_encoder_checkpoint(args.checkpoint_path, train_dataset.n_classes)
     encoder.load_state_dict(state_dict)

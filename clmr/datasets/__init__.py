@@ -1,5 +1,5 @@
 import os
-from .dataset import Dataset
+from .dataset import Dataset, SplitMusicDataset
 from .audio import AUDIO
 from .librispeech import LIBRISPEECH
 from .gtzan import GTZAN
