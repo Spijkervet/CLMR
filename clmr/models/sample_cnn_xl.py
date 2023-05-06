@@ -5,7 +5,7 @@ from .model import Model
 
 class SampleCNNXL(Model):
     def __init__(self, strides, supervised, out_dim):
-        super(SampleCNN, self).__init__()
+        super(SampleCNNXL, self).__init__()
 
         self.strides = strides
         self.supervised = supervised
