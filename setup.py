@@ -22,7 +22,7 @@ VERSION = "0.1.0"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "torch==1.9.0",
+    "torch==2.2.0",
     "torchaudio",
     "simclr",
     "torchaudio-augmentations",

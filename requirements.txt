@@ -1,6 +1,6 @@
 simclr
 torchaudio-augmentations
-torch==1.9.0
+torch==2.2.0
 torchaudio
 pytorch-lightning
 soundfile
